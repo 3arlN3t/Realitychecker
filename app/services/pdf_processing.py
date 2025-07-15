@@ -15,9 +15,10 @@ import pdfplumber
 from pdfplumber.pdf import PDF
 
 from app.models.data_models import AppConfig
+from app.utils.logging import get_logger, get_correlation_id, log_with_context
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class PDFProcessingError(Exception):
@@ -74,8 +75,17 @@ class PDFProcessingService:
         """
         if not media_url:
             raise PDFDownloadError("Media URL is required")
-            
-        logger.info(f"Downloading PDF from URL: {media_url[:50]}...")
+        
+        correlation_id = get_correlation_id()
+        
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Downloading PDF from URL",
+            url_preview=media_url[:50] + "..." if len(media_url) > 50 else media_url,
+            max_size_mb=self.config.max_pdf_size_mb,
+            correlation_id=correlation_id
+        )
         
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
@@ -85,6 +95,14 @@ class PDFProcessingService:
                 # Check content length header if available
                 content_length = response.headers.get('content-length')
                 if content_length and int(content_length) > self.max_size_bytes:
+                    log_with_context(
+                        logger,
+                        logging.WARNING,
+                        "PDF file too large (content-length header)",
+                        content_length=int(content_length),
+                        max_size_bytes=self.max_size_bytes,
+                        correlation_id=correlation_id
+                    )
                     raise PDFDownloadError(
                         f"PDF file too large: {content_length} bytes "
                         f"(max: {self.max_size_bytes} bytes)"
@@ -94,6 +112,14 @@ class PDFProcessingService:
                 
                 # Check actual content size
                 if len(pdf_content) > self.max_size_bytes:
+                    log_with_context(
+                        logger,
+                        logging.WARNING,
+                        "PDF file too large (actual content)",
+                        actual_size=len(pdf_content),
+                        max_size_bytes=self.max_size_bytes,
+                        correlation_id=correlation_id
+                    )
                     raise PDFDownloadError(
                         f"PDF file too large: {len(pdf_content)} bytes "
                         f"(max: {self.max_size_bytes} bytes)"
@@ -101,22 +127,60 @@ class PDFProcessingService:
                 
                 # Basic PDF header validation
                 if not pdf_content.startswith(b'%PDF-'):
+                    log_with_context(
+                        logger,
+                        logging.WARNING,
+                        "Downloaded file is not a valid PDF",
+                        file_header=pdf_content[:20].hex() if len(pdf_content) >= 20 else pdf_content.hex(),
+                        correlation_id=correlation_id
+                    )
                     raise PDFDownloadError("Downloaded file is not a valid PDF")
                 
-                logger.info(f"Successfully downloaded PDF: {len(pdf_content)} bytes")
+                log_with_context(
+                    logger,
+                    logging.INFO,
+                    "Successfully downloaded PDF",
+                    file_size=len(pdf_content),
+                    correlation_id=correlation_id
+                )
                 return pdf_content
                 
         except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error downloading PDF: {e.response.status_code}")
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "HTTP error downloading PDF",
+                status_code=e.response.status_code,
+                error=str(e),
+                correlation_id=correlation_id
+            )
             raise PDFDownloadError(f"Failed to download PDF: HTTP {e.response.status_code}")
         except httpx.TimeoutException:
-            logger.error("Timeout downloading PDF")
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Timeout downloading PDF",
+                timeout_seconds=30.0,  # Default timeout value
+                correlation_id=correlation_id
+            )
             raise PDFDownloadError("PDF download timed out")
         except httpx.RequestError as e:
-            logger.error(f"Network error downloading PDF: {e}")
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Network error downloading PDF",
+                error=str(e),
+                correlation_id=correlation_id
+            )
             raise PDFDownloadError(f"Network error downloading PDF: {e}")
         except Exception as e:
-            logger.error(f"Unexpected error downloading PDF: {e}")
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Unexpected error downloading PDF",
+                error=str(e),
+                correlation_id=correlation_id
+            )
             raise PDFDownloadError(f"Unexpected error downloading PDF: {e}")
     
     async def extract_text(self, pdf_content: bytes) -> str:
@@ -134,19 +198,40 @@ class PDFProcessingService:
         """
         if not pdf_content:
             raise PDFExtractionError("PDF content is required")
-            
-        logger.info(f"Extracting text from PDF ({len(pdf_content)} bytes)")
+        
+        correlation_id = get_correlation_id()
+        
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Extracting text from PDF",
+            pdf_size=len(pdf_content),
+            correlation_id=correlation_id
+        )
         
         try:
             # Run PDF processing in thread pool to avoid blocking
             loop = asyncio.get_event_loop()
             text = await loop.run_in_executor(None, self._extract_text_sync, pdf_content)
             
-            logger.info(f"Successfully extracted {len(text)} characters from PDF")
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Successfully extracted text from PDF",
+                text_length=len(text),
+                correlation_id=correlation_id
+            )
             return text
             
         except Exception as e:
-            logger.error(f"Error extracting text from PDF: {e}")
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Error extracting text from PDF",
+                error=str(e),
+                pdf_size=len(pdf_content),
+                correlation_id=correlation_id
+            )
             raise PDFExtractionError(f"Failed to extract text from PDF: {e}")
     
     def _extract_text_sync(self, pdf_content: bytes) -> str:

@@ -12,9 +12,10 @@ import openai
 from openai import AsyncOpenAI
 
 from app.models.data_models import JobAnalysisResult, JobClassification, AppConfig
+from app.utils.logging import get_logger, get_correlation_id, log_with_context
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class OpenAIAnalysisService:
@@ -52,11 +53,29 @@ class OpenAIAnalysisService:
         """
         if not job_text or not job_text.strip():
             raise ValueError("Job text cannot be empty")
-            
-        logger.info(f"Starting job ad analysis with model {self.model}")
+        
+        correlation_id = get_correlation_id()
+        
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Starting job ad analysis",
+            model=self.model,
+            text_length=len(job_text),
+            correlation_id=correlation_id
+        )
         
         try:
             prompt = self.build_analysis_prompt(job_text)
+            
+            log_with_context(
+                logger,
+                logging.DEBUG,
+                "Sending request to OpenAI API",
+                model=self.model,
+                prompt_length=len(prompt),
+                correlation_id=correlation_id
+            )
             
             response = await self.client.chat.completions.create(
                 model=self.model,
@@ -76,28 +95,76 @@ class OpenAIAnalysisService:
             )
             
             if not response.choices or not response.choices[0].message.content:
-                logger.error("Empty response from OpenAI API")
+                log_with_context(
+                    logger,
+                    logging.ERROR,
+                    "Empty response from OpenAI API",
+                    correlation_id=correlation_id
+                )
                 raise Exception("Empty response from OpenAI API")
                 
             analysis_text = response.choices[0].message.content.strip()
-            logger.debug(f"OpenAI response: {analysis_text}")
             
-            return self.parse_analysis_response(analysis_text)
+            log_with_context(
+                logger,
+                logging.DEBUG,
+                "Received OpenAI response",
+                response_length=len(analysis_text),
+                correlation_id=correlation_id
+            )
+            
+            result = self.parse_analysis_response(analysis_text)
+            
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Job ad analysis completed",
+                trust_score=result.trust_score,
+                classification=result.classification_text,
+                confidence=result.confidence,
+                correlation_id=correlation_id
+            )
+            
+            return result
             
         except openai.APITimeoutError as e:
-            logger.error(f"OpenAI API timeout: {e}")
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "OpenAI API timeout",
+                error=str(e),
+                correlation_id=correlation_id
+            )
             raise Exception("Analysis service is currently unavailable. Please try again later.")
             
         except openai.RateLimitError as e:
-            logger.error(f"OpenAI rate limit exceeded: {e}")
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "OpenAI rate limit exceeded",
+                error=str(e),
+                correlation_id=correlation_id
+            )
             raise Exception("Service is temporarily busy. Please try again in a few minutes.")
             
         except openai.APIError as e:
-            logger.error(f"OpenAI API error: {e}")
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "OpenAI API error",
+                error=str(e),
+                correlation_id=correlation_id
+            )
             raise Exception("Unable to analyze the job posting. Please try again.")
             
         except Exception as e:
-            logger.error(f"Unexpected error during analysis: {e}")
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Unexpected error during analysis",
+                error=str(e),
+                correlation_id=correlation_id
+            )
             # Re-raise specific exceptions we want to preserve
             if "Empty response from OpenAI API" in str(e):
                 raise e

@@ -12,9 +12,11 @@ from app.models.data_models import TwilioWebhookRequest, JobAnalysisResult, AppC
 from app.services.pdf_processing import PDFProcessingService, PDFProcessingError
 from app.services.openai_analysis import OpenAIAnalysisService
 from app.services.twilio_response import TwilioResponseService
+from app.utils.logging import get_logger, get_correlation_id, log_with_context, sanitize_phone_number
+from app.utils.error_handling import handle_error, get_fallback_response, ErrorCategory
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class MessageHandlerService:
@@ -47,8 +49,17 @@ class MessageHandlerService:
         Returns:
             bool: True if message was processed and response sent successfully
         """
-        logger.info(f"Processing message from {twilio_request.From}, "
-                   f"has_media: {twilio_request.has_media}")
+        correlation_id = get_correlation_id()
+        
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Processing message",
+            from_number=sanitize_phone_number(twilio_request.From),
+            has_media=twilio_request.has_media,
+            message_sid=twilio_request.MessageSid,
+            correlation_id=correlation_id
+        )
         
         try:
             # Determine message type and process accordingly
@@ -64,16 +75,43 @@ class MessageHandlerService:
                     twilio_request.From
                 )
             
-            logger.info(f"Message processing completed. Success: {success}")
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Message processing completed",
+                success=success,
+                message_sid=twilio_request.MessageSid,
+                correlation_id=correlation_id
+            )
             return success
             
         except Exception as e:
-            logger.error(f"Unexpected error processing message: {e}")
-            # Send generic error message to user
-            return self.twilio_service.send_error_message(
-                twilio_request.From, 
-                "general"
+            # Use centralized error handling
+            user_message, error_info = handle_error(
+                e,
+                {
+                    "from_number": sanitize_phone_number(twilio_request.From),
+                    "message_sid": twilio_request.MessageSid,
+                    "has_media": twilio_request.has_media,
+                    "component": "message_processing"
+                },
+                correlation_id
             )
+            
+            # Try to send error message to user
+            try:
+                return await self._send_error_with_fallback(twilio_request.From, error_info)
+            except Exception as fallback_error:
+                log_with_context(
+                    logger,
+                    logging.CRITICAL,
+                    "Failed to send error message to user",
+                    original_error=str(e),
+                    fallback_error=str(fallback_error),
+                    from_number=sanitize_phone_number(twilio_request.From),
+                    correlation_id=correlation_id
+                )
+                return False
     
     async def handle_text_message(self, text: str, from_number: str) -> bool:
         """
@@ -86,34 +124,76 @@ class MessageHandlerService:
         Returns:
             bool: True if message was processed and response sent successfully
         """
-        logger.info(f"Handling text message from {from_number}")
+        correlation_id = get_correlation_id()
+        
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Handling text message",
+            from_number=sanitize_phone_number(from_number),
+            text_length=len(text) if text else 0,
+            correlation_id=correlation_id
+        )
         
         try:
             # Check for help/welcome requests first (before validation)
             if self._is_help_request(text):
-                logger.info(f"Sending welcome message to {from_number}")
+                log_with_context(
+                    logger,
+                    logging.INFO,
+                    "Sending welcome message",
+                    from_number=sanitize_phone_number(from_number),
+                    correlation_id=correlation_id
+                )
                 return self.twilio_service.send_welcome_message(from_number)
             
             # Validate text content for job analysis
             if not self._validate_text_content(text):
-                logger.warning(f"Invalid text content from {from_number}")
-                return self._send_content_validation_error(from_number)
+                log_with_context(
+                    logger,
+                    logging.WARNING,
+                    "Invalid text content",
+                    from_number=sanitize_phone_number(from_number),
+                    text_length=len(text) if text else 0,
+                    correlation_id=correlation_id
+                )
+                return await self._send_content_validation_error(from_number)
             
             # Analyze job ad text
-            logger.info(f"Starting OpenAI analysis for text message from {from_number}")
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Starting OpenAI analysis for text message",
+                from_number=sanitize_phone_number(from_number),
+                correlation_id=correlation_id
+            )
             analysis_result = await self.openai_service.analyze_job_ad(text)
             
             # Send analysis result back to user
-            logger.info(f"Sending analysis result to {from_number}")
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Sending analysis result",
+                from_number=sanitize_phone_number(from_number),
+                trust_score=analysis_result.trust_score,
+                classification=analysis_result.classification_text,
+                correlation_id=correlation_id
+            )
             return self.twilio_service.send_analysis_result(from_number, analysis_result)
             
-        except ValueError as e:
-            logger.error(f"Validation error processing text message: {e}")
-            return self.twilio_service.send_error_message(from_number, "analysis")
-            
         except Exception as e:
-            logger.error(f"Error processing text message: {e}")
-            return self.twilio_service.send_error_message(from_number, "analysis")
+            # Use centralized error handling
+            user_message, error_info = handle_error(
+                e,
+                {
+                    "from_number": sanitize_phone_number(from_number),
+                    "text_length": len(text) if text else 0,
+                    "component": "text_message_processing"
+                },
+                correlation_id
+            )
+            
+            return await self._send_error_with_fallback(from_number, error_info)
     
     async def handle_media_message(self, media_url: str, media_content_type: Optional[str], from_number: str) -> bool:
         """
@@ -127,37 +207,76 @@ class MessageHandlerService:
         Returns:
             bool: True if message was processed and response sent successfully
         """
-        logger.info(f"Handling media message from {from_number}, type: {media_content_type}")
+        correlation_id = get_correlation_id()
+        
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Handling media message",
+            from_number=sanitize_phone_number(from_number),
+            media_type=media_content_type,
+            correlation_id=correlation_id
+        )
         
         try:
             # Validate media type
             if not self._validate_media_type(media_content_type):
-                logger.warning(f"Unsupported media type from {from_number}: {media_content_type}")
-                return self._send_media_type_error(from_number, media_content_type)
+                log_with_context(
+                    logger,
+                    logging.WARNING,
+                    "Unsupported media type",
+                    from_number=sanitize_phone_number(from_number),
+                    media_type=media_content_type,
+                    correlation_id=correlation_id
+                )
+                return await self._send_media_type_error(from_number, media_content_type)
             
             # Process PDF and extract text
-            logger.info(f"Starting PDF processing for {from_number}")
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Starting PDF processing",
+                from_number=sanitize_phone_number(from_number),
+                correlation_id=correlation_id
+            )
             extracted_text = await self.pdf_service.process_pdf_url(media_url)
             
             # Analyze extracted text
-            logger.info(f"Starting OpenAI analysis for PDF content from {from_number}")
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Starting OpenAI analysis for PDF content",
+                from_number=sanitize_phone_number(from_number),
+                text_length=len(extracted_text),
+                correlation_id=correlation_id
+            )
             analysis_result = await self.openai_service.analyze_job_ad(extracted_text)
             
             # Send analysis result back to user
-            logger.info(f"Sending analysis result to {from_number}")
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Sending analysis result",
+                from_number=sanitize_phone_number(from_number),
+                trust_score=analysis_result.trust_score,
+                classification=analysis_result.classification_text,
+                correlation_id=correlation_id
+            )
             return self.twilio_service.send_analysis_result(from_number, analysis_result)
             
-        except PDFProcessingError as e:
-            logger.error(f"PDF processing error: {e}")
-            return self.twilio_service.send_error_message(from_number, "pdf_processing")
-            
-        except ValueError as e:
-            logger.error(f"Validation error processing media message: {e}")
-            return self.twilio_service.send_error_message(from_number, "analysis")
-            
         except Exception as e:
-            logger.error(f"Error processing media message: {e}")
-            return self.twilio_service.send_error_message(from_number, "analysis")
+            # Use centralized error handling
+            user_message, error_info = handle_error(
+                e,
+                {
+                    "from_number": sanitize_phone_number(from_number),
+                    "media_type": media_content_type,
+                    "component": "media_message_processing"
+                },
+                correlation_id
+            )
+            
+            return await self._send_error_with_fallback(from_number, error_info)
     
     def _validate_text_content(self, text: str) -> bool:
         """
@@ -242,7 +361,95 @@ class MessageHandlerService:
         
         return False
     
-    def _send_content_validation_error(self, from_number: str) -> bool:
+    async def _send_error_with_fallback(self, from_number: str, error_info) -> bool:
+        """
+        Send error message to user with fallback response if available.
+        
+        Args:
+            from_number: Recipient's WhatsApp number
+            error_info: ErrorInfo object containing error details
+            
+        Returns:
+            bool: True if message sent successfully
+        """
+        correlation_id = get_correlation_id()
+        
+        try:
+            # Try to send the primary error message
+            success = await self._send_custom_error_message(from_number, error_info.user_message)
+            
+            if success:
+                return True
+            
+            # If primary message failed and fallback is available, try fallback
+            if error_info.fallback_available:
+                fallback_message = get_fallback_response(error_info.category)
+                if fallback_message:
+                    log_with_context(
+                        logger,
+                        logging.INFO,
+                        "Sending fallback response",
+                        from_number=sanitize_phone_number(from_number),
+                        error_category=error_info.category.value,
+                        correlation_id=correlation_id
+                    )
+                    return await self._send_custom_error_message(from_number, fallback_message)
+            
+            # Last resort: try generic error message
+            return await self._send_custom_error_message(
+                from_number,
+                "⚠️ I'm experiencing technical difficulties. Please try again later."
+            )
+            
+        except Exception as e:
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Failed to send error message with fallback",
+                from_number=sanitize_phone_number(from_number),
+                error=str(e),
+                correlation_id=correlation_id
+            )
+            return False
+    
+    async def _send_custom_error_message(self, from_number: str, message: str) -> bool:
+        """
+        Send a custom error message to user.
+        
+        Args:
+            from_number: Recipient's WhatsApp number
+            message: Error message to send
+            
+        Returns:
+            bool: True if message sent successfully
+        """
+        try:
+            twilio_message = self.twilio_service.client.messages.create(
+                body=message,
+                from_=f"whatsapp:{self.config.twilio_phone_number}",
+                to=from_number
+            )
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Custom error message sent",
+                message_sid=twilio_message.sid,
+                from_number=sanitize_phone_number(from_number),
+                correlation_id=get_correlation_id()
+            )
+            return True
+        except Exception as e:
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Failed to send custom error message",
+                from_number=sanitize_phone_number(from_number),
+                error=str(e),
+                correlation_id=get_correlation_id()
+            )
+            return False
+    
+    async def _send_content_validation_error(self, from_number: str) -> bool:
         """
         Send content validation error message to user.
         
@@ -263,19 +470,9 @@ class MessageHandlerService:
             "Or send 'help' for more information."
         )
         
-        try:
-            message = self.twilio_service.client.messages.create(
-                body=error_message,
-                from_=f"whatsapp:{self.config.twilio_phone_number}",
-                to=from_number
-            )
-            logger.info(f"Content validation error sent. Message SID: {message.sid}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to send content validation error: {e}")
-            return False
+        return await self._send_custom_error_message(from_number, error_message)
     
-    def _send_media_type_error(self, from_number: str, media_type: Optional[str]) -> bool:
+    async def _send_media_type_error(self, from_number: str, media_type: Optional[str]) -> bool:
         """
         Send media type error message to user.
         
@@ -295,14 +492,4 @@ class MessageHandlerService:
             "Send 'help' for more information."
         )
         
-        try:
-            message = self.twilio_service.client.messages.create(
-                body=error_message,
-                from_=f"whatsapp:{self.config.twilio_phone_number}",
-                to=from_number
-            )
-            logger.info(f"Media type error sent. Message SID: {message.sid}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to send media type error: {e}")
-            return False
+        return await self._send_custom_error_message(from_number, error_message)

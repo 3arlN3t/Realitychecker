@@ -13,13 +13,10 @@ from fastapi.exceptions import RequestValidationError
 
 from app.config import get_config
 from app.api.webhook import router as webhook_router
+from app.utils.logging import setup_logging, get_logger, set_correlation_id, get_correlation_id
+from app.utils.error_handling import handle_error, ErrorCategory
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def startup_event():
@@ -27,16 +24,21 @@ async def startup_event():
     try:
         # Validate configuration on startup
         config = get_config()
+        
+        # Setup structured logging
+        setup_logging(
+            log_level=config.log_level,
+            use_json=config.log_level.upper() == "DEBUG"  # Use JSON logging in debug mode
+        )
+        
         logger.info("Application started successfully")
         logger.info(f"Log level: {config.log_level}")
         logger.info(f"OpenAI model: {config.openai_model}")
         logger.info(f"Max PDF size: {config.max_pdf_size_mb}MB")
         logger.info(f"Webhook validation: {config.webhook_validation}")
         
-        # Set log level from configuration
-        logging.getLogger().setLevel(getattr(logging, config.log_level.upper()))
-        
     except Exception as exc:
+        user_message, error_info = handle_error(exc, {"component": "startup"})
         logger.error(f"Failed to start application: {str(exc)}", exc_info=True)
         raise
 
@@ -80,26 +82,40 @@ app.add_middleware(
 
 
 @app.middleware("http")
-async def error_handling_middleware(request: Request, call_next):
-    """Global error handling middleware for unhandled exceptions."""
+async def correlation_and_error_middleware(request: Request, call_next):
+    """Middleware for correlation ID tracking and error handling."""
+    # Set correlation ID for this request
+    correlation_id = set_correlation_id()
+    
     try:
+        # Add correlation ID to response headers
         response = await call_next(request)
+        response.headers["X-Correlation-ID"] = correlation_id
         return response
+        
     except Exception as exc:
-        # Log the full exception with traceback
-        logger.error(
-            f"Unhandled exception in {request.method} {request.url}: {str(exc)}",
-            exc_info=True
+        # Handle the error using our centralized error handler
+        user_message, error_info = handle_error(
+            exc, 
+            {
+                "method": request.method,
+                "url": str(request.url),
+                "user_agent": request.headers.get("user-agent"),
+                "content_type": request.headers.get("content-type")
+            },
+            correlation_id
         )
         
-        # Return a generic error response to avoid exposing internal details
+        # Return appropriate error response
         return JSONResponse(
             status_code=500,
             content={
                 "error": "Internal server error",
                 "message": "An unexpected error occurred. Please try again later.",
+                "correlation_id": correlation_id,
                 "timestamp": datetime.now(timezone.utc).isoformat()
-            }
+            },
+            headers={"X-Correlation-ID": correlation_id}
         )
 
 

@@ -12,8 +12,9 @@ from twilio.base.exceptions import TwilioException
 
 from app.models.data_models import JobAnalysisResult, AppConfig
 from app.config import get_config
+from app.utils.logging import get_logger, get_correlation_id, log_with_context, sanitize_phone_number
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class TwilioResponseService:
@@ -43,6 +44,8 @@ class TwilioResponseService:
         Returns:
             bool: True if message sent successfully, False otherwise
         """
+        correlation_id = get_correlation_id()
+        
         try:
             message_body = self._format_analysis_message(result)
             
@@ -52,14 +55,38 @@ class TwilioResponseService:
                 to=to_number
             )
             
-            logger.info(f"Analysis result sent successfully. Message SID: {message.sid}")
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Analysis result sent successfully",
+                message_sid=message.sid,
+                to_number=sanitize_phone_number(to_number),
+                trust_score=result.trust_score,
+                classification=result.classification_text,
+                correlation_id=correlation_id
+            )
             return True
             
         except TwilioException as e:
-            logger.error(f"Failed to send analysis result: {e}")
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Failed to send analysis result",
+                to_number=sanitize_phone_number(to_number),
+                error=str(e),
+                error_type="TwilioException",
+                correlation_id=correlation_id
+            )
             return False
         except Exception as e:
-            logger.error(f"Unexpected error sending analysis result: {e}")
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Unexpected error sending analysis result",
+                to_number=sanitize_phone_number(to_number),
+                error=str(e),
+                correlation_id=correlation_id
+            )
             return False
     
     def send_error_message(self, to_number: str, error_type: str = "general") -> bool:
@@ -73,6 +100,8 @@ class TwilioResponseService:
         Returns:
             bool: True if message sent successfully, False otherwise
         """
+        correlation_id = get_correlation_id()
+        
         try:
             message_body = self._get_error_message(error_type)
             
@@ -82,14 +111,38 @@ class TwilioResponseService:
                 to=to_number
             )
             
-            logger.info(f"Error message sent successfully. Message SID: {message.sid}")
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Error message sent successfully",
+                message_sid=message.sid,
+                to_number=sanitize_phone_number(to_number),
+                error_type=error_type,
+                correlation_id=correlation_id
+            )
             return True
             
         except TwilioException as e:
-            logger.error(f"Failed to send error message: {e}")
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Failed to send error message",
+                to_number=sanitize_phone_number(to_number),
+                error_type=error_type,
+                error=str(e),
+                correlation_id=correlation_id
+            )
             return False
         except Exception as e:
-            logger.error(f"Unexpected error sending error message: {e}")
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Unexpected error sending error message",
+                to_number=sanitize_phone_number(to_number),
+                error_type=error_type,
+                error=str(e),
+                correlation_id=correlation_id
+            )
             return False
     
     def send_welcome_message(self, to_number: str) -> bool:
@@ -102,6 +155,8 @@ class TwilioResponseService:
         Returns:
             bool: True if message sent successfully, False otherwise
         """
+        correlation_id = get_correlation_id()
+        
         try:
             message_body = self._get_welcome_message()
             
@@ -111,14 +166,36 @@ class TwilioResponseService:
                 to=to_number
             )
             
-            logger.info(f"Welcome message sent successfully. Message SID: {message.sid}")
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Welcome message sent successfully",
+                message_sid=message.sid,
+                to_number=sanitize_phone_number(to_number),
+                correlation_id=correlation_id
+            )
             return True
             
         except TwilioException as e:
-            logger.error(f"Failed to send welcome message: {e}")
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Failed to send welcome message",
+                to_number=sanitize_phone_number(to_number),
+                error=str(e),
+                error_type="TwilioException",
+                correlation_id=correlation_id
+            )
             return False
         except Exception as e:
-            logger.error(f"Unexpected error sending welcome message: {e}")
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Unexpected error sending welcome message",
+                to_number=sanitize_phone_number(to_number),
+                error=str(e),
+                correlation_id=correlation_id
+            )
             return False
     
     def _format_analysis_message(self, result: JobAnalysisResult) -> str:

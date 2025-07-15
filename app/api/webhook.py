@@ -18,8 +18,10 @@ from fastapi.responses import PlainTextResponse
 from app.config import get_config
 from app.models.data_models import TwilioWebhookRequest, AppConfig
 from app.services.message_handler import MessageHandlerService
+from app.utils.logging import get_logger, get_correlation_id, log_with_context, sanitize_phone_number
+from app.utils.error_handling import handle_error, ErrorCategory
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Create router for webhook endpoints
 router = APIRouter(prefix="/webhook", tags=["webhook"])
@@ -121,7 +123,19 @@ async def whatsapp_webhook(
     Raises:
         HTTPException: 400 for validation errors, 401 for signature validation failures
     """
-    logger.info(f"Received webhook request: MessageSid={MessageSid}, From={From}, NumMedia={NumMedia}")
+    correlation_id = get_correlation_id()
+    
+    # Log webhook request with sanitized phone numbers
+    log_with_context(
+        logger,
+        logging.INFO,
+        "Received webhook request",
+        message_sid=MessageSid,
+        from_number=sanitize_phone_number(From),
+        num_media=NumMedia,
+        has_body=bool(Body.strip()),
+        correlation_id=correlation_id
+    )
     
     try:
         # Get configuration for signature validation
@@ -144,7 +158,14 @@ async def whatsapp_webhook(
         
         # Validate Twilio signature for security
         if not validate_twilio_signature(request, form_data, config):
-            logger.error(f"Webhook signature validation failed for MessageSid: {MessageSid}")
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Webhook signature validation failed",
+                message_sid=MessageSid,
+                from_number=sanitize_phone_number(From),
+                correlation_id=correlation_id
+            )
             raise HTTPException(
                 status_code=401,
                 detail="Invalid webhook signature"
@@ -162,20 +183,47 @@ async def whatsapp_webhook(
                 MediaContentType0=MediaContentType0
             )
         except ValueError as e:
-            logger.error(f"Invalid webhook request data: {e}")
+            user_message, error_info = handle_error(
+                e,
+                {
+                    "message_sid": MessageSid,
+                    "from_number": sanitize_phone_number(From),
+                    "component": "webhook_validation"
+                },
+                correlation_id
+            )
             raise HTTPException(
                 status_code=400,
                 detail=f"Invalid request data: {str(e)}"
             )
         
         # Process the message through the message handler service
-        logger.info(f"Processing message {MessageSid} through MessageHandlerService")
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Processing message through MessageHandlerService",
+            message_sid=MessageSid,
+            correlation_id=correlation_id
+        )
+        
         success = await message_handler.process_message(twilio_request)
         
         if success:
-            logger.info(f"Successfully processed message {MessageSid}")
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Successfully processed message",
+                message_sid=MessageSid,
+                correlation_id=correlation_id
+            )
         else:
-            logger.warning(f"Failed to process message {MessageSid}")
+            log_with_context(
+                logger,
+                logging.WARNING,
+                "Failed to process message",
+                message_sid=MessageSid,
+                correlation_id=correlation_id
+            )
         
         # Return empty response as expected by Twilio
         # Twilio expects HTTP 200 with empty body to acknowledge receipt
@@ -186,8 +234,17 @@ async def whatsapp_webhook(
         raise
         
     except Exception as e:
-        # Log unexpected errors and return 500
-        logger.error(f"Unexpected error processing webhook: {e}", exc_info=True)
+        # Handle unexpected errors with centralized error handler
+        user_message, error_info = handle_error(
+            e,
+            {
+                "message_sid": MessageSid,
+                "from_number": sanitize_phone_number(From),
+                "component": "webhook_processing"
+            },
+            correlation_id
+        )
+        
         raise HTTPException(
             status_code=500,
             detail="Internal server error processing webhook"
