@@ -14,6 +14,8 @@ from openai import AsyncOpenAI
 from app.models.data_models import JobAnalysisResult, JobClassification, AppConfig
 from app.utils.logging import get_logger, get_correlation_id, log_with_context
 from app.utils.security import SecurityValidator
+from app.utils.metrics import get_metrics_collector
+from app.utils.error_tracking import get_error_tracker, AlertSeverity
 
 
 logger = get_logger(__name__)
@@ -64,6 +66,8 @@ class OpenAIAnalysisService:
             raise ValueError(f"Invalid job text content: {validation_error}")
         
         correlation_id = get_correlation_id()
+        metrics = get_metrics_collector()
+        error_tracker = get_error_tracker()
         
         log_with_context(
             logger,
@@ -73,6 +77,10 @@ class OpenAIAnalysisService:
             text_length=len(job_text),
             correlation_id=correlation_id
         )
+        
+        # Start timing the analysis
+        import time
+        start_time = time.time()
         
         try:
             prompt = self.build_analysis_prompt(sanitized_text)
@@ -124,6 +132,11 @@ class OpenAIAnalysisService:
             
             result = self.parse_analysis_response(analysis_text)
             
+            # Record successful metrics
+            duration = time.time() - start_time
+            metrics.record_service_call("openai", "analyze_job_ad", True, duration)
+            error_tracker.track_service_call("openai", "analyze_job_ad", True, duration)
+            
             log_with_context(
                 logger,
                 logging.INFO,
@@ -131,47 +144,104 @@ class OpenAIAnalysisService:
                 trust_score=result.trust_score,
                 classification=result.classification_text,
                 confidence=result.confidence,
+                duration_seconds=duration,
                 correlation_id=correlation_id
             )
             
             return result
             
         except openai.APITimeoutError as e:
+            duration = time.time() - start_time
+            metrics.record_service_call("openai", "analyze_job_ad", False, duration)
+            error_tracker.track_service_call("openai", "analyze_job_ad", False, duration)
+            error_tracker.track_error(
+                "APITimeoutError",
+                str(e),
+                "openai_service",
+                correlation_id,
+                {"duration": duration},
+                severity=AlertSeverity.HIGH
+            )
+            
             log_with_context(
                 logger,
                 logging.ERROR,
                 "OpenAI API timeout",
                 error=str(e),
+                duration_seconds=duration,
                 correlation_id=correlation_id
             )
             raise Exception("Analysis service is currently unavailable. Please try again later.")
             
         except openai.RateLimitError as e:
+            duration = time.time() - start_time
+            metrics.record_service_call("openai", "analyze_job_ad", False, duration)
+            error_tracker.track_service_call("openai", "analyze_job_ad", False, duration)
+            error_tracker.track_error(
+                "RateLimitError",
+                str(e),
+                "openai_service",
+                correlation_id,
+                {"duration": duration},
+                severity=AlertSeverity.MEDIUM
+            )
+            
             log_with_context(
                 logger,
                 logging.ERROR,
                 "OpenAI rate limit exceeded",
                 error=str(e),
+                duration_seconds=duration,
                 correlation_id=correlation_id
             )
             raise Exception("Service is temporarily busy. Please try again in a few minutes.")
             
         except openai.APIError as e:
+            duration = time.time() - start_time
+            metrics.record_service_call("openai", "analyze_job_ad", False, duration)
+            error_tracker.track_service_call("openai", "analyze_job_ad", False, duration)
+            error_tracker.track_error(
+                "APIError",
+                str(e),
+                "openai_service",
+                correlation_id,
+                {"duration": duration},
+                severity=AlertSeverity.HIGH
+            )
+            
             log_with_context(
                 logger,
                 logging.ERROR,
                 "OpenAI API error",
                 error=str(e),
+                duration_seconds=duration,
                 correlation_id=correlation_id
             )
             raise Exception("Unable to analyze the job posting. Please try again.")
             
         except Exception as e:
+            duration = time.time() - start_time
+            metrics.record_service_call("openai", "analyze_job_ad", False, duration)
+            error_tracker.track_service_call("openai", "analyze_job_ad", False, duration)
+            
+            # Determine severity based on error type
+            severity = AlertSeverity.CRITICAL if "Empty response from OpenAI API" in str(e) else AlertSeverity.HIGH
+            
+            error_tracker.track_error(
+                type(e).__name__,
+                str(e),
+                "openai_service",
+                correlation_id,
+                {"duration": duration},
+                severity=severity
+            )
+            
             log_with_context(
                 logger,
                 logging.ERROR,
                 "Unexpected error during analysis",
                 error=str(e),
+                duration_seconds=duration,
                 correlation_id=correlation_id
             )
             # Re-raise specific exceptions we want to preserve

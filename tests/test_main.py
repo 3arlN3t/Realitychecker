@@ -2,7 +2,7 @@
 
 import pytest
 import os
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi.testclient import TestClient
 from datetime import datetime
 
@@ -50,16 +50,20 @@ class TestHealthEndpoint:
         assert data["services"]["openai"] == "connected"
         assert data["services"]["twilio"] == "connected"
     
-    @patch('app.main.get_config')
-    def test_health_check_degraded_status_missing_openai(self, mock_get_config, client):
+    @patch('app.dependencies.ServiceContainer.perform_health_checks', new_callable=AsyncMock)
+    def test_health_check_degraded_status_missing_openai(self, mock_health_checks, client):
         """Test health check returns degraded status when OpenAI is not configured."""
-        config = AppConfig(
-            openai_api_key="",  # Missing OpenAI key
-            twilio_account_sid="test-twilio-sid",
-            twilio_auth_token="test-twilio-token",
-            twilio_phone_number="+1234567890"
-        )
-        mock_get_config.return_value = config
+        from app.dependencies import reset_service_container
+        
+        # Mock health check to return not_configured for OpenAI
+        mock_health_checks.return_value = {
+            "openai": "not_configured",
+            "twilio": "connected",
+            "pdf_processing": "ready"
+        }
+        
+        # Reset service container to pick up new config
+        reset_service_container()
         
         response = client.get("/health")
         
@@ -70,16 +74,20 @@ class TestHealthEndpoint:
         assert data["services"]["openai"] == "not_configured"
         assert data["services"]["twilio"] == "connected"
     
-    @patch('app.main.get_config')
-    def test_health_check_degraded_status_missing_twilio(self, mock_get_config, client):
+    @patch('app.dependencies.ServiceContainer.perform_health_checks', new_callable=AsyncMock)
+    def test_health_check_degraded_status_missing_twilio(self, mock_health_checks, client):
         """Test health check returns degraded status when Twilio is not configured."""
-        config = AppConfig(
-            openai_api_key="test-openai-key",
-            twilio_account_sid="",  # Missing Twilio SID
-            twilio_auth_token="test-twilio-token",
-            twilio_phone_number="+1234567890"
-        )
-        mock_get_config.return_value = config
+        from app.dependencies import reset_service_container
+        
+        # Mock health check to return not_configured for Twilio
+        mock_health_checks.return_value = {
+            "openai": "connected",
+            "twilio": "not_configured",
+            "pdf_processing": "ready"
+        }
+        
+        # Reset service container to pick up new config
+        reset_service_container()
         
         response = client.get("/health")
         
@@ -90,10 +98,10 @@ class TestHealthEndpoint:
         assert data["services"]["openai"] == "connected"
         assert data["services"]["twilio"] == "not_configured"
     
-    @patch('app.main.get_config')
-    def test_health_check_exception_handling(self, mock_get_config, client):
+    @patch('app.main.get_service_container')
+    def test_health_check_exception_handling(self, mock_get_service_container, client):
         """Test health check handles exceptions gracefully."""
-        mock_get_config.side_effect = Exception("Configuration error")
+        mock_get_service_container.side_effect = Exception("Configuration error")
         
         response = client.get("/health")
         

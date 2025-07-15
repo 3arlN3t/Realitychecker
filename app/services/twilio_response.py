@@ -13,6 +13,8 @@ from twilio.base.exceptions import TwilioException
 from app.models.data_models import JobAnalysisResult, AppConfig
 from app.config import get_config
 from app.utils.logging import get_logger, get_correlation_id, log_with_context, sanitize_phone_number
+from app.utils.metrics import get_metrics_collector
+from app.utils.error_tracking import get_error_tracker, AlertSeverity
 
 logger = get_logger(__name__)
 
@@ -45,6 +47,11 @@ class TwilioResponseService:
             bool: True if message sent successfully, False otherwise
         """
         correlation_id = get_correlation_id()
+        metrics = get_metrics_collector()
+        error_tracker = get_error_tracker()
+        
+        import time
+        start_time = time.time()
         
         try:
             message_body = self._format_analysis_message(result)
@@ -55,6 +62,10 @@ class TwilioResponseService:
                 to=to_number
             )
             
+            duration = time.time() - start_time
+            metrics.record_service_call("twilio", "send_message", True, duration)
+            error_tracker.track_service_call("twilio", "send_message", True, duration)
+            
             log_with_context(
                 logger,
                 logging.INFO,
@@ -63,11 +74,24 @@ class TwilioResponseService:
                 to_number=sanitize_phone_number(to_number),
                 trust_score=result.trust_score,
                 classification=result.classification_text,
+                duration_seconds=duration,
                 correlation_id=correlation_id
             )
             return True
             
         except TwilioException as e:
+            duration = time.time() - start_time
+            metrics.record_service_call("twilio", "send_message", False, duration)
+            error_tracker.track_service_call("twilio", "send_message", False, duration)
+            error_tracker.track_error(
+                "TwilioException",
+                str(e),
+                "twilio_service",
+                correlation_id,
+                {"operation": "send_analysis_result", "duration": duration},
+                severity=AlertSeverity.HIGH
+            )
+            
             log_with_context(
                 logger,
                 logging.ERROR,
@@ -75,16 +99,30 @@ class TwilioResponseService:
                 to_number=sanitize_phone_number(to_number),
                 error=str(e),
                 error_type="TwilioException",
+                duration_seconds=duration,
                 correlation_id=correlation_id
             )
             return False
         except Exception as e:
+            duration = time.time() - start_time
+            metrics.record_service_call("twilio", "send_message", False, duration)
+            error_tracker.track_service_call("twilio", "send_message", False, duration)
+            error_tracker.track_error(
+                type(e).__name__,
+                str(e),
+                "twilio_service",
+                correlation_id,
+                {"operation": "send_analysis_result", "duration": duration},
+                severity=AlertSeverity.HIGH
+            )
+            
             log_with_context(
                 logger,
                 logging.ERROR,
                 "Unexpected error sending analysis result",
                 to_number=sanitize_phone_number(to_number),
                 error=str(e),
+                duration_seconds=duration,
                 correlation_id=correlation_id
             )
             return False
@@ -101,6 +139,11 @@ class TwilioResponseService:
             bool: True if message sent successfully, False otherwise
         """
         correlation_id = get_correlation_id()
+        metrics = get_metrics_collector()
+        error_tracker = get_error_tracker()
+        
+        import time
+        start_time = time.time()
         
         try:
             message_body = self._get_error_message(error_type)
@@ -111,6 +154,10 @@ class TwilioResponseService:
                 to=to_number
             )
             
+            duration = time.time() - start_time
+            metrics.record_service_call("twilio", "send_error_message", True, duration)
+            error_tracker.track_service_call("twilio", "send_error_message", True, duration)
+            
             log_with_context(
                 logger,
                 logging.INFO,
@@ -118,11 +165,24 @@ class TwilioResponseService:
                 message_sid=message.sid,
                 to_number=sanitize_phone_number(to_number),
                 error_type=error_type,
+                duration_seconds=duration,
                 correlation_id=correlation_id
             )
             return True
             
         except TwilioException as e:
+            duration = time.time() - start_time
+            metrics.record_service_call("twilio", "send_error_message", False, duration)
+            error_tracker.track_service_call("twilio", "send_error_message", False, duration)
+            error_tracker.track_error(
+                "TwilioException",
+                str(e),
+                "twilio_service",
+                correlation_id,
+                {"operation": "send_error_message", "error_type": error_type, "duration": duration},
+                severity=AlertSeverity.MEDIUM
+            )
+            
             log_with_context(
                 logger,
                 logging.ERROR,
@@ -130,10 +190,23 @@ class TwilioResponseService:
                 to_number=sanitize_phone_number(to_number),
                 error_type=error_type,
                 error=str(e),
+                duration_seconds=duration,
                 correlation_id=correlation_id
             )
             return False
         except Exception as e:
+            duration = time.time() - start_time
+            metrics.record_service_call("twilio", "send_error_message", False, duration)
+            error_tracker.track_service_call("twilio", "send_error_message", False, duration)
+            error_tracker.track_error(
+                type(e).__name__,
+                str(e),
+                "twilio_service",
+                correlation_id,
+                {"operation": "send_error_message", "error_type": error_type, "duration": duration},
+                severity=AlertSeverity.MEDIUM
+            )
+            
             log_with_context(
                 logger,
                 logging.ERROR,
@@ -141,6 +214,7 @@ class TwilioResponseService:
                 to_number=sanitize_phone_number(to_number),
                 error_type=error_type,
                 error=str(e),
+                duration_seconds=duration,
                 correlation_id=correlation_id
             )
             return False
@@ -156,6 +230,11 @@ class TwilioResponseService:
             bool: True if message sent successfully, False otherwise
         """
         correlation_id = get_correlation_id()
+        metrics = get_metrics_collector()
+        error_tracker = get_error_tracker()
+        
+        import time
+        start_time = time.time()
         
         try:
             message_body = self._get_welcome_message()
@@ -166,17 +245,34 @@ class TwilioResponseService:
                 to=to_number
             )
             
+            duration = time.time() - start_time
+            metrics.record_service_call("twilio", "send_welcome_message", True, duration)
+            error_tracker.track_service_call("twilio", "send_welcome_message", True, duration)
+            
             log_with_context(
                 logger,
                 logging.INFO,
                 "Welcome message sent successfully",
                 message_sid=message.sid,
                 to_number=sanitize_phone_number(to_number),
+                duration_seconds=duration,
                 correlation_id=correlation_id
             )
             return True
             
         except TwilioException as e:
+            duration = time.time() - start_time
+            metrics.record_service_call("twilio", "send_welcome_message", False, duration)
+            error_tracker.track_service_call("twilio", "send_welcome_message", False, duration)
+            error_tracker.track_error(
+                "TwilioException",
+                str(e),
+                "twilio_service",
+                correlation_id,
+                {"operation": "send_welcome_message", "duration": duration},
+                severity=AlertSeverity.MEDIUM
+            )
+            
             log_with_context(
                 logger,
                 logging.ERROR,
@@ -184,16 +280,30 @@ class TwilioResponseService:
                 to_number=sanitize_phone_number(to_number),
                 error=str(e),
                 error_type="TwilioException",
+                duration_seconds=duration,
                 correlation_id=correlation_id
             )
             return False
         except Exception as e:
+            duration = time.time() - start_time
+            metrics.record_service_call("twilio", "send_welcome_message", False, duration)
+            error_tracker.track_service_call("twilio", "send_welcome_message", False, duration)
+            error_tracker.track_error(
+                type(e).__name__,
+                str(e),
+                "twilio_service",
+                correlation_id,
+                {"operation": "send_welcome_message", "duration": duration},
+                severity=AlertSeverity.MEDIUM
+            )
+            
             log_with_context(
                 logger,
                 logging.ERROR,
                 "Unexpected error sending welcome message",
                 to_number=sanitize_phone_number(to_number),
                 error=str(e),
+                duration_seconds=duration,
                 correlation_id=correlation_id
             )
             return False

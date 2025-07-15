@@ -37,6 +37,19 @@ async def startup_event():
             use_json=config.log_level.upper() == "DEBUG"  # Use JSON logging in debug mode
         )
         
+        # Initialize monitoring systems
+        from app.utils.metrics import get_metrics_collector
+        from app.utils.error_tracking import get_error_tracker, log_alert_handler
+        
+        # Initialize metrics collector
+        metrics_collector = get_metrics_collector()
+        logger.info("✅ Metrics collector initialized")
+        
+        # Initialize error tracker with alert handlers
+        error_tracker = get_error_tracker()
+        error_tracker.add_alert_handler(log_alert_handler)
+        logger.info("✅ Error tracking initialized with alert handlers")
+        
         logger.info("Configuration loaded successfully")
         logger.info(f"Log level: {config.log_level}")
         logger.info(f"OpenAI model: {config.openai_model}")
@@ -145,6 +158,10 @@ app = FastAPI(
 # Include routers
 app.include_router(webhook_router)
 
+# Include health check router
+from app.api.health import router as health_router
+app.include_router(health_router)
+
 # Add security middleware
 app.add_middleware(
     TrustedHostMiddleware, 
@@ -177,18 +194,78 @@ app.add_middleware(
 
 
 @app.middleware("http")
-async def correlation_and_error_middleware(request: Request, call_next):
-    """Middleware for correlation ID tracking and error handling."""
+async def metrics_and_correlation_middleware(request: Request, call_next):
+    """Middleware for metrics collection, correlation ID tracking and error handling."""
+    import time
+    from app.utils.metrics import get_metrics_collector
+    from app.utils.error_tracking import get_error_tracker, AlertSeverity
+    
     # Set correlation ID for this request
     correlation_id = set_correlation_id()
     
+    # Start timing the request
+    start_time = time.time()
+    
     try:
-        # Add correlation ID to response headers
+        # Process the request
         response = await call_next(request)
+        
+        # Calculate request duration
+        duration = time.time() - start_time
+        
+        # Record metrics
+        metrics = get_metrics_collector()
+        endpoint = request.url.path
+        method = request.method
+        status_code = response.status_code
+        
+        metrics.record_request(method, endpoint, status_code, duration)
+        
+        # Add correlation ID and metrics to response headers
         response.headers["X-Correlation-ID"] = correlation_id
+        response.headers["X-Response-Time"] = f"{duration:.3f}s"
+        
+        # Log request with sanitized data
+        logger.info(
+            f"{method} {endpoint} - {status_code} - {duration:.3f}s",
+            extra={
+                "method": method,
+                "endpoint": endpoint,
+                "status_code": status_code,
+                "duration_seconds": duration,
+                "correlation_id": correlation_id,
+                "user_agent": request.headers.get("user-agent", "unknown")[:100]
+            }
+        )
+        
         return response
         
     except Exception as exc:
+        # Calculate request duration even for errors
+        duration = time.time() - start_time
+        
+        # Record error metrics
+        metrics = get_metrics_collector()
+        endpoint = request.url.path
+        method = request.method
+        
+        metrics.record_request(method, endpoint, 500, duration)
+        
+        # Track error for alerting
+        error_tracker = get_error_tracker()
+        error_tracker.track_error(
+            error_type=type(exc).__name__,
+            message=str(exc),
+            component="http_middleware",
+            correlation_id=correlation_id,
+            context={
+                "method": method,
+                "endpoint": endpoint,
+                "duration": duration
+            },
+            severity=AlertSeverity.HIGH
+        )
+        
         # Handle the error using our centralized error handler
         user_message, error_info = handle_error(
             exc, 
@@ -210,7 +287,10 @@ async def correlation_and_error_middleware(request: Request, call_next):
                 "correlation_id": correlation_id,
                 "timestamp": datetime.now(timezone.utc).isoformat()
             },
-            headers={"X-Correlation-ID": correlation_id}
+            headers={
+                "X-Correlation-ID": correlation_id,
+                "X-Response-Time": f"{duration:.3f}s"
+            }
         )
 
 
@@ -289,9 +369,19 @@ async def health_check() -> Dict[str, Any]:
             if services_status.get(service) in ['connected', 'ready']
         ]
         
+        not_configured_services = [
+            service for service in critical_services 
+            if services_status.get(service) == 'not_configured'
+        ]
+        
+        error_services = [
+            service for service in critical_services 
+            if services_status.get(service) == 'error'
+        ]
+        
         if len(healthy_services) == len(critical_services):
             overall_status = "healthy"
-        elif len(healthy_services) > 0:
+        elif len(not_configured_services) > 0 or len(error_services) > 0:
             overall_status = "degraded"
         else:
             overall_status = "unhealthy"
