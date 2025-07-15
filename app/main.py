@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
 from app.config import get_config
+from app.api.webhook import router as webhook_router
 
 # Configure logging
 logging.basicConfig(
@@ -64,6 +65,9 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan
 )
+
+# Include routers
+app.include_router(webhook_router)
 
 # Configure CORS middleware
 app.add_middleware(
