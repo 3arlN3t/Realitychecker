@@ -21,9 +21,9 @@ graph TB
     G --> H[Twilio Response Service]
     H --> B
     B --> A
-    
+
     I[Health Check Endpoint] --> J[System Status]
-    
+
     K[Environment Config] --> C
     K --> F
     K --> H
@@ -44,16 +44,19 @@ graph TB
 ### API Endpoints
 
 #### POST /webhook/whatsapp
+
 - **Purpose**: Receive incoming WhatsApp messages from Twilio
 - **Input**: Twilio webhook payload (form-encoded)
 - **Output**: TwiML response or HTTP 200
 - **Authentication**: Twilio signature validation (optional but recommended)
 
 #### GET /health
+
 - **Purpose**: Health check endpoint for monitoring
 - **Input**: None
 - **Output**: JSON with system status and timestamp
 - **Response Format**:
+
 ```json
 {
   "status": "healthy",
@@ -68,6 +71,7 @@ graph TB
 ### Core Services
 
 #### MessageHandlerService
+
 ```python
 class MessageHandlerService:
     async def process_message(self, twilio_request: TwilioWebhookRequest) -> str
@@ -76,6 +80,7 @@ class MessageHandlerService:
 ```
 
 #### PDFProcessingService
+
 ```python
 class PDFProcessingService:
     async def download_pdf(self, media_url: str) -> bytes
@@ -84,6 +89,7 @@ class PDFProcessingService:
 ```
 
 #### OpenAIAnalysisService
+
 ```python
 class OpenAIAnalysisService:
     async def analyze_job_ad(self, job_text: str) -> JobAnalysisResult
@@ -92,6 +98,7 @@ class OpenAIAnalysisService:
 ```
 
 #### TwilioResponseService
+
 ```python
 class TwilioResponseService:
     async def send_whatsapp_message(self, to_number: str, message: str) -> bool
@@ -102,6 +109,7 @@ class TwilioResponseService:
 ## Data Models
 
 ### TwilioWebhookRequest
+
 ```python
 @dataclass
 class TwilioWebhookRequest:
@@ -115,6 +123,7 @@ class TwilioWebhookRequest:
 ```
 
 ### JobAnalysisResult
+
 ```python
 @dataclass
 class JobAnalysisResult:
@@ -125,6 +134,7 @@ class JobAnalysisResult:
 ```
 
 ### Configuration
+
 ```python
 @dataclass
 class AppConfig:
@@ -142,16 +152,19 @@ class AppConfig:
 ### Error Categories
 
 1. **Input Validation Errors**
+
    - Invalid Twilio webhook format
    - Missing required fields
    - Unsupported media types
 
 2. **Processing Errors**
+
    - PDF download failures
    - PDF text extraction failures
    - Empty or invalid content
 
 3. **External Service Errors**
+
    - OpenAI API failures
    - Twilio API failures
    - Network timeouts
@@ -167,15 +180,16 @@ class AppConfig:
 class ErrorHandler:
     def handle_pdf_error(self) -> str:
         return "Sorry, I couldn't process that PDF. Please try sending the job ad as text instead."
-    
+
     def handle_openai_error(self) -> str:
         return "I'm having trouble analyzing that right now. Please try again in a few minutes."
-    
+
     def handle_generic_error(self) -> str:
         return "Something went wrong. Please try sending your job ad again."
 ```
 
 ### Logging Strategy
+
 - Use structured logging with JSON format
 - Log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
 - Include correlation IDs for request tracking
@@ -184,23 +198,27 @@ class ErrorHandler:
 ## Testing Strategy
 
 ### Unit Tests
+
 - **Service Layer Tests**: Mock external dependencies
 - **Data Model Tests**: Validate serialization/deserialization
 - **Utility Function Tests**: PDF processing, text formatting
 - **Configuration Tests**: Environment variable handling
 
 ### Integration Tests
+
 - **Webhook Endpoint Tests**: Full request/response cycle
 - **OpenAI Integration Tests**: Real API calls with test data
 - **Twilio Integration Tests**: Mock Twilio responses
 - **PDF Processing Tests**: Sample PDF files
 
 ### End-to-End Tests
+
 - **WhatsApp Flow Simulation**: Mock complete user interactions
 - **Error Scenario Tests**: Network failures, invalid inputs
 - **Performance Tests**: Concurrent request handling
 
 ### Test Data
+
 ```python
 # Sample test cases
 TEST_JOB_ADS = {
@@ -219,18 +237,21 @@ TEST_PDF_SAMPLES = [
 ## Security Considerations
 
 ### API Security
+
 - Validate Twilio webhook signatures
 - Rate limiting on webhook endpoint
 - Input sanitization for all user content
 - HTTPS enforcement
 
 ### Data Protection
+
 - No persistent storage of user messages
 - Temporary file cleanup for PDF processing
 - API key rotation capabilities
 - Audit logging for sensitive operations
 
 ### OpenAI Integration Security
+
 - Content filtering for inappropriate inputs
 - Token usage monitoring
 - Response validation and sanitization
@@ -239,12 +260,14 @@ TEST_PDF_SAMPLES = [
 ## Performance Considerations
 
 ### Scalability
+
 - Async/await pattern for I/O operations
 - Connection pooling for HTTP clients
 - Configurable timeouts for external services
 - Memory-efficient PDF processing
 
 ### Optimization
+
 - Response caching for similar job ads (optional)
 - Batch processing for multiple media files
 - Streaming responses for large content
@@ -253,12 +276,14 @@ TEST_PDF_SAMPLES = [
 ## Deployment Architecture
 
 ### Local Development
+
 - Uvicorn ASGI server
 - Environment-based configuration
 - Hot reload for development
 - Local testing with ngrok for webhooks
 
 ### Production Deployment
+
 - Containerized deployment (Docker)
 - Load balancer for high availability
 - Health check integration
@@ -266,6 +291,7 @@ TEST_PDF_SAMPLES = [
 - Environment-specific configurations
 
 ### Environment Variables
+
 ```bash
 # Required
 OPENAI_API_KEY=sk-...
