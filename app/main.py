@@ -1,7 +1,7 @@
 """Main FastAPI application for Reality Checker WhatsApp Bot."""
 
 import logging
-import traceback
+import sys
 from datetime import datetime, timezone
 from typing import Dict, Any
 from contextlib import asynccontextmanager
@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
 from app.config import get_config
+from app.dependencies import get_service_container, reset_service_container
 from app.api.webhook import router as webhook_router
 from app.utils.logging import setup_logging, get_logger, set_correlation_id, get_correlation_id
 from app.utils.error_handling import handle_error, ErrorCategory
@@ -20,8 +21,10 @@ logger = get_logger(__name__)
 
 
 async def startup_event():
-    """Application startup event handler."""
+    """Application startup event handler with service initialization and health checks."""
     try:
+        logger.info("Starting Reality Checker WhatsApp Bot application...")
+        
         # Validate configuration on startup
         config = get_config()
         
@@ -31,26 +34,94 @@ async def startup_event():
             use_json=config.log_level.upper() == "DEBUG"  # Use JSON logging in debug mode
         )
         
-        logger.info("Application started successfully")
+        logger.info("Configuration loaded successfully")
         logger.info(f"Log level: {config.log_level}")
         logger.info(f"OpenAI model: {config.openai_model}")
         logger.info(f"Max PDF size: {config.max_pdf_size_mb}MB")
         logger.info(f"Webhook validation: {config.webhook_validation}")
         
+        # Initialize service container and perform health checks
+        logger.info("Initializing services and performing health checks...")
+        service_container = get_service_container()
+        
+        # Perform startup health checks
+        health_status = await service_container.perform_health_checks()
+        
+        # Log health check results
+        for service_name, status in health_status.items():
+            if status == 'connected' or status == 'ready':
+                logger.info(f"✅ {service_name}: {status}")
+            elif status == 'not_configured':
+                logger.warning(f"⚠️ {service_name}: {status}")
+            else:
+                logger.error(f"❌ {service_name}: {status}")
+        
+        # Check if critical services are available
+        critical_services = ['openai', 'twilio']
+        failed_services = [
+            service for service in critical_services 
+            if health_status.get(service) not in ['connected', 'ready']
+        ]
+        
+        if failed_services:
+            error_msg = f"Critical services failed health checks: {failed_services}"
+            logger.error(error_msg)
+            logger.error("Application startup failed due to service configuration issues")
+            raise RuntimeError(error_msg)
+        
+        # Pre-initialize core services to catch any initialization errors early
+        logger.info("Pre-initializing core services...")
+        try:
+            _ = service_container.get_pdf_service()
+            logger.info("✅ PDF processing service initialized")
+            
+            _ = service_container.get_openai_service()
+            logger.info("✅ OpenAI analysis service initialized")
+            
+            _ = service_container.get_twilio_service()
+            logger.info("✅ Twilio response service initialized")
+            
+            _ = service_container.get_message_handler()
+            logger.info("✅ Message handler service initialized")
+            
+        except Exception as service_error:
+            logger.error(f"Failed to initialize services: {service_error}")
+            raise RuntimeError(f"Service initialization failed: {service_error}")
+        
+        logger.info("🚀 Application startup completed successfully")
+        
     except Exception as exc:
-        user_message, error_info = handle_error(exc, {"component": "startup"})
-        logger.error(f"Failed to start application: {str(exc)}", exc_info=True)
-        raise
+        _, error_info = handle_error(exc, {"component": "startup"})
+        logger.error(f"💥 Failed to start application: {str(exc)}", exc_info=True)
+        
+        # Exit the application if startup fails
+        logger.critical("Application startup failed. Exiting...")
+        sys.exit(1)
 
 
 async def shutdown_event():
-    """Application shutdown event handler."""
-    logger.info("Application shutting down")
+    """Application shutdown event handler with graceful cleanup."""
+    logger.info("🛑 Application shutdown initiated...")
+    
+    try:
+        # Get service container and perform cleanup
+        service_container = get_service_container()
+        await service_container.cleanup()
+        
+        # Reset the global service container
+        reset_service_container()
+        
+        logger.info("✅ Graceful shutdown completed")
+        
+    except Exception as e:
+        logger.error(f"Error during shutdown: {e}", exc_info=True)
+    
+    logger.info("👋 Application shutdown complete")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan manager."""
+    """Application lifespan manager with startup and shutdown handling."""
     # Startup
     await startup_event()
     yield
@@ -183,27 +254,30 @@ async def health_check() -> Dict[str, Any]:
         Dict containing system status, timestamp, and service availability
     """
     try:
-        # Get configuration to validate environment setup
-        config = get_config()
-        
-        # Check if critical configuration is available
-        services_status = {
-            "openai": "connected" if config.openai_api_key else "not_configured",
-            "twilio": "connected" if (config.twilio_account_sid and 
-                                   config.twilio_auth_token and 
-                                   config.twilio_phone_number) else "not_configured"
-        }
+        # Get service container and perform health checks
+        service_container = get_service_container()
+        services_status = await service_container.perform_health_checks()
         
         # Determine overall health status
-        overall_status = "healthy" if all(
-            status == "connected" for status in services_status.values()
-        ) else "degraded"
+        critical_services = ['openai', 'twilio']
+        healthy_services = [
+            service for service in critical_services 
+            if services_status.get(service) in ['connected', 'ready']
+        ]
+        
+        if len(healthy_services) == len(critical_services):
+            overall_status = "healthy"
+        elif len(healthy_services) > 0:
+            overall_status = "degraded"
+        else:
+            overall_status = "unhealthy"
         
         return {
             "status": overall_status,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "services": services_status,
-            "version": "1.0.0"
+            "version": "1.0.0",
+            "uptime": "running"
         }
         
     except Exception as exc:

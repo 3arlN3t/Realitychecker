@@ -18,6 +18,7 @@ from fastapi.responses import PlainTextResponse
 from app.config import get_config
 from app.models.data_models import TwilioWebhookRequest, AppConfig
 from app.services.message_handler import MessageHandlerService
+from app.dependencies import get_message_handler_service, get_app_config
 from app.utils.logging import get_logger, get_correlation_id, log_with_context, sanitize_phone_number
 from app.utils.error_handling import handle_error, ErrorCategory
 
@@ -25,12 +26,6 @@ logger = get_logger(__name__)
 
 # Create router for webhook endpoints
 router = APIRouter(prefix="/webhook", tags=["webhook"])
-
-
-def get_message_handler() -> MessageHandlerService:
-    """Dependency to get MessageHandlerService instance."""
-    config = get_config()
-    return MessageHandlerService(config)
 
 
 def validate_twilio_signature(
@@ -97,7 +92,8 @@ async def whatsapp_webhook(
     NumMedia: int = Form(default=0),
     MediaUrl0: str = Form(default=None),
     MediaContentType0: str = Form(default=None),
-    message_handler: MessageHandlerService = Depends(get_message_handler)
+    message_handler: MessageHandlerService = Depends(get_message_handler_service),
+    config: AppConfig = Depends(get_app_config)
 ) -> PlainTextResponse:
     """
     Twilio WhatsApp webhook endpoint for processing incoming messages.
@@ -138,9 +134,6 @@ async def whatsapp_webhook(
     )
     
     try:
-        # Get configuration for signature validation
-        config = get_config()
-        
         # Prepare form data for signature validation
         form_data = {
             "MessageSid": MessageSid,
