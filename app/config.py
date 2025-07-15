@@ -1,0 +1,73 @@
+"""Configuration management for the Reality Checker application."""
+
+import os
+from dataclasses import dataclass
+from typing import Optional
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+
+@dataclass
+class AppConfig:
+    """Application configuration loaded from environment variables."""
+    
+    # Required OpenAI configuration
+    openai_api_key: str
+    
+    # Required Twilio configuration
+    twilio_account_sid: str
+    twilio_auth_token: str
+    twilio_phone_number: str
+    
+    # Optional configuration with defaults
+    max_pdf_size_mb: int = 10
+    openai_model: str = "gpt-4"
+    log_level: str = "INFO"
+    webhook_validation: bool = True
+    
+    @classmethod
+    def from_env(cls) -> "AppConfig":
+        """Create configuration from environment variables."""
+        # Check for required environment variables
+        required_vars = {
+            "OPENAI_API_KEY": "OpenAI API key is required",
+            "TWILIO_ACCOUNT_SID": "Twilio Account SID is required", 
+            "TWILIO_AUTH_TOKEN": "Twilio Auth Token is required",
+            "TWILIO_PHONE_NUMBER": "Twilio Phone Number is required"
+        }
+        
+        missing_vars = []
+        for var, description in required_vars.items():
+            if not os.getenv(var):
+                missing_vars.append(f"{var}: {description}")
+        
+        if missing_vars:
+            raise ValueError(
+                f"Missing required environment variables:\n" + 
+                "\n".join(f"  - {var}" for var in missing_vars)
+            )
+        
+        return cls(
+            openai_api_key=os.getenv("OPENAI_API_KEY"),
+            twilio_account_sid=os.getenv("TWILIO_ACCOUNT_SID"),
+            twilio_auth_token=os.getenv("TWILIO_AUTH_TOKEN"),
+            twilio_phone_number=os.getenv("TWILIO_PHONE_NUMBER"),
+            max_pdf_size_mb=int(os.getenv("MAX_PDF_SIZE_MB", "10")),
+            openai_model=os.getenv("OPENAI_MODEL", "gpt-4"),
+            log_level=os.getenv("LOG_LEVEL", "INFO"),
+            webhook_validation=os.getenv("WEBHOOK_VALIDATION", "true").lower() == "true"
+        )
+
+
+# Global configuration instance
+config: Optional[AppConfig] = None
+
+
+def get_config() -> AppConfig:
+    """Get the global configuration instance."""
+    global config
+    if config is None:
+        config = AppConfig.from_env()
+    return config
