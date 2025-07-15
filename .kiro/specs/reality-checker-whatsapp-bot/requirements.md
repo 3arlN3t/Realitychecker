@@ -95,6 +95,61 @@ The Reality Checker is a WhatsApp bot application built with Python FastAPI that
 
 ### Requirement 9
 
+**User Story:** As a system administrator, I want a web-based admin dashboard, so that I can monitor system health, view metrics, and manage the bot configuration.
+
+#### Acceptance Criteria
+
+1. WHEN accessing the admin dashboard THEN the system SHALL provide a web interface at /admin with authentication
+2. WHEN viewing the dashboard THEN it SHALL display real-time system metrics including request counts, error rates, and response times
+3. WHEN monitoring services THEN the dashboard SHALL show the health status of OpenAI, Twilio, and other critical dependencies
+4. WHEN managing configuration THEN the dashboard SHALL allow updating bot settings without requiring application restart
+
+### Requirement 10
+
+**User Story:** As a business analyst, I want an analytics dashboard, so that I can view usage statistics, analysis trends, and user insights.
+
+#### Acceptance Criteria
+
+1. WHEN accessing analytics THEN the system SHALL provide charts and graphs showing job analysis trends over time
+2. WHEN viewing statistics THEN the dashboard SHALL display classification breakdowns (Legit vs Suspicious vs Scam)
+3. WHEN analyzing usage THEN the system SHALL show user engagement metrics and peak usage times
+4. WHEN generating reports THEN the system SHALL allow exporting data in CSV and PDF formats
+
+### Requirement 11
+
+**User Story:** As a system administrator, I want real-time monitoring dashboards, so that I can track active requests, error rates, and service performance.
+
+#### Acceptance Criteria
+
+1. WHEN monitoring in real-time THEN the system SHALL display live metrics updating every 5-10 seconds
+2. WHEN viewing active requests THEN the dashboard SHALL show current processing status and queue depth
+3. WHEN tracking errors THEN the system SHALL display error rates with drill-down capabilities to view specific errors
+4. WHEN monitoring performance THEN the dashboard SHALL show response time percentiles and service latency
+
+### Requirement 12
+
+**User Story:** As a system administrator, I want user management capabilities, so that I can view WhatsApp user interactions and manage user access.
+
+#### Acceptance Criteria
+
+1. WHEN managing users THEN the system SHALL display a list of WhatsApp users who have interacted with the bot
+2. WHEN viewing user details THEN the system SHALL show interaction history, analysis requests, and user patterns
+3. WHEN managing access THEN the system SHALL allow blocking/unblocking users if needed
+4. WHEN analyzing user behavior THEN the system SHALL provide insights into user engagement and usage patterns
+
+### Requirement 13
+
+**User Story:** As a business stakeholder, I want reporting capabilities, so that I can generate reports on scam detection patterns and system performance.
+
+#### Acceptance Criteria
+
+1. WHEN generating reports THEN the system SHALL create comprehensive reports on scam detection trends
+2. WHEN analyzing patterns THEN reports SHALL include common scam indicators and detection accuracy metrics
+3. WHEN reviewing performance THEN reports SHALL include system uptime, response times, and error rates
+4. WHEN scheduling reports THEN the system SHALL allow automated report generation and email delivery
+
+### Requirement 14
+
 **User Story:** As a developer, I want clear documentation and setup instructions, so that I can easily run and deploy the application.
 
 #### Acceptance Criteria
