@@ -21,6 +21,11 @@ twilio==8.10.3
 # Data validation and serialization
 pydantic>=2.8.0
 
+# Security and rate limiting
+slowapi==0.1.9
+bleach==6.1.0
+python-jose[cryptography]==3.3.0
+
 # Testing dependencies
 pytest==7.4.3
 pytest-asyncio==0.21.1

@@ -21,6 +21,7 @@ from app.services.message_handler import MessageHandlerService
 from app.dependencies import get_message_handler_service, get_app_config
 from app.utils.logging import get_logger, get_correlation_id, log_with_context, sanitize_phone_number
 from app.utils.error_handling import handle_error, ErrorCategory
+from app.utils.security import validate_webhook_request, SecurityValidator
 
 logger = get_logger(__name__)
 
@@ -149,6 +150,29 @@ async def whatsapp_webhook(
         if MediaContentType0:
             form_data["MediaContentType0"] = MediaContentType0
         
+        # Validate webhook request data for security
+        is_valid, validation_error = validate_webhook_request(
+            MessageSid, From, To, Body, MediaUrl0
+        )
+        if not is_valid:
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Webhook request validation failed",
+                message_sid=MessageSid,
+                from_number=sanitize_phone_number(From),
+                validation_error=validation_error,
+                correlation_id=correlation_id
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid request data: {validation_error}"
+            )
+        
+        # Sanitize input data
+        security_validator = SecurityValidator()
+        sanitized_body = security_validator.sanitize_text(Body) if Body else ""
+        
         # Validate Twilio signature for security
         if not validate_twilio_signature(request, form_data, config):
             log_with_context(
@@ -164,13 +188,13 @@ async def whatsapp_webhook(
                 detail="Invalid webhook signature"
             )
         
-        # Create and validate Twilio webhook request object
+        # Create and validate Twilio webhook request object with sanitized data
         try:
             twilio_request = TwilioWebhookRequest(
                 MessageSid=MessageSid,
                 From=From,
                 To=To,
-                Body=Body,
+                Body=sanitized_body,  # Use sanitized body
                 NumMedia=NumMedia,
                 MediaUrl0=MediaUrl0,
                 MediaContentType0=MediaContentType0

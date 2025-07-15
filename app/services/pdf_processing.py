@@ -16,6 +16,7 @@ from pdfplumber.pdf import PDF
 
 from app.models.data_models import AppConfig
 from app.utils.logging import get_logger, get_correlation_id, log_with_context
+from app.utils.security import SecurityValidator
 
 
 logger = get_logger(__name__)
@@ -75,6 +76,12 @@ class PDFProcessingService:
         """
         if not media_url:
             raise PDFDownloadError("Media URL is required")
+        
+        # Validate URL for security
+        security_validator = SecurityValidator()
+        is_valid, validation_error = security_validator.validate_url(media_url)
+        if not is_valid:
+            raise PDFDownloadError(f"Invalid media URL: {validation_error}")
         
         correlation_id = get_correlation_id()
         

@@ -13,6 +13,7 @@ from openai import AsyncOpenAI
 
 from app.models.data_models import JobAnalysisResult, JobClassification, AppConfig
 from app.utils.logging import get_logger, get_correlation_id, log_with_context
+from app.utils.security import SecurityValidator
 
 
 logger = get_logger(__name__)
@@ -54,6 +55,14 @@ class OpenAIAnalysisService:
         if not job_text or not job_text.strip():
             raise ValueError("Job text cannot be empty")
         
+        # Sanitize and validate input text for security
+        security_validator = SecurityValidator()
+        sanitized_text = security_validator.sanitize_text(job_text)
+        
+        is_valid, validation_error = security_validator.validate_text_content(sanitized_text)
+        if not is_valid:
+            raise ValueError(f"Invalid job text content: {validation_error}")
+        
         correlation_id = get_correlation_id()
         
         log_with_context(
@@ -66,7 +75,7 @@ class OpenAIAnalysisService:
         )
         
         try:
-            prompt = self.build_analysis_prompt(job_text)
+            prompt = self.build_analysis_prompt(sanitized_text)
             
             log_with_context(
                 logger,

@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
@@ -16,6 +17,8 @@ from app.dependencies import get_service_container, reset_service_container
 from app.api.webhook import router as webhook_router
 from app.utils.logging import setup_logging, get_logger, set_correlation_id, get_correlation_id
 from app.utils.error_handling import handle_error, ErrorCategory
+from app.middleware.rate_limiting import create_rate_limit_middleware
+from app.middleware.security_headers import create_security_headers_middleware
 
 logger = get_logger(__name__)
 
@@ -141,6 +144,27 @@ app = FastAPI(
 
 # Include routers
 app.include_router(webhook_router)
+
+# Add security middleware
+app.add_middleware(
+    TrustedHostMiddleware, 
+    allowed_hosts=["*"]  # Configure appropriately for production
+)
+
+# Add security headers middleware
+security_headers_middleware = create_security_headers_middleware(
+    enforce_https=True  # Set to False for local development
+)
+app.add_middleware(security_headers_middleware)
+
+# Add rate limiting middleware
+rate_limit_middleware = create_rate_limit_middleware(
+    requests_per_minute=10,
+    requests_per_hour=100,
+    burst_limit=5,
+    burst_window=10
+)
+app.add_middleware(rate_limit_middleware)
 
 # Configure CORS middleware
 app.add_middleware(
