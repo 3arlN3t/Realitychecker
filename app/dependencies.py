@@ -14,6 +14,7 @@ from app.services.message_handler import MessageHandlerService
 from app.services.openai_analysis import OpenAIAnalysisService
 from app.services.pdf_processing import PDFProcessingService
 from app.services.twilio_response import TwilioResponseService
+from app.services.user_management import UserManagementService
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -51,6 +52,12 @@ class ServiceContainer:
             self._services['twilio_service'] = TwilioResponseService(self.config)
         return self._services['twilio_service']
     
+    def get_user_service(self) -> UserManagementService:
+        """Get or create user management service instance."""
+        if 'user_service' not in self._services:
+            self._services['user_service'] = UserManagementService(self.config)
+        return self._services['user_service']
+    
     def get_message_handler(self) -> MessageHandlerService:
         """Get or create message handler service instance."""
         if 'message_handler' not in self._services:
@@ -58,12 +65,14 @@ class ServiceContainer:
             pdf_service = self.get_pdf_service()
             openai_service = self.get_openai_service()
             twilio_service = self.get_twilio_service()
+            user_service = self.get_user_service()
             
             # Create message handler with pre-initialized services
             message_handler = MessageHandlerService(self.config)
             message_handler.pdf_service = pdf_service
             message_handler.openai_service = openai_service
             message_handler.twilio_service = twilio_service
+            message_handler.user_service = user_service
             
             self._services['message_handler'] = message_handler
         return self._services['message_handler']
@@ -185,3 +194,9 @@ def get_message_handler_service() -> MessageHandlerService:
     """FastAPI dependency to get message handler service."""
     container = get_service_container()
     return container.get_message_handler()
+
+
+def get_user_management_service() -> UserManagementService:
+    """FastAPI dependency to get user management service."""
+    container = get_service_container()
+    return container.get_user_service()

@@ -12,8 +12,10 @@ from app.models.data_models import TwilioWebhookRequest, JobAnalysisResult, AppC
 from app.services.pdf_processing import PDFProcessingService, PDFProcessingError
 from app.services.openai_analysis import OpenAIAnalysisService
 from app.services.twilio_response import TwilioResponseService
+from app.services.user_management import UserManagementService
 from app.utils.logging import get_logger, get_correlation_id, log_with_context, sanitize_phone_number
 from app.utils.error_handling import handle_error, get_fallback_response, ErrorCategory
+import time
 
 
 logger = get_logger(__name__)
@@ -38,6 +40,7 @@ class MessageHandlerService:
         self.pdf_service = PDFProcessingService(config)
         self.openai_service = OpenAIAnalysisService(config)
         self.twilio_service = TwilioResponseService(config)
+        self.user_service = UserManagementService(config)
         
     async def process_message(self, twilio_request: TwilioWebhookRequest) -> bool:
         """
@@ -125,6 +128,9 @@ class MessageHandlerService:
             bool: True if message was processed and response sent successfully
         """
         correlation_id = get_correlation_id()
+        start_time = time.time()
+        analysis_result = None
+        error_message = None
         
         log_with_context(
             logger,
@@ -136,6 +142,17 @@ class MessageHandlerService:
         )
         
         try:
+            # Check if user is blocked
+            if await self.user_service.is_user_blocked(from_number):
+                log_with_context(
+                    logger,
+                    logging.WARNING,
+                    "Blocked user attempted to send message",
+                    from_number=sanitize_phone_number(from_number),
+                    correlation_id=correlation_id
+                )
+                return True  # Silently ignore blocked users
+            
             # Check for help/welcome requests first (before validation)
             if self._is_help_request(text):
                 log_with_context(
@@ -145,7 +162,18 @@ class MessageHandlerService:
                     from_number=sanitize_phone_number(from_number),
                     correlation_id=correlation_id
                 )
-                return self.twilio_service.send_welcome_message(from_number)
+                success = self.twilio_service.send_welcome_message(from_number)
+                
+                # Record help interaction
+                response_time = time.time() - start_time
+                await self.user_service.record_interaction(
+                    phone_number=from_number,
+                    message_type="text",
+                    message_content="help request",
+                    response_time=response_time
+                )
+                
+                return success
             
             # Validate text content for job analysis
             if not self._validate_text_content(text):
@@ -157,7 +185,21 @@ class MessageHandlerService:
                     text_length=len(text) if text else 0,
                     correlation_id=correlation_id
                 )
-                return await self._send_content_validation_error(from_number)
+                
+                error_message = "Content validation failed"
+                success = await self._send_content_validation_error(from_number)
+                
+                # Record validation error interaction
+                response_time = time.time() - start_time
+                await self.user_service.record_interaction(
+                    phone_number=from_number,
+                    message_type="text",
+                    message_content=text[:100] if text else None,
+                    response_time=response_time,
+                    error=error_message
+                )
+                
+                return success
             
             # Analyze job ad text
             log_with_context(
@@ -179,7 +221,19 @@ class MessageHandlerService:
                 classification=analysis_result.classification_text,
                 correlation_id=correlation_id
             )
-            return self.twilio_service.send_analysis_result(from_number, analysis_result)
+            success = self.twilio_service.send_analysis_result(from_number, analysis_result)
+            
+            # Record successful interaction
+            response_time = time.time() - start_time
+            await self.user_service.record_interaction(
+                phone_number=from_number,
+                message_type="text",
+                message_content=text[:100] if text else None,
+                analysis_result=analysis_result,
+                response_time=response_time
+            )
+            
+            return success
             
         except Exception as e:
             # Use centralized error handling
@@ -193,7 +247,20 @@ class MessageHandlerService:
                 correlation_id
             )
             
-            return await self._send_error_with_fallback(from_number, error_info)
+            error_message = str(e)
+            success = await self._send_error_with_fallback(from_number, error_info)
+            
+            # Record error interaction
+            response_time = time.time() - start_time
+            await self.user_service.record_interaction(
+                phone_number=from_number,
+                message_type="text",
+                message_content=text[:100] if text else None,
+                response_time=response_time,
+                error=error_message
+            )
+            
+            return success
     
     async def handle_media_message(self, media_url: str, media_content_type: Optional[str], from_number: str) -> bool:
         """
@@ -208,6 +275,9 @@ class MessageHandlerService:
             bool: True if message was processed and response sent successfully
         """
         correlation_id = get_correlation_id()
+        start_time = time.time()
+        analysis_result = None
+        error_message = None
         
         log_with_context(
             logger,
@@ -219,6 +289,17 @@ class MessageHandlerService:
         )
         
         try:
+            # Check if user is blocked
+            if await self.user_service.is_user_blocked(from_number):
+                log_with_context(
+                    logger,
+                    logging.WARNING,
+                    "Blocked user attempted to send media message",
+                    from_number=sanitize_phone_number(from_number),
+                    correlation_id=correlation_id
+                )
+                return True  # Silently ignore blocked users
+            
             # Validate media type
             if not self._validate_media_type(media_content_type):
                 log_with_context(
@@ -229,7 +310,21 @@ class MessageHandlerService:
                     media_type=media_content_type,
                     correlation_id=correlation_id
                 )
-                return await self._send_media_type_error(from_number, media_content_type)
+                
+                error_message = f"Unsupported media type: {media_content_type}"
+                success = await self._send_media_type_error(from_number, media_content_type)
+                
+                # Record media type error interaction
+                response_time = time.time() - start_time
+                await self.user_service.record_interaction(
+                    phone_number=from_number,
+                    message_type="pdf",
+                    message_content=f"media_type: {media_content_type}",
+                    response_time=response_time,
+                    error=error_message
+                )
+                
+                return success
             
             # Process PDF and extract text
             log_with_context(
@@ -262,7 +357,19 @@ class MessageHandlerService:
                 classification=analysis_result.classification_text,
                 correlation_id=correlation_id
             )
-            return self.twilio_service.send_analysis_result(from_number, analysis_result)
+            success = self.twilio_service.send_analysis_result(from_number, analysis_result)
+            
+            # Record successful interaction
+            response_time = time.time() - start_time
+            await self.user_service.record_interaction(
+                phone_number=from_number,
+                message_type="pdf",
+                message_content=extracted_text[:100] if extracted_text else None,
+                analysis_result=analysis_result,
+                response_time=response_time
+            )
+            
+            return success
             
         except Exception as e:
             # Use centralized error handling
@@ -276,7 +383,20 @@ class MessageHandlerService:
                 correlation_id
             )
             
-            return await self._send_error_with_fallback(from_number, error_info)
+            error_message = str(e)
+            success = await self._send_error_with_fallback(from_number, error_info)
+            
+            # Record error interaction
+            response_time = time.time() - start_time
+            await self.user_service.record_interaction(
+                phone_number=from_number,
+                message_type="pdf",
+                message_content=f"media_url: {media_url}",
+                response_time=response_time,
+                error=error_message
+            )
+            
+            return success
     
     def _validate_text_content(self, text: str) -> bool:
         """

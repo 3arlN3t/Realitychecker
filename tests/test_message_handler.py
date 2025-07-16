@@ -77,11 +77,17 @@ class TestMessageHandlerService:
         """Set up mocks for each test."""
         with patch('app.services.message_handler.PDFProcessingService') as mock_pdf_service, \
              patch('app.services.message_handler.OpenAIAnalysisService') as mock_openai_service, \
-             patch('app.services.message_handler.TwilioResponseService') as mock_twilio_service:
+             patch('app.services.message_handler.TwilioResponseService') as mock_twilio_service, \
+             patch('app.services.message_handler.UserManagementService') as mock_user_service:
             
             self.mock_pdf_service = mock_pdf_service.return_value
             self.mock_openai_service = mock_openai_service.return_value
             self.mock_twilio_service = mock_twilio_service.return_value
+            self.mock_user_service = mock_user_service.return_value
+            
+            # Setup default user service behavior
+            self.mock_user_service.is_user_blocked = AsyncMock(return_value=False)
+            self.mock_user_service.record_interaction = AsyncMock()
             
             self.handler = MessageHandlerService(mock_config)
             yield
@@ -187,14 +193,24 @@ class TestMessageHandlerService:
         
         # Setup mocks
         self.mock_openai_service.analyze_job_ad = AsyncMock(side_effect=Exception("OpenAI API error"))
-        self.mock_twilio_service.send_error_message = Mock(return_value=True)
+        
+        # Mock the client and messages creation for error handling
+        mock_message = Mock()
+        mock_message.sid = "test-sid"
+        self.mock_twilio_service.client = Mock()
+        self.mock_twilio_service.client.messages.create = Mock(return_value=mock_message)
         
         # Execute
         result = await self.handler.handle_text_message(text, from_number)
         
         # Verify
         assert result is True
-        self.mock_twilio_service.send_error_message.assert_called_once_with(from_number, "analysis")
+        # Verify that user interaction was recorded with error
+        self.mock_user_service.record_interaction.assert_called()
+        call_args = self.mock_user_service.record_interaction.call_args
+        assert call_args[1]['phone_number'] == from_number
+        assert call_args[1]['message_type'] == "text"
+        assert call_args[1]['error'] is not None
     
     @pytest.mark.asyncio
     async def test_handle_media_message_success(self, sample_analysis_result):
@@ -248,14 +264,24 @@ class TestMessageHandlerService:
         
         # Setup mocks
         self.mock_pdf_service.process_pdf_url = AsyncMock(side_effect=PDFProcessingError("PDF processing failed"))
-        self.mock_twilio_service.send_error_message = Mock(return_value=True)
+        
+        # Mock the client and messages creation for error handling
+        mock_message = Mock()
+        mock_message.sid = "test-sid"
+        self.mock_twilio_service.client = Mock()
+        self.mock_twilio_service.client.messages.create = Mock(return_value=mock_message)
         
         # Execute
         result = await self.handler.handle_media_message(media_url, media_content_type, from_number)
         
         # Verify
         assert result is True
-        self.mock_twilio_service.send_error_message.assert_called_once_with(from_number, "pdf_processing")
+        # Verify that user interaction was recorded with error
+        self.mock_user_service.record_interaction.assert_called()
+        call_args = self.mock_user_service.record_interaction.call_args
+        assert call_args[1]['phone_number'] == from_number
+        assert call_args[1]['message_type'] == "pdf"
+        assert call_args[1]['error'] is not None
     
     @pytest.mark.asyncio
     async def test_handle_media_message_openai_error(self, sample_analysis_result):
@@ -268,14 +294,24 @@ class TestMessageHandlerService:
         # Setup mocks
         self.mock_pdf_service.process_pdf_url = AsyncMock(return_value=extracted_text)
         self.mock_openai_service.analyze_job_ad = AsyncMock(side_effect=Exception("OpenAI API error"))
-        self.mock_twilio_service.send_error_message = Mock(return_value=True)
+        
+        # Mock the client and messages creation for error handling
+        mock_message = Mock()
+        mock_message.sid = "test-sid"
+        self.mock_twilio_service.client = Mock()
+        self.mock_twilio_service.client.messages.create = Mock(return_value=mock_message)
         
         # Execute
         result = await self.handler.handle_media_message(media_url, media_content_type, from_number)
         
         # Verify
         assert result is True
-        self.mock_twilio_service.send_error_message.assert_called_once_with(from_number, "analysis")
+        # Verify that user interaction was recorded with error
+        self.mock_user_service.record_interaction.assert_called()
+        call_args = self.mock_user_service.record_interaction.call_args
+        assert call_args[1]['phone_number'] == from_number
+        assert call_args[1]['message_type'] == "pdf"
+        assert call_args[1]['error'] is not None
     
     def test_validate_text_content_valid(self):
         """Test text content validation with valid content."""
