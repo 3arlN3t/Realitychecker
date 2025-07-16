@@ -4,6 +4,7 @@ from .pdf_processing import PDFProcessingService, PDFProcessingError, PDFDownloa
 from .openai_analysis import OpenAIAnalysisService
 from .twilio_response import TwilioResponseService
 from .message_handler import MessageHandlerService
+from .analytics import AnalyticsService
 
 __all__ = [
     'PDFProcessingService',
@@ -13,5 +14,6 @@ __all__ = [
     'PDFValidationError',
     'OpenAIAnalysisService',
     'TwilioResponseService',
-    'MessageHandlerService'
+    'MessageHandlerService',
+    'AnalyticsService'
 ]

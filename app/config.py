@@ -27,6 +27,15 @@ class AppConfig:
     log_level: str = "INFO"
     webhook_validation: bool = True
     
+    # Authentication configuration
+    jwt_secret_key: str = "your-secret-key-change-in-production"
+    jwt_expiry_hours: int = 24
+    jwt_refresh_expiry_days: int = 7
+    admin_username: str = "admin"
+    admin_password: str = "admin123"
+    analyst_username: str = ""
+    analyst_password: str = ""
+    
     @classmethod
     def from_env(cls) -> "AppConfig":
         """Create configuration from environment variables."""
@@ -57,7 +66,14 @@ class AppConfig:
             max_pdf_size_mb=int(os.getenv("MAX_PDF_SIZE_MB", "10")),
             openai_model=os.getenv("OPENAI_MODEL", "gpt-4"),
             log_level=os.getenv("LOG_LEVEL", "INFO"),
-            webhook_validation=os.getenv("WEBHOOK_VALIDATION", "true").lower() == "true"
+            webhook_validation=os.getenv("WEBHOOK_VALIDATION", "true").lower() == "true",
+            jwt_secret_key=os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production"),
+            jwt_expiry_hours=int(os.getenv("JWT_EXPIRY_HOURS", "24")),
+            jwt_refresh_expiry_days=int(os.getenv("JWT_REFRESH_EXPIRY_DAYS", "7")),
+            admin_username=os.getenv("ADMIN_USERNAME", "admin"),
+            admin_password=os.getenv("ADMIN_PASSWORD", "admin123"),
+            analyst_username=os.getenv("ANALYST_USERNAME", ""),
+            analyst_password=os.getenv("ANALYST_PASSWORD", "")
         )
 
 

@@ -162,6 +162,14 @@ app.include_router(webhook_router)
 from app.api.health import router as health_router
 app.include_router(health_router)
 
+# Include authentication router
+from app.api.auth import router as auth_router
+app.include_router(auth_router)
+
+# Include dashboard router
+from app.api.dashboard import router as dashboard_router
+app.include_router(dashboard_router)
+
 # Add security middleware
 app.add_middleware(
     TrustedHostMiddleware, 
