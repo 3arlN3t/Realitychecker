@@ -4,7 +4,6 @@ import {
   CardContent,
   Typography,
   Box,
-  Grid,
   Chip,
   LinearProgress,
   IconButton,
@@ -139,12 +138,18 @@ const ServiceStatusGrid: React.FC<ServiceStatusGridProps> = ({
                 sx={{
                   height: '100%',
                   border: 2,
-                  borderColor: service.status === 'critical' ? 'error.main' : 
-                              service.status === 'warning' ? 'warning.main' : 
-                              service.status === 'healthy' ? 'success.main' : 'divider',
-                  bgcolor: service.status === 'critical' ? 'error.light' : 
-                           service.status === 'warning' ? 'warning.light' : 
-                           service.status === 'healthy' ? 'success.light' : 'background.paper',
+                  borderColor: (() => {
+                    if (service.status === 'critical') return 'error.main';
+                    if (service.status === 'warning') return 'warning.main';
+                    if (service.status === 'healthy') return 'success.main';
+                    return 'divider';
+                  })(),
+                  bgcolor: (() => {
+                    if (service.status === 'critical') return 'error.light';
+                    if (service.status === 'warning') return 'warning.light';
+                    if (service.status === 'healthy') return 'success.light';
+                    return 'background.paper';
+                  })(),
                   opacity: service.status === 'healthy' ? 0.05 : 0.1,
                 }}
               >
@@ -252,9 +257,9 @@ const ServiceStatusGrid: React.FC<ServiceStatusGridProps> = ({
                           Dependencies
                         </Typography>
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                          {service.dependencies.map((dep, index) => (
+                          {service.dependencies.map((dep) => (
                             <Chip
-                              key={index}
+                              key={`${serviceName}-dep-${dep}`}
                               label={dep}
                               size="small"
                               variant="outlined"
@@ -280,8 +285,11 @@ const ServiceStatusGrid: React.FC<ServiceStatusGridProps> = ({
                           <LinearProgress
                             variant="determinate"
                             value={service.metrics.successRate}
-                            color={service.metrics.successRate > 95 ? 'success' : 
-                                   service.metrics.successRate > 90 ? 'warning' : 'error'}
+                            color={(() => {
+                              if (service.metrics.successRate > 95) return 'success';
+                              if (service.metrics.successRate > 90) return 'warning';
+                              return 'error';
+                            })()}
                             sx={{ height: 4, borderRadius: 2, mb: 1 }}
                           />
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
@@ -306,8 +314,8 @@ const ServiceStatusGrid: React.FC<ServiceStatusGridProps> = ({
                           Recent Errors
                         </Typography>
                         <Box sx={{ maxHeight: 100, overflow: 'auto' }}>
-                          {service.recentErrors.slice(0, 3).map((error, index) => (
-                            <Box key={index} sx={{ mb: 0.5 }}>
+                          {service.recentErrors.slice(0, 3).map((error) => (
+                            <Box key={`${serviceName}-error-${error.timestamp}-${error.error}`} sx={{ mb: 0.5 }}>
                               <Typography variant="caption" color="error" display="block">
                                 {formatTimestamp(error.timestamp)} ({error.count}x)
                               </Typography>

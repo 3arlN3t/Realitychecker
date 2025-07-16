@@ -48,6 +48,10 @@ async def startup_event():
         # Initialize error tracker with alert handlers
         error_tracker = get_error_tracker()
         error_tracker.add_alert_handler(log_alert_handler)
+        
+        # Add WebSocket alert handler
+        from app.utils.websocket import websocket_alert_handler
+        error_tracker.add_alert_handler(websocket_alert_handler)
         logger.info("✅ Error tracking initialized with alert handlers")
         
         logger.info("Configuration loaded successfully")
@@ -169,6 +173,10 @@ app.include_router(auth_router)
 # Include dashboard router
 from app.api.dashboard import router as dashboard_router
 app.include_router(dashboard_router)
+
+# Include monitoring router
+from app.api.monitoring import router as monitoring_router
+app.include_router(monitoring_router)
 
 # Add security middleware
 app.add_middleware(

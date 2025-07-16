@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Box, Grid } from '@mui/material';
+import { Typography, Box } from '@mui/material';
 import SystemHealthCard, { SystemHealth } from '../components/admin/SystemHealthCard';
 import MetricsOverviewCard, { MetricsOverview } from '../components/admin/MetricsOverviewCard';
 import ActiveAlertsCard, { Alert } from '../components/admin/ActiveAlertsCard';
@@ -235,33 +235,27 @@ const DashboardPage: React.FC = () => {
         Admin Dashboard
       </Typography>
 
-      <Grid container spacing={3}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         {/* Top Row - System Health and Metrics Overview */}
-        <Grid item xs={12} lg={6}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, 1fr)' }, gap: 3 }}>
           <SystemHealthCard health={systemHealth} />
-        </Grid>
-        <Grid item xs={12} lg={6}>
           <MetricsOverviewCard metrics={metricsOverview} />
-        </Grid>
+        </Box>
 
         {/* Second Row - Active Alerts */}
-        <Grid item xs={12}>
-          <ActiveAlertsCard
-            alerts={alerts}
-            onAcknowledgeAlert={handleAcknowledgeAlert}
-            onDismissAlert={handleDismissAlert}
-            maxDisplayed={5}
-          />
-        </Grid>
+        <ActiveAlertsCard
+          alerts={alerts}
+          onAcknowledgeAlert={handleAcknowledgeAlert}
+          onDismissAlert={handleDismissAlert}
+          maxDisplayed={5}
+        />
 
         {/* Third Row - Service Status Grid */}
-        <Grid item xs={12}>
-          <ServiceStatusGrid
-            services={serviceDetails}
-            onRefreshService={handleRefreshService}
-          />
-        </Grid>
-      </Grid>
+        <ServiceStatusGrid
+          services={serviceDetails}
+          onRefreshService={handleRefreshService}
+        />
+      </Box>
     </Box>
   );
 };

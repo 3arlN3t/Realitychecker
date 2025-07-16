@@ -9,6 +9,7 @@ import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import MonitoringPage from './pages/MonitoringPage';
 
 const theme = createTheme({
   palette: {
@@ -56,7 +57,7 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Layout>
-                      <div>Real-time Monitoring (Coming Soon)</div>
+                      <MonitoringPage />
                     </Layout>
                   </ProtectedRoute>
                 }

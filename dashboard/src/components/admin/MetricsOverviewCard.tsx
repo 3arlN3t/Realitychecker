@@ -4,7 +4,6 @@ import {
   CardContent,
   Typography,
   Box,
-  Grid,
   Divider,
 } from '@mui/material';
 import {
@@ -17,24 +16,97 @@ import {
   Error as ErrorIcon,
 } from '@mui/icons-material';
 
+// Define a type alias for trend directions to fix the union type warning
+type TrendDirection = 'up' | 'down' | 'stable';
+
 export interface MetricsOverview {
   totalRequests: number;
   requestsToday: number;
-  requestsTrend: 'up' | 'down' | 'stable';
+  requestsTrend: TrendDirection;
   requestsChange: number; // percentage change
   errorRate: number;
-  errorTrend: 'up' | 'down' | 'stable';
+  errorTrend: TrendDirection;
   errorChange: number;
   avgResponseTime: number; // in seconds
-  responseTrend: 'up' | 'down' | 'stable';
+  responseTrend: TrendDirection;
   responseChange: number;
   activeUsers: number;
-  usersTrend: 'up' | 'down' | 'stable';
+  usersTrend: TrendDirection;
   usersChange: number;
   successRate: number;
   peakHour: string;
   lastUpdated: string;
 }
+
+// Helper functions for trend visualization
+const getTrendIcon = (trend: TrendDirection) => {
+  switch (trend) {
+    case 'up':
+      return <TrendingUpIcon fontSize="small" />;
+    case 'down':
+      return <TrendingDownIcon fontSize="small" />;
+    default:
+      return <StableIcon fontSize="small" />;
+  }
+};
+
+const getTrendColor = (trend: TrendDirection, isGoodWhenUp: boolean = true) => {
+  if (trend === 'stable') return 'text.secondary';
+  const isPositive = isGoodWhenUp ? trend === 'up' : trend === 'down';
+  return isPositive ? 'success.main' : 'error.main';
+};
+
+const formatNumber = (num: number) => {
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+  return num.toString();
+};
+
+// MetricItem component moved outside of the parent component
+interface MetricItemProps {
+  icon: React.ReactNode;
+  title: string;
+  value: string | number;
+  trend: TrendDirection;
+  change: number;
+  isGoodWhenUp?: boolean;
+  suffix?: string;
+}
+
+const MetricItem: React.FC<MetricItemProps> = ({ 
+  icon, 
+  title, 
+  value, 
+  trend, 
+  change, 
+  isGoodWhenUp = true, 
+  suffix = '' 
+}) => (
+  <Box sx={{ textAlign: 'center', p: 1 }}>
+    <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
+      {icon}
+    </Box>
+    <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+      {typeof value === 'number' ? formatNumber(value) : value}{suffix}
+    </Typography>
+    <Typography variant="body2" color="textSecondary" gutterBottom>
+      {title}
+    </Typography>
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: getTrendColor(trend, isGoodWhenUp),
+      }}
+    >
+      {getTrendIcon(trend)}
+      <Typography variant="caption" sx={{ ml: 0.5 }}>
+        {change > 0 ? '+' : ''}{change.toFixed(1)}%
+      </Typography>
+    </Box>
+  </Box>
+);
 
 interface MetricsOverviewCardProps {
   metrics: MetricsOverview;
@@ -44,64 +116,6 @@ const MetricsOverviewCard: React.FC<MetricsOverviewCardProps> = ({ metrics }) =>
   // Remove unused variables to fix ESLint warnings
   // const theme = useTheme();
   // const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-
-  const getTrendIcon = (trend: 'up' | 'down' | 'stable') => {
-    switch (trend) {
-      case 'up':
-        return <TrendingUpIcon fontSize="small" />;
-      case 'down':
-        return <TrendingDownIcon fontSize="small" />;
-      default:
-        return <StableIcon fontSize="small" />;
-    }
-  };
-
-  const getTrendColor = (trend: 'up' | 'down' | 'stable', isGoodWhenUp: boolean = true) => {
-    if (trend === 'stable') return 'text.secondary';
-    const isPositive = isGoodWhenUp ? trend === 'up' : trend === 'down';
-    return isPositive ? 'success.main' : 'error.main';
-  };
-
-  const formatNumber = (num: number) => {
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-    return num.toString();
-  };
-
-  const MetricItem: React.FC<{
-    icon: React.ReactNode;
-    title: string;
-    value: string | number;
-    trend: 'up' | 'down' | 'stable';
-    change: number;
-    isGoodWhenUp?: boolean;
-    suffix?: string;
-  }> = ({ icon, title, value, trend, change, isGoodWhenUp = true, suffix = '' }) => (
-    <Box sx={{ textAlign: 'center', p: 1 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
-        {icon}
-      </Box>
-      <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-        {typeof value === 'number' ? formatNumber(value) : value}{suffix}
-      </Typography>
-      <Typography variant="body2" color="textSecondary" gutterBottom>
-        {title}
-      </Typography>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: getTrendColor(trend, isGoodWhenUp),
-        }}
-      >
-        {getTrendIcon(trend)}
-        <Typography variant="caption" sx={{ ml: 0.5 }}>
-          {change > 0 ? '+' : ''}{change.toFixed(1)}%
-        </Typography>
-      </Box>
-    </Box>
-  );
 
   return (
     <Card sx={{ height: '100%' }}>

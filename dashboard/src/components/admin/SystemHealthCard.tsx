@@ -6,7 +6,6 @@ import {
   Box,
   Chip,
   LinearProgress,
-  Grid,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -94,24 +93,24 @@ const SystemHealthCard: React.FC<SystemHealthCardProps> = ({ health }) => {
           />
         </Box>
 
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2 }}>
+          <Box>
             <Typography variant="body2" color="textSecondary">
               Uptime
             </Typography>
             <Typography variant="h6" color="success.main">
               {health.uptime}
             </Typography>
-          </Grid>
-          <Grid item xs={12} sm={6}>
+          </Box>
+          <Box>
             <Typography variant="body2" color="textSecondary">
               Last Updated
             </Typography>
             <Typography variant="body2">
               {health.lastUpdated}
             </Typography>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
 
         <Box sx={{ mt: 3 }}>
           <Typography variant="subtitle2" gutterBottom>
@@ -149,38 +148,40 @@ const SystemHealthCard: React.FC<SystemHealthCardProps> = ({ health }) => {
           <Typography variant="subtitle2" gutterBottom>
             Service Status
           </Typography>
-          <Grid container spacing={1}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)' }, gap: 1 }}>
             {Object.entries(health.services).map(([serviceName, service]) => (
-              <Grid item xs={6} sm={isMobile ? 6 : 3} key={serviceName}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    p: 1,
-                    border: 1,
-                    borderColor: 'divider',
-                    borderRadius: 1,
-                    bgcolor: service.status === 'healthy' ? 'success.light' : 
-                             service.status === 'warning' ? 'warning.light' : 
-                             service.status === 'critical' ? 'error.light' : 'grey.100',
-                    opacity: service.status === 'healthy' ? 0.1 : 0.2,
-                  }}
-                >
-                  {getStatusIcon(service.status)}
-                  <Box sx={{ ml: 1, minWidth: 0 }}>
-                    <Typography variant="caption" sx={{ textTransform: 'capitalize' }}>
-                      {serviceName}
+              <Box
+                key={serviceName}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  p: 1,
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  bgcolor: (() => {
+                    if (service.status === 'healthy') return 'success.light';
+                    if (service.status === 'warning') return 'warning.light';
+                    if (service.status === 'critical') return 'error.light';
+                    return 'grey.100';
+                  })(),
+                  opacity: service.status === 'healthy' ? 0.1 : 0.2,
+                }}
+              >
+                {getStatusIcon(service.status)}
+                <Box sx={{ ml: 1, minWidth: 0 }}>
+                  <Typography variant="caption" sx={{ textTransform: 'capitalize' }}>
+                    {serviceName}
+                  </Typography>
+                  {service.responseTime && (
+                    <Typography variant="caption" display="block" color="textSecondary">
+                      {service.responseTime}ms
                     </Typography>
-                    {service.responseTime && (
-                      <Typography variant="caption" display="block" color="textSecondary">
-                        {service.responseTime}ms
-                      </Typography>
-                    )}
-                  </Box>
+                  )}
                 </Box>
-              </Grid>
+              </Box>
             ))}
-          </Grid>
+          </Box>
         </Box>
       </CardContent>
     </Card>
