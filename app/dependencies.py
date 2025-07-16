@@ -74,13 +74,8 @@ class ServiceContainer:
     def get_message_handler(self) -> MessageHandlerService:
         """Get message handler service."""
         if self._message_handler is None:
-            pdf_service = self.get_pdf_service()
-            openai_service = self.get_openai_service()
-            twilio_service = self.get_twilio_service()
-            user_management_service = self.get_user_management_service()
-            self._message_handler = MessageHandlerService(
-                pdf_service, openai_service, twilio_service, user_management_service
-            )
+            config = self.get_config()
+            self._message_handler = MessageHandlerService(config)
         return self._message_handler
     
     def get_user_management_service(self) -> UserManagementService:

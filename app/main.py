@@ -69,19 +69,34 @@ async def startup_event():
         
         # Log health check results
         for service_name, status in health_status.items():
-            if status == 'connected' or status == 'ready':
-                logger.info(f"✅ {service_name}: {status}")
-            elif status == 'not_configured':
-                logger.warning(f"⚠️ {service_name}: {status}")
+            # Handle both string and dictionary responses
+            if isinstance(status, dict):
+                status_value = status.get('status', 'unknown')
+                if status_value == 'healthy':
+                    logger.info(f"✅ {service_name}: ready")
+                elif status_value == 'unhealthy':
+                    logger.error(f"❌ {service_name}: {status.get('error', 'unhealthy')}")
+                else:
+                    logger.warning(f"⚠️ {service_name}: {status_value}")
             else:
-                logger.error(f"❌ {service_name}: {status}")
+                if status == 'connected' or status == 'ready':
+                    logger.info(f"✅ {service_name}: {status}")
+                elif status == 'not_configured':
+                    logger.warning(f"⚠️ {service_name}: {status}")
+                else:
+                    logger.error(f"❌ {service_name}: {status}")
         
         # Check if critical services are available
         critical_services = ['openai', 'twilio']
-        failed_services = [
-            service for service in critical_services 
-            if health_status.get(service) not in ['connected', 'ready']
-        ]
+        failed_services = []
+        for service in critical_services:
+            status = health_status.get(service)
+            if isinstance(status, dict):
+                if status.get('status') != 'healthy':
+                    failed_services.append(service)
+            else:
+                if status not in ['connected', 'ready']:
+                    failed_services.append(service)
         
         if failed_services:
             error_msg = f"Critical services failed health checks: {failed_services}"

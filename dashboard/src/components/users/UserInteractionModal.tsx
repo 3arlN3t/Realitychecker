@@ -37,7 +37,7 @@ import {
   Timeline as TimelineIcon,
   ShowChart as ChartIcon
 } from '@mui/icons-material';
-import { UserInteractionModalProps, UserInteraction } from './types';
+import { UserInteractionModalProps } from './types';
 
 interface TabPanelProps {
   children?: React.ReactNode;

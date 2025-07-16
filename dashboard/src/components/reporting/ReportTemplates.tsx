@@ -11,7 +11,7 @@ import {
   Divider,
   Tooltip
 } from '@mui/material';
-import { ReportTemplate, ReportParameters } from './types';
+import { ReportTemplate } from './types';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';

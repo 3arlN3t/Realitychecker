@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Box, Paper, Chip, Grid } from '@mui/material';
+import { Typography, Box, Paper, Chip } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import ClassificationChart from '../components/analytics/ClassificationChart';
 import UsageTrendsChart from '../components/analytics/UsageTrendsChart';

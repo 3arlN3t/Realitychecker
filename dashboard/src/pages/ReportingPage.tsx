@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Box, Typography, Tabs, Tab, Chip } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import ReportGenerator from '../components/reporting/ReportGenerator';
@@ -201,7 +201,7 @@ function TabPanel(props: TabPanelProps) {
 const ReportingPage: React.FC = () => {
   const { user } = useAuth();
   const [tabValue, setTabValue] = useState(0);
-  const [templates, setTemplates] = useState<ReportTemplate[]>(sampleTemplates);
+  const [templates] = useState<ReportTemplate[]>(sampleTemplates);
   const [scheduledReports, setScheduledReports] = useState<ScheduledReport[]>(sampleScheduledReports);
   const [reportHistory, setReportHistory] = useState<ReportHistoryItem[]>(sampleReportHistory);
   const [historyPage, setHistoryPage] = useState(1);

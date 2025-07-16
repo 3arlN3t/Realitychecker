@@ -20,7 +20,7 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { format, subDays, isAfter, isBefore, addDays } from 'date-fns';
+import { subDays, isAfter, isBefore } from 'date-fns';
 import DescriptionIcon from '@mui/icons-material/Description';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { ReportParameters, ReportType, ExportFormat, ReportData } from './types';

@@ -378,3 +378,39 @@ Respond ONLY with valid JSON in this exact format:
         except Exception as e:
             logger.error(f"Unexpected error parsing response: {e}")
             raise Exception("Failed to process analysis results")
+    
+    async def health_check(self) -> dict:
+        """
+        Check the health of the OpenAI service.
+        
+        Returns:
+            dict: Health status information
+        """
+        try:
+            # Check if API key is configured
+            if not self.config.openai_api_key or self.config.openai_api_key == "sk":
+                return {
+                    "status": "unhealthy",
+                    "service": "openai",
+                    "model": self.model,
+                    "api_key_configured": False,
+                    "error": "OpenAI API key not configured"
+                }
+            
+            # For now, just check configuration without making API calls
+            # API calls will be tested during actual usage
+            return {
+                "status": "healthy",
+                "service": "openai",
+                "model": self.model,
+                "api_key_configured": True,
+                "note": "Configuration validated, API calls will be tested during usage"
+            }
+        except Exception as e:
+            return {
+                "status": "unhealthy",
+                "service": "openai",
+                "model": self.model,
+                "api_key_configured": bool(self.config.openai_api_key),
+                "error": str(e)
+            }

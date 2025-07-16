@@ -48,7 +48,7 @@ export interface ResponseTime {
   total_requests: number;
 }
 
-export interface Alert {
+export interface MonitoringAlert {
   id: string;
   alert_type: string;
   severity: string;
@@ -63,7 +63,7 @@ const MonitoringPage: React.FC = () => {
   const [activeRequests, setActiveRequests] = useState<ActiveRequest[]>([]);
   const [errorRates, setErrorRates] = useState<ErrorRate[]>([]);
   const [responseTimes, setResponseTimes] = useState<ResponseTime[]>([]);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alerts, setAlerts] = useState<MonitoringAlert[]>([]);
   const [notification, setNotification] = useState<{open: boolean, message: string, severity: 'error' | 'warning' | 'info' | 'success'}>({
     open: false,
     message: '',

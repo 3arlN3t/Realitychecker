@@ -3,8 +3,7 @@ import {
   Grid, 
   TextField, 
   Typography, 
-  InputAdornment,
-  FormHelperText
+  InputAdornment
 } from '@mui/material';
 import { AlertThresholdSettingsProps } from './types';
 

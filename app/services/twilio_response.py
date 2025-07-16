@@ -403,3 +403,62 @@ class TwilioResponseService:
             "✅ Key warning signs or positive indicators\n\n"
             "*Stay safe!* Always verify job details independently."
         )
+    
+    async def health_check(self) -> dict:
+        """
+        Check the health of the Twilio service.
+        
+        Returns:
+            dict: Health status information
+        """
+        try:
+            # Check if required configuration is present
+            if not self.config.twilio_account_sid or self.config.twilio_account_sid == "AC":
+                return {
+                    "status": "unhealthy",
+                    "service": "twilio",
+                    "account_sid": self.config.twilio_account_sid,
+                    "auth_token_configured": False,
+                    "from_number": self.config.twilio_phone_number,
+                    "error": "Twilio Account SID not configured"
+                }
+            
+            if not self.config.twilio_auth_token:
+                return {
+                    "status": "unhealthy",
+                    "service": "twilio",
+                    "account_sid": self.config.twilio_account_sid,
+                    "auth_token_configured": False,
+                    "from_number": self.config.twilio_phone_number,
+                    "error": "Twilio Auth Token not configured"
+                }
+            
+            if not self.config.twilio_phone_number:
+                return {
+                    "status": "unhealthy",
+                    "service": "twilio",
+                    "account_sid": self.config.twilio_account_sid,
+                    "auth_token_configured": True,
+                    "from_number": self.config.twilio_phone_number,
+                    "error": "Twilio from number not configured"
+                }
+            
+            # For now, just check configuration without making API calls
+            # API calls will be tested during actual usage
+            return {
+                "status": "healthy",
+                "service": "twilio",
+                "account_sid": self.config.twilio_account_sid,
+                "auth_token_configured": True,
+                "from_number": self.config.twilio_phone_number,
+                "note": "Configuration validated, API calls will be tested during usage"
+            }
+        except Exception as e:
+            return {
+                "status": "unhealthy",
+                "service": "twilio",
+                "account_sid": self.config.twilio_account_sid,
+                "auth_token_configured": bool(self.config.twilio_auth_token),
+                "from_number": self.config.twilio_phone_number,
+                "error": str(e)
+            }
