@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Typography, Box, Grid } from '@mui/material';
-import { useAuth } from '../contexts/AuthContext';
 import SystemHealthCard, { SystemHealth } from '../components/admin/SystemHealthCard';
 import MetricsOverviewCard, { MetricsOverview } from '../components/admin/MetricsOverviewCard';
 import ActiveAlertsCard, { Alert } from '../components/admin/ActiveAlertsCard';
@@ -186,7 +185,8 @@ const generateServiceDetails = (): Record<string, ServiceDetails> => {
 };
 
 const DashboardPage: React.FC = () => {
-  const { user } = useAuth();
+  // Remove unused variable to fix ESLint warning
+  // const { user } = useAuth();
   const [systemHealth, setSystemHealth] = useState<SystemHealth>(generateSystemHealth());
   const [metricsOverview, setMetricsOverview] = useState<MetricsOverview>(generateMetricsOverview());
   const [alerts, setAlerts] = useState<Alert[]>(generateAlerts());

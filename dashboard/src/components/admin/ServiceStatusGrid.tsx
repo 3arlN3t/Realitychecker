@@ -10,8 +10,6 @@ import {
   IconButton,
   Collapse,
   Divider,
-  useTheme,
-  useMediaQuery,
   Tooltip,
 } from '@mui/material';
 import {
@@ -60,8 +58,9 @@ const ServiceStatusGrid: React.FC<ServiceStatusGridProps> = ({
   onRefreshService,
   onViewDetails,
 }) => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  // Remove unused variables to fix ESLint warnings
+  // const theme = useTheme();
+  // const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [expandedService, setExpandedService] = useState<string | null>(null);
 
   const getServiceIcon = (serviceName: string) => {
@@ -132,9 +131,9 @@ const ServiceStatusGrid: React.FC<ServiceStatusGridProps> = ({
           </Typography>
         </Box>
 
-        <Grid container spacing={2}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 2 }}>
           {Object.entries(services).map(([serviceName, service]) => (
-            <Grid item xs={12} sm={6} md={4} key={serviceName}>
+            <Box key={serviceName}>
               <Card
                 variant="outlined"
                 sx={{
@@ -323,9 +322,9 @@ const ServiceStatusGrid: React.FC<ServiceStatusGridProps> = ({
                   </Collapse>
                 </CardContent>
               </Card>
-            </Grid>
+            </Box>
           ))}
-        </Grid>
+        </Box>
       </CardContent>
     </Card>
   );

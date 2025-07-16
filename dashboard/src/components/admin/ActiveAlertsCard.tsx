@@ -14,8 +14,6 @@ import {
   Badge,
   Collapse,
   Button,
-  useTheme,
-  useMediaQuery,
   Tooltip,
 } from '@mui/material';
 import {
@@ -56,8 +54,9 @@ const ActiveAlertsCard: React.FC<ActiveAlertsCardProps> = ({
   onDismissAlert,
   maxDisplayed = 5,
 }) => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  // Remove unused variables to fix ESLint warnings
+  // const theme = useTheme();
+  // const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
 

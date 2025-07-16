@@ -6,8 +6,6 @@ import {
   Box,
   Grid,
   Divider,
-  useTheme,
-  useMediaQuery,
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
@@ -43,8 +41,9 @@ interface MetricsOverviewCardProps {
 }
 
 const MetricsOverviewCard: React.FC<MetricsOverviewCardProps> = ({ metrics }) => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  // Remove unused variables to fix ESLint warnings
+  // const theme = useTheme();
+  // const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const getTrendIcon = (trend: 'up' | 'down' | 'stable') => {
     switch (trend) {
@@ -117,101 +116,87 @@ const MetricsOverviewCard: React.FC<MetricsOverviewCardProps> = ({ metrics }) =>
           </Typography>
         </Box>
 
-        <Grid container spacing={2} divider={<Divider orientation="vertical" flexItem />}>
-          <Grid item xs={6} sm={3}>
-            <MetricItem
-              icon={<RequestsIcon color="primary" />}
-              title="Total Requests"
-              value={metrics.totalRequests}
-              trend={metrics.requestsTrend}
-              change={metrics.requestsChange}
-            />
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <MetricItem
-              icon={<RequestsIcon color="info" />}
-              title="Requests Today"
-              value={metrics.requestsToday}
-              trend={metrics.requestsTrend}
-              change={metrics.requestsChange}
-            />
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <MetricItem
-              icon={<ErrorIcon color="warning" />}
-              title="Error Rate"
-              value={metrics.errorRate}
-              trend={metrics.errorTrend}
-              change={metrics.errorChange}
-              isGoodWhenUp={false}
-              suffix="%"
-            />
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <MetricItem
-              icon={<UsersIcon color="success" />}
-              title="Active Users"
-              value={metrics.activeUsers}
-              trend={metrics.usersTrend}
-              change={metrics.usersChange}
-            />
-          </Grid>
-        </Grid>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, gap: 2 }}>
+          <MetricItem
+            icon={<RequestsIcon color="primary" />}
+            title="Total Requests"
+            value={metrics.totalRequests}
+            trend={metrics.requestsTrend}
+            change={metrics.requestsChange}
+          />
+          <MetricItem
+            icon={<RequestsIcon color="info" />}
+            title="Requests Today"
+            value={metrics.requestsToday}
+            trend={metrics.requestsTrend}
+            change={metrics.requestsChange}
+          />
+          <MetricItem
+            icon={<ErrorIcon color="warning" />}
+            title="Error Rate"
+            value={metrics.errorRate}
+            trend={metrics.errorTrend}
+            change={metrics.errorChange}
+            isGoodWhenUp={false}
+            suffix="%"
+          />
+          <MetricItem
+            icon={<UsersIcon color="success" />}
+            title="Active Users"
+            value={metrics.activeUsers}
+            trend={metrics.usersTrend}
+            change={metrics.usersChange}
+          />
+        </Box>
 
         <Divider sx={{ my: 2 }} />
 
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={4}>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold' }}>
-                {metrics.avgResponseTime.toFixed(1)}s
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                Avg Response Time
-              </Typography>
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: getTrendColor(metrics.responseTrend, false),
-                  mt: 0.5,
-                }}
-              >
-                {getTrendIcon(metrics.responseTrend)}
-                <Typography variant="caption" sx={{ ml: 0.5 }}>
-                  {metrics.responseChange > 0 ? '+' : ''}{metrics.responseChange.toFixed(1)}%
-                </Typography>
-              </Box>
-            </Box>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h5" color="success.main" sx={{ fontWeight: 'bold' }}>
-                {metrics.successRate.toFixed(1)}%
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                Success Rate
-              </Typography>
-              <Typography variant="caption" color="textSecondary">
-                Last 24 hours
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 2 }}>
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold' }}>
+              {metrics.avgResponseTime.toFixed(1)}s
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              Avg Response Time
+            </Typography>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: getTrendColor(metrics.responseTrend, false),
+                mt: 0.5,
+              }}
+            >
+              {getTrendIcon(metrics.responseTrend)}
+              <Typography variant="caption" sx={{ ml: 0.5 }}>
+                {metrics.responseChange > 0 ? '+' : ''}{metrics.responseChange.toFixed(1)}%
               </Typography>
             </Box>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h5" color="info.main" sx={{ fontWeight: 'bold' }}>
-                {metrics.peakHour}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                Peak Hour
-              </Typography>
-              <Typography variant="caption" color="textSecondary">
-                Highest activity
-              </Typography>
-            </Box>
-          </Grid>
-        </Grid>
+          </Box>
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="h5" color="success.main" sx={{ fontWeight: 'bold' }}>
+              {metrics.successRate.toFixed(1)}%
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              Success Rate
+            </Typography>
+            <Typography variant="caption" color="textSecondary">
+              Last 24 hours
+            </Typography>
+          </Box>
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="h5" color="info.main" sx={{ fontWeight: 'bold' }}>
+              {metrics.peakHour}
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              Peak Hour
+            </Typography>
+            <Typography variant="caption" color="textSecondary">
+              Highest activity
+            </Typography>
+          </Box>
+        </Box>
       </CardContent>
     </Card>
   );
