@@ -26,6 +26,31 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Sample users for testing
+const SAMPLE_USERS = [
+  {
+    username: 'admin',
+    password: 'admin123',
+    role: 'admin' as const,
+    createdAt: '2024-01-15T10:00:00Z',
+    lastLogin: '2024-07-16T08:30:00Z',
+  },
+  {
+    username: 'analyst',
+    password: 'analyst123',
+    role: 'analyst' as const,
+    createdAt: '2024-02-01T14:00:00Z',
+    lastLogin: '2024-07-16T09:15:00Z',
+  },
+  {
+    username: 'demo',
+    password: 'demo123',
+    role: 'analyst' as const,
+    createdAt: '2024-03-10T16:30:00Z',
+    lastLogin: '2024-07-15T17:45:00Z',
+  },
+];
+
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -55,51 +80,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = async (username: string, password: string): Promise<AuthResult> => {
-    try {
-      // TODO: Replace with actual API call
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-      });
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Check against sample users
+    const sampleUser = SAMPLE_USERS.find(
+      user => user.username === username && user.password === password
+    );
 
-      if (!response.ok) {
-        return {
-          success: false,
-          errorMessage: 'Invalid credentials',
-        };
-      }
-
-      const data = await response.json();
-      
-      if (data.success && data.user && data.token) {
-        setUser(data.user);
-        setToken(data.token);
-        
-        // Store in localStorage
-        localStorage.setItem('auth_token', data.token);
-        localStorage.setItem('auth_user', JSON.stringify(data.user));
-        
-        return {
-          success: true,
-          user: data.user,
-          token: data.token,
-        };
-      }
-
-      return {
-        success: false,
-        errorMessage: data.errorMessage || 'Login failed',
+    if (sampleUser) {
+      const user: User = {
+        username: sampleUser.username,
+        role: sampleUser.role,
+        createdAt: sampleUser.createdAt,
+        lastLogin: new Date().toISOString(), // Update last login to current time
       };
-    } catch (error) {
-      console.error('Login error:', error);
+      
+      const token = `mock-jwt-token-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      setUser(user);
+      setToken(token);
+      
+      // Store in localStorage
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('auth_user', JSON.stringify(user));
+      
       return {
-        success: false,
-        errorMessage: 'Network error. Please try again.',
+        success: true,
+        user,
+        token,
       };
     }
+
+    return {
+      success: false,
+      errorMessage: 'Invalid username or password',
+    };
   };
 
   const logout = () => {
