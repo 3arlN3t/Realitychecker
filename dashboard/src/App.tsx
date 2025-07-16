@@ -10,6 +10,9 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import MonitoringPage from './pages/MonitoringPage';
+import UsersPage from './pages/UsersPage';
+import ConfigurationPage from './pages/ConfigurationPage';
+import ReportingPage from './pages/ReportingPage';
 
 const theme = createTheme({
   palette: {
@@ -67,7 +70,7 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Layout>
-                      <div>User Management (Coming Soon)</div>
+                      <UsersPage />
                     </Layout>
                   </ProtectedRoute>
                 }
@@ -77,7 +80,7 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Layout>
-                      <div>Reports (Coming Soon)</div>
+                      <ReportingPage />
                     </Layout>
                   </ProtectedRoute>
                 }
@@ -87,7 +90,7 @@ function App() {
                 element={
                   <ProtectedRoute requiredRole="admin">
                     <Layout>
-                      <div>Configuration (Coming Soon)</div>
+                      <ConfigurationPage />
                     </Layout>
                   </ProtectedRoute>
                 }

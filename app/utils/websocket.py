@@ -11,7 +11,6 @@ from typing import Dict, Set, Any, Optional
 from datetime import datetime, timezone
 
 import websockets
-from websockets.server import WebSocketServerProtocol
 from fastapi import WebSocket, WebSocketDisconnect
 
 from app.utils.logging import get_logger
