@@ -1,0 +1,148 @@
+# Docker Compose override for development
+# This file is automatically loaded by docker-compose and overrides settings in docker-compose.yml
+
+version: '3.8'
+
+services:
+  # ============================================================================
+  # Development overrides for main application
+  # ============================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend  # Use backend stage for development
+    volumes:
+      # Mount source code for hot reload
+      - ./app:/app/app:ro
+      - ./tests:/app/tests:ro
+      - ./alembic.ini:/app/alembic.ini:ro
+      - ./migrations:/app/migrations:ro
+      
+      # Mount data and logs for persistence
+      - ./data:/app/data
+      - ./logs:/app/logs
+    environment:
+      # Development-specific environment variables
+      - LOG_LEVEL=DEBUG
+      - WEBHOOK_VALIDATION=false  # Disable for local testing
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:8000
+    command: >
+      sh -c "
+        echo 'Starting in development mode...' &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug
+      "
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+
+  # ============================================================================
+  # Development database with exposed port
+  # ============================================================================
+  postgres:
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=reality_checker_dev
+      - POSTGRES_USER=dev_user
+      - POSTGRES_PASSWORD=dev_password
+    volumes:
+      # Use named volume for development data
+      - postgres_dev_data:/var/lib/postgresql/data
+      # Mount initialization scripts
+      - ./scripts/init-dev-db.sql:/docker-entrypoint-initdb.d/init-dev-db.sql:ro
+
+  # ============================================================================
+  # Redis with exposed port for development
+  # ============================================================================
+  redis:
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --appendfsync everysec
+    volumes:
+      - redis_dev_data:/data
+
+  # ============================================================================
+  # Development tools and utilities
+  # ============================================================================
+  
+  # pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: reality-checker-pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@example.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - reality-checker-network
+
+  # Redis Commander for Redis management
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: reality-checker-redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - reality-checker-network
+
+  # Mailhog for email testing (if needed)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: reality-checker-mailhog
+    ports:
+      - "1025:1025"  # SMTP server
+      - "8025:8025"  # Web UI
+    networks:
+      - reality-checker-network
+
+  # ============================================================================
+  # Frontend development server (React)
+  # ============================================================================
+  frontend-dev:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile.dev
+    container_name: reality-checker-frontend-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./dashboard/src:/app/src:ro
+      - ./dashboard/public:/app/public:ro
+      - ./dashboard/package.json:/app/package.json:ro
+      - ./dashboard/package-lock.json:/app/package-lock.json:ro
+      - ./dashboard/tsconfig.json:/app/tsconfig.json:ro
+      # Node modules volume for better performance
+      - frontend_node_modules:/app/node_modules
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_WS_URL=ws://localhost:8000
+      - CHOKIDAR_USEPOLLING=true  # For file watching in Docker
+    command: npm start
+    networks:
+      - reality-checker-network
+
+# ============================================================================
+# Development-specific volumes
+# ============================================================================
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  frontend_node_modules:
+    driver: local

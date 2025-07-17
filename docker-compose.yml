@@ -1,0 +1,131 @@
+# Docker Compose configuration for Reality Checker WhatsApp Bot
+# This file sets up the complete development environment
+
+version: '3.8'
+
+services:
+  # ============================================================================
+  # Main Application Service
+  # ============================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: reality-checker-app
+    ports:
+      - "8000:8000"
+    environment:
+      # Database configuration
+      - DATABASE_URL=sqlite:///app/data/reality_checker.db
+      
+      # Load environment variables from .env file
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
+      
+      # Optional configuration
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4}
+      - MAX_PDF_SIZE_MB=${MAX_PDF_SIZE_MB:-10}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - WEBHOOK_VALIDATION=${WEBHOOK_VALIDATION:-true}
+      
+      # Authentication configuration
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-secret-key-change-in-production}
+      - JWT_EXPIRY_HOURS=${JWT_EXPIRY_HOURS:-24}
+      - JWT_REFRESH_EXPIRY_DAYS=${JWT_REFRESH_EXPIRY_DAYS:-7}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+    volumes:
+      # Persist database and logs
+      - ./data:/app/data
+      - ./logs:/app/logs
+      
+      # Mount source code for development (comment out for production)
+      - ./app:/app/app:ro
+    depends_on:
+      - postgres
+    networks:
+      - reality-checker-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================================================
+  # PostgreSQL Database (for production-like setup)
+  # ============================================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: reality-checker-db
+    environment:
+      - POSTGRES_DB=reality_checker
+      - POSTGRES_USER=reality_checker
+      - POSTGRES_PASSWORD=reality_checker_password
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - reality-checker-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reality_checker -d reality_checker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # Redis (for caching and session storage)
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: reality-checker-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - reality-checker-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ============================================================================
+  # Nginx Reverse Proxy (for production-like setup)
+  # ============================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: reality-checker-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+    networks:
+      - reality-checker-network
+    restart: unless-stopped
+
+# ============================================================================
+# Networks and Volumes
+# ============================================================================
+networks:
+  reality-checker-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

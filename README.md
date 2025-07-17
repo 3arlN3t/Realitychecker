@@ -1,71 +1,39 @@
 # Reality Checker WhatsApp Bot
 
-[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
-[![React](https://img.shields.io/badge/React-18+-blue.svg)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue.svg)](https://www.typescriptlang.org/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+An AI-powered WhatsApp bot that analyzes job advertisements to detect potential scams, helping users identify legitimate job opportunities versus fraudulent postings.
 
-> AI-powered job advertisement scam detection platform with WhatsApp integration and comprehensive web-based management dashboard.
+![Reality Checker Logo](https://via.placeholder.com/150x50/4CAF50/FFFFFF?text=Reality+Checker)
 
-## 🎯 Overview
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/your-org/reality-checker-whatsapp-bot)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-18+-blue.svg)](https://reactjs.org)
 
-Reality Checker is a comprehensive platform that combines an intelligent WhatsApp bot with a powerful web-based management interface to help users identify potential job advertisement scams. The system uses OpenAI GPT-4 for advanced scam detection and provides administrators with real-time monitoring, analytics, and user management capabilities.
+## 🚀 Features
 
-### Key Features
+- **WhatsApp Integration**: Seamless interaction through Twilio WhatsApp Business API
+- **AI-Powered Analysis**: Uses OpenAI GPT-4 for intelligent scam detection
+- **PDF Processing**: Extracts and analyzes text from uploaded PDF job postings
+- **Trust Scoring**: Provides 0-100 trust scores with detailed reasoning
+- **Admin Dashboard**: Web-based interface for monitoring and management
+- **Real-time Analytics**: Live metrics, user management, and reporting
+- **Secure & Scalable**: Production-ready with comprehensive security measures
 
-- **🤖 WhatsApp Bot**: AI-powered scam detection via WhatsApp messages
-- **📊 Web Dashboard**: Comprehensive admin and analytics interface
-- **📈 Real-time Monitoring**: Live system metrics and performance tracking
-- **👥 User Management**: WhatsApp user interaction history and management
-- **📋 Reporting**: Custom reports with CSV/PDF export capabilities
-- **🔒 Security**: JWT authentication, rate limiting, and input sanitization
-- **⚡ Performance**: Async processing, caching, and real-time updates
+## 📋 Table of Contents
 
-## 🏗️ Architecture
-
-```mermaid
-graph TB
-    subgraph "User Interfaces"
-        A[WhatsApp User]
-        B[Admin Dashboard]
-        C[Analytics Dashboard]
-    end
-
-    subgraph "External Services"
-        D[Twilio WhatsApp API]
-        E[OpenAI GPT-4 API]
-    end
-
-    subgraph "Application Layer"
-        F[React Frontend]
-        G[FastAPI Backend]
-        H[WebSocket Server]
-    end
-
-    subgraph "Services"
-        I[Message Handler]
-        J[PDF Processing]
-        K[OpenAI Analysis]
-        L[User Management]
-        M[Analytics]
-        N[Authentication]
-    end
-
-    subgraph "Data Layer"
-        O[SQLite Database]
-        P[Metrics Store]
-        Q[Session Store]
-    end
-
-    A --> D --> G
-    B --> F --> G
-    C --> F --> G
-    G --> I --> J --> K
-    G --> L --> M --> N
-    G --> O --> P --> Q
-    H --> F
-```
+- [Quick Start](#quick-start)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [API Documentation](#api-documentation)
+- [Dashboard](#dashboard)
+- [Deployment](#deployment)
+- [Development](#development)
+- [Testing](#testing)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## 🚀 Quick Start
 
@@ -73,17 +41,65 @@ graph TB
 
 - Python 3.11+
 - Node.js 18+
-- OpenAI API Key
-- Twilio Account (WhatsApp Business API)
+- OpenAI API key
+- Twilio account with WhatsApp Business API access
 
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/reality-checker-whatsapp-bot.git
+git clone https://github.com/your-org/reality-checker-whatsapp-bot.git
 cd reality-checker-whatsapp-bot
 ```
 
-### 2. Backend Setup
+### 2. Set Up Environment
+
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Edit .env with your API keys and configuration
+nano .env
+```
+
+### 3. Run with Docker (Recommended)
+
+```bash
+# Build and start all services
+docker-compose up --build
+
+# Or run in background
+docker-compose up -d --build
+```
+
+### 4. Access the Application
+
+- **API**: http://localhost:8000
+- **Dashboard**: http://localhost:8000/admin
+- **API Documentation**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/health
+
+## 📦 Installation
+
+### Option 1: Docker (Recommended)
+
+Docker provides the easiest way to run the application with all dependencies:
+
+```bash
+# Clone repository
+git clone https://github.com/your-org/reality-checker-whatsapp-bot.git
+cd reality-checker-whatsapp-bot
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your configuration
+
+# Start with Docker Compose
+docker-compose up --build
+```
+
+### Option 2: Manual Installation
+
+#### Backend Setup
 
 ```bash
 # Create virtual environment
@@ -93,279 +109,206 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Copy environment template
-cp .env.example .env
+# Set up database
+python manage_db.py init
+
+# Run the application
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 3. Configure Environment Variables
-
-Edit `.env` file with your credentials:
+#### Frontend Setup
 
 ```bash
-# Required - OpenAI Configuration
-OPENAI_API_KEY=sk-your-openai-api-key-here
-OPENAI_MODEL=gpt-4
-
-# Required - Twilio Configuration
-TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_AUTH_TOKEN=your-twilio-auth-token
-TWILIO_PHONE_NUMBER=+1234567890
-
-# Optional - Application Settings
-MAX_PDF_SIZE_MB=10
-LOG_LEVEL=INFO
-WEBHOOK_VALIDATION=true
-
-# Dashboard Authentication
-JWT_SECRET_KEY=your-super-secret-jwt-key
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=your-secure-password
-```
-
-### 4. Frontend Setup (Optional - for Dashboard)
-
-```bash
-# Navigate to frontend directory
-cd frontend
+# Navigate to dashboard directory
+cd dashboard
 
 # Install dependencies
 npm install
 
-# Copy environment template
-cp .env.example .env.local
-```
+# Build for production
+npm run build
 
-Edit `frontend/.env.local`:
-
-```bash
-REACT_APP_API_URL=http://localhost:8000
-REACT_APP_WS_URL=ws://localhost:8000
-```
-
-### 5. Run the Application
-
-#### Backend Only (API + WhatsApp Bot)
-
-```bash
-# From project root
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-#### Full Stack (Backend + Frontend Dashboard)
-
-```bash
-# Terminal 1: Start backend
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-
-# Terminal 2: Start frontend
-cd frontend
+# Or run development server
 npm start
 ```
 
-### 6. Access the Application
-
-- **API Documentation**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/health
-- **Web Dashboard**: http://localhost:3000 (if running frontend)
-- **WhatsApp Bot**: Configure webhook URL in Twilio Console
-
-## 📱 WhatsApp Bot Usage
-
-### For End Users
-
-1. **Send Job Ad Text**: Simply send the job advertisement text to the WhatsApp bot
-2. **Upload PDF**: Send a PDF file containing the job posting
-3. **Get Analysis**: Receive a comprehensive scam analysis with:
-   - Trust score (0-100)
-   - Classification (Legit/Suspicious/Likely Scam)
-   - 3 specific reasons supporting the classification
-   - Confidence level
-
-### Example Interaction
-
-```
-User: "Earn $5000/week working from home! No experience needed. 
-       Send $200 for training materials. Contact: quickmoney@email.com"
-
-Bot: 🚨 Job Analysis Result
-
-     Trust Score: 15/100
-     Classification: Likely Scam
-
-     Key Findings:
-     1. Unrealistic salary promises without experience requirements
-     2. Requests upfront payment for training materials
-     3. Unprofessional contact information and vague job description
-
-     Confidence: 95.0%
-
-     💡 Strong indicators suggest this may be a scam. 
-         Avoid sharing personal information.
-```
-
-## 🖥️ Web Dashboard
-
-### Admin Dashboard (`/admin`)
-
-- **System Health**: Real-time service status monitoring
-- **Performance Metrics**: Request counts, error rates, response times
-- **Active Alerts**: Critical system notifications
-- **Service Status**: OpenAI, Twilio, and system component health
-
-### Analytics Dashboard (`/analytics`)
-
-- **Usage Trends**: Request volume over time
-- **Classification Breakdown**: Scam detection statistics
-- **User Engagement**: Interaction patterns and insights
-- **Peak Hours**: Usage pattern analysis
-
-### Real-time Monitoring (`/monitoring`)
-
-- **Live Metrics**: WebSocket-powered real-time updates
-- **Active Requests**: Current processing status
-- **Error Tracking**: Live error monitoring with drill-down
-- **Performance Charts**: Response time percentiles
-
-### User Management (`/users`)
-
-- **User Directory**: WhatsApp user interaction history
-- **Search & Filter**: Find specific users quickly
-- **Block/Unblock**: User access management
-- **Interaction Analytics**: User behavior insights
-
-## 🔧 Configuration
+## ⚙️ Configuration
 
 ### Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `OPENAI_API_KEY` | ✅ | - | OpenAI API key for GPT-4 access |
-| `OPENAI_MODEL` | ❌ | `gpt-4` | OpenAI model to use for analysis |
-| `TWILIO_ACCOUNT_SID` | ✅ | - | Twilio Account SID |
-| `TWILIO_AUTH_TOKEN` | ✅ | - | Twilio Auth Token |
-| `TWILIO_PHONE_NUMBER` | ✅ | - | Twilio WhatsApp phone number |
-| `MAX_PDF_SIZE_MB` | ❌ | `10` | Maximum PDF file size in MB |
-| `LOG_LEVEL` | ❌ | `INFO` | Logging level (DEBUG/INFO/WARNING/ERROR) |
-| `WEBHOOK_VALIDATION` | ❌ | `true` | Enable Twilio webhook signature validation |
-| `JWT_SECRET_KEY` | ❌ | - | Secret key for JWT token generation |
-| `ADMIN_USERNAME` | ❌ | `admin` | Default admin username |
-| `ADMIN_PASSWORD` | ❌ | - | Default admin password |
+Create a `.env` file based on `.env.example`:
 
-### Twilio Webhook Configuration
-
-1. Log in to your Twilio Console
-2. Navigate to WhatsApp Sandbox or your approved WhatsApp number
-3. Set the webhook URL to: `https://your-domain.com/webhook/whatsapp`
-4. Set HTTP method to `POST`
-5. Save the configuration
-
-## 🧪 Testing
-
-### Run All Tests
+#### Required Variables
 
 ```bash
-# Backend tests
-pytest
+# OpenAI Configuration
+OPENAI_API_KEY=sk-your-openai-api-key
 
-# Frontend tests (if applicable)
-cd frontend
-npm test
+# Twilio Configuration
+TWILIO_ACCOUNT_SID=ACyour-account-sid
+TWILIO_AUTH_TOKEN=your-auth-token
+TWILIO_PHONE_NUMBER=+1234567890
 ```
 
-### Run Specific Test Categories
+#### Optional Variables
 
 ```bash
-# Unit tests only
-pytest tests/unit/
+# Application Settings
+OPENAI_MODEL=gpt-4                    # OpenAI model to use
+MAX_PDF_SIZE_MB=10                    # Maximum PDF file size
+LOG_LEVEL=INFO                        # Logging level
+WEBHOOK_VALIDATION=true               # Enable Twilio webhook validation
 
-# Integration tests
-pytest tests/integration/
+# Authentication
+JWT_SECRET_KEY=your-secret-key        # JWT signing key (CHANGE IN PRODUCTION!)
+JWT_EXPIRY_HOURS=24                   # Token expiry time
+ADMIN_USERNAME=admin                  # Default admin username
+ADMIN_PASSWORD=admin123               # Default admin password (CHANGE!)
 
-# End-to-end tests
-pytest tests/e2e/
-
-# Performance tests
-pytest tests/performance/
+# Database (optional)
+DATABASE_URL=sqlite:///data/reality_checker.db
 ```
 
-### Test Coverage
+### Configuration Validation
+
+The application validates all required configuration on startup:
 
 ```bash
-# Generate coverage report
-pytest --cov=app --cov-report=html
-
-# View coverage report
-open htmlcov/index.html
+# Check configuration
+python -c "from app.config import get_config; print('✅ Configuration valid')"
 ```
 
-## 📊 Monitoring & Observability
+## 🎯 Usage
 
-### Health Checks
+### WhatsApp Bot Usage
 
-- **Basic Health**: `GET /health` - Simple health status
-- **Detailed Health**: `GET /health/detailed` - Comprehensive service checks
-- **Metrics**: `GET /health/metrics` - Application metrics
-- **Readiness**: `GET /health/readiness` - Kubernetes readiness probe
-- **Liveness**: `GET /health/liveness` - Kubernetes liveness probe
+1. **Add the Bot**: Add your Twilio WhatsApp number to your contacts
+2. **Send Job Ad**: Send either:
+   - Plain text job advertisement
+   - PDF file containing job posting
+3. **Get Analysis**: Receive trust score, classification, and detailed reasoning
 
-### Metrics
+#### Example Interaction
 
-The application collects comprehensive metrics including:
+```
+User: "Software Engineer position at Google. $200k salary. 
+       Send $500 for background check to secure position."
 
-- **Request Metrics**: Count, duration, status codes
-- **Service Metrics**: OpenAI/Twilio response times and error rates
-- **Error Tracking**: Error rates, types, and alerting
-- **User Metrics**: Active users, interaction patterns
+Bot: 🔍 Job Analysis Results
 
-### Logging
+Trust Score: 15/100
+Classification: Likely Scam
 
-Structured JSON logging with:
+Reasons:
+1. Requests upfront payment for background check
+2. Unusually high salary without proper verification process  
+3. Legitimate companies don't ask for money from candidates
 
-- **Correlation IDs**: Request tracking across services
-- **Data Sanitization**: Phone numbers and sensitive data protection
-- **Log Levels**: Configurable logging levels
-- **Context**: Rich contextual information for debugging
-
-## 🚢 Deployment
-
-### Docker Deployment
-
-```bash
-# Build the image
-docker build -t reality-checker .
-
-# Run with environment file
-docker run --env-file .env -p 8000:8000 reality-checker
+⚠️ This appears to be a job scam. Legitimate employers never ask for upfront payments.
 ```
 
-### Docker Compose
+### Dashboard Usage
 
-```bash
-# Start all services
-docker-compose up -d
+Access the admin dashboard at `http://localhost:8000/admin`:
 
-# View logs
-docker-compose logs -f
+1. **Login**: Use configured admin credentials
+2. **Monitor**: View real-time system metrics and health
+3. **Analytics**: Analyze usage trends and detection patterns
+4. **Users**: Manage WhatsApp user interactions
+5. **Reports**: Generate and export comprehensive reports
 
-# Stop services
-docker-compose down
+## 📚 API Documentation
+
+### Interactive Documentation
+
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+### Key Endpoints
+
+#### WhatsApp Webhook
+```http
+POST /webhook/whatsapp
+Content-Type: application/x-www-form-urlencoded
+
+# Twilio webhook payload
 ```
+
+#### Health Check
+```http
+GET /health
+
+Response:
+{
+  "status": "healthy",
+  "timestamp": "2025-01-16T10:30:00Z",
+  "services": {
+    "openai": "connected",
+    "twilio": "connected"
+  }
+}
+```
+
+#### Dashboard API
+```http
+GET /api/dashboard/overview
+Authorization: Bearer <jwt-token>
+
+Response:
+{
+  "total_requests": 1250,
+  "requests_today": 45,
+  "error_rate": 2.3,
+  "avg_response_time": 1.2
+}
+```
+
+## 🖥️ Dashboard
+
+The web dashboard provides comprehensive monitoring and management capabilities:
+
+### Features
+
+- **System Health**: Real-time service status and metrics
+- **Analytics**: Usage trends, classification breakdowns, peak hours
+- **User Management**: WhatsApp user interactions and history
+- **Configuration**: System settings and bot configuration
+- **Reporting**: Custom reports with CSV/PDF export
+- **Real-time Monitoring**: Live metrics and active request tracking
+
+### Access
+
+1. Navigate to `http://localhost:8000/admin`
+2. Login with configured credentials
+3. Explore different sections using the navigation menu
+
+## 🚀 Deployment
 
 ### Production Deployment
 
-For production deployment, consider:
+#### Docker Deployment (Recommended)
 
-1. **Environment Security**: Use secure secret management
-2. **HTTPS**: Enable SSL/TLS certificates
-3. **Load Balancing**: Use nginx or similar for load balancing
-4. **Database**: Consider PostgreSQL for production workloads
-5. **Monitoring**: Set up application monitoring and alerting
-6. **Backup**: Implement database backup strategies
+```bash
+# 1. Prepare production environment
+cp .env.example .env.production
+# Configure production values in .env.production
 
-### Kubernetes Deployment
+# 2. Build production image
+docker build -t reality-checker:latest .
+
+# 3. Run with production configuration
+docker run -d \
+  --name reality-checker \
+  --env-file .env.production \
+  -p 8000:8000 \
+  -v $(pwd)/data:/app/data \
+  reality-checker:latest
+```
+
+#### Kubernetes Deployment
 
 ```yaml
-# Example Kubernetes deployment
+# k8s-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -391,219 +334,371 @@ spec:
             secretKeyRef:
               name: reality-checker-secrets
               key: openai-api-key
-        livenessProbe:
-          httpGet:
-            path: /health/liveness
-            port: 8000
-        readinessProbe:
-          httpGet:
-            path: /health/readiness
-            port: 8000
+        # ... other environment variables
 ```
 
-## 🔒 Security
+#### Cloud Deployment
 
-### Security Features
+**AWS ECS/Fargate**:
+```bash
+# Build and push to ECR
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <account>.dkr.ecr.us-east-1.amazonaws.com
+docker build -t reality-checker .
+docker tag reality-checker:latest <account>.dkr.ecr.us-east-1.amazonaws.com/reality-checker:latest
+docker push <account>.dkr.ecr.us-east-1.amazonaws.com/reality-checker:latest
+```
 
-- **Input Sanitization**: All user inputs are sanitized and validated
-- **Rate Limiting**: Configurable rate limits to prevent abuse
-- **Authentication**: JWT-based authentication for dashboard access
-- **CORS**: Configurable CORS policies
-- **Security Headers**: Comprehensive security headers
-- **Webhook Validation**: Twilio signature validation
-- **Data Privacy**: Phone number masking in logs
+**Google Cloud Run**:
+```bash
+# Deploy to Cloud Run
+gcloud run deploy reality-checker \
+  --image gcr.io/PROJECT-ID/reality-checker \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated
+```
 
-### Security Best Practices
+### Production Considerations
 
-1. **API Keys**: Store API keys securely using environment variables
-2. **HTTPS**: Always use HTTPS in production
-3. **Rate Limiting**: Configure appropriate rate limits
-4. **Input Validation**: Validate all inputs on both client and server
-5. **Logging**: Avoid logging sensitive information
-6. **Updates**: Keep dependencies updated regularly
+#### Security Checklist
+
+- [ ] Change default admin credentials
+- [ ] Use strong JWT secret key
+- [ ] Enable HTTPS/TLS
+- [ ] Configure proper CORS origins
+- [ ] Enable webhook signature validation
+- [ ] Set up proper firewall rules
+- [ ] Use secrets management (AWS Secrets Manager, etc.)
+
+#### Performance Optimization
+
+- [ ] Configure connection pooling
+- [ ] Set up Redis for caching
+- [ ] Enable response compression
+- [ ] Configure CDN for static assets
+- [ ] Set up load balancing
+- [ ] Monitor resource usage
+
+#### Monitoring & Alerting
+
+- [ ] Set up application monitoring (Datadog, New Relic)
+- [ ] Configure log aggregation (ELK stack, CloudWatch)
+- [ ] Set up error tracking (Sentry)
+- [ ] Configure health check monitoring
+- [ ] Set up alerting for critical errors
+
+## 🛠️ Development
+
+### Development Setup
+
+```bash
+# Clone repository
+git clone https://github.com/your-org/reality-checker-whatsapp-bot.git
+cd reality-checker-whatsapp-bot
+
+# Set up Python environment
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Set up frontend
+cd dashboard
+npm install
+cd ..
+
+# Configure environment
+cp .env.example .env
+# Edit .env with development values
+
+# Run backend
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Run frontend (in another terminal)
+cd dashboard
+npm start
+```
+
+### Development Tools
+
+#### Code Quality
+
+```bash
+# Format code
+black app/
+black tests/
+
+# Lint code
+flake8 app/
+flake8 tests/
+
+# Type checking
+mypy app/
+```
+
+#### Database Management
+
+```bash
+# Initialize database
+python manage_db.py init
+
+# Create migration
+alembic revision --autogenerate -m "Description"
+
+# Apply migrations
+alembic upgrade head
+
+# Reset database
+python manage_db.py reset
+```
+
+### Project Structure
+
+```
+reality-checker-whatsapp-bot/
+├── app/                    # Backend application
+│   ├── api/               # API endpoints
+│   ├── services/          # Business logic services
+│   ├── models/            # Data models
+│   ├── utils/             # Utility functions
+│   └── main.py            # FastAPI application
+├── dashboard/             # React frontend
+│   ├── src/               # Source code
+│   ├── public/            # Static assets
+│   └── build/             # Built application
+├── tests/                 # Test suite
+├── migrations/            # Database migrations
+├── data/                  # Database and logs
+├── docker-compose.yml     # Development environment
+├── Dockerfile             # Container configuration
+├── requirements.txt       # Python dependencies
+└── README.md              # This file
+```
+
+## 🧪 Testing
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=app --cov-report=html
+
+# Run specific test file
+pytest tests/test_message_handler.py
+
+# Run frontend tests
+cd dashboard
+npm test
+
+# Run frontend tests with coverage
+npm run test:coverage
+```
+
+### Test Categories
+
+- **Unit Tests**: Individual component testing
+- **Integration Tests**: Service integration testing
+- **End-to-End Tests**: Complete workflow testing
+- **Performance Tests**: Load and stress testing
+
+### Test Data
+
+Sample test data is available in `tests/fixtures/`:
+- Job ad samples (legitimate, suspicious, scam)
+- PDF samples for processing tests
+- Mock API responses
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+#### 1. Application Won't Start
+
+**Symptoms**: Application exits immediately or fails to start
+
+**Solutions**:
+```bash
+# Check configuration
+python -c "from app.config import get_config; get_config()"
+
+# Check required environment variables
+grep -E "^[A-Z_]+" .env
+
+# Check logs
+tail -f logs/app.log
+```
+
+#### 2. OpenAI API Errors
+
+**Symptoms**: "OpenAI API error" messages
+
+**Solutions**:
+- Verify API key is correct and active
+- Check API quota and billing
+- Verify model name (gpt-4, gpt-3.5-turbo)
+- Check network connectivity
+
+```bash
+# Test OpenAI connection
+curl -H "Authorization: Bearer $OPENAI_API_KEY" \
+     https://api.openai.com/v1/models
+```
+
+#### 3. Twilio Webhook Issues
+
+**Symptoms**: WhatsApp messages not processed
+
+**Solutions**:
+- Verify webhook URL is accessible from internet
+- Check Twilio webhook configuration
+- Verify account SID and auth token
+- Check webhook signature validation
+
+```bash
+# Test webhook endpoint
+curl -X POST http://localhost:8000/webhook/whatsapp \
+     -d "From=+1234567890&Body=test message"
+```
+
+#### 4. PDF Processing Failures
+
+**Symptoms**: "Could not process PDF" errors
+
+**Solutions**:
+- Check PDF file size (must be under configured limit)
+- Verify PDF is not password protected
+- Check PDF contains extractable text
+- Verify network access to media URLs
+
+#### 5. Dashboard Access Issues
+
+**Symptoms**: Cannot access admin dashboard
+
+**Solutions**:
+- Verify admin credentials in .env file
+- Check JWT secret key configuration
+- Clear browser cache and cookies
+- Check browser console for errors
+
+```bash
+# Reset admin password
+python -c "
+from app.services.authentication import AuthenticationService
+auth = AuthenticationService()
+print(auth.hash_password('new_password'))
+"
+```
+
+### Debug Mode
+
+Enable debug mode for detailed logging:
+
+```bash
+# Set debug logging
+export LOG_LEVEL=DEBUG
+
+# Run with debug
+uvicorn app.main:app --reload --log-level debug
+```
+
+### Health Checks
+
+```bash
+# Check application health
+curl http://localhost:8000/health
+
+# Check specific service health
+curl http://localhost:8000/api/health/openai
+curl http://localhost:8000/api/health/twilio
+```
+
+### Log Analysis
+
+```bash
+# View recent logs
+tail -f logs/app.log
+
+# Search for errors
+grep -i error logs/app.log
+
+# Filter by correlation ID
+grep "correlation_id=abc123" logs/app.log
+```
+
+## 📊 Monitoring
+
+### Metrics
+
+The application exposes various metrics:
+
+- Request count and response times
+- Error rates and types
+- Service health status
+- User engagement metrics
+- Analysis accuracy metrics
+
+### Alerting
+
+Configure alerts for:
+
+- High error rates (>5%)
+- Slow response times (>5s)
+- Service unavailability
+- High memory/CPU usage
+- Failed authentication attempts
+
+### Log Aggregation
+
+For production deployments, consider:
+
+- **ELK Stack**: Elasticsearch, Logstash, Kibana
+- **Fluentd**: Log collection and forwarding
+- **CloudWatch**: AWS log aggregation
+- **Stackdriver**: Google Cloud logging
 
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
-### Development Setup
+### Development Workflow
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Make your changes and add tests
-4. Ensure all tests pass: `pytest`
-5. Commit your changes: `git commit -m 'Add amazing feature'`
-6. Push to the branch: `git push origin feature/amazing-feature`
-7. Open a Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass
+6. Submit a pull request
 
-### Code Style
+### Code Standards
 
-- **Python**: Follow PEP 8, use `black` for formatting
-- **TypeScript**: Follow standard TypeScript conventions
-- **Testing**: Write tests for new features
-- **Documentation**: Update documentation for API changes
+- Follow PEP 8 for Python code
+- Use TypeScript for frontend code
+- Write comprehensive tests
+- Document new features
+- Follow semantic versioning
 
-## 📄 API Documentation
-
-### WhatsApp Bot Endpoints
-
-#### POST /webhook/whatsapp
-Receives incoming WhatsApp messages from Twilio.
-
-**Request Body** (form-encoded):
-```
-MessageSid: string
-From: string (whatsapp:+1234567890)
-To: string (whatsapp:+1234567890)
-Body: string
-NumMedia: integer
-MediaUrl0: string (optional)
-MediaContentType0: string (optional)
-```
-
-**Response**: HTTP 200 with empty body
-
-### Dashboard API Endpoints
-
-#### GET /api/dashboard/overview
-Get system overview metrics.
-
-**Headers**: `Authorization: Bearer <jwt_token>`
-
-**Response**:
-```json
-{
-  "total_requests": 1250,
-  "requests_today": 45,
-  "error_rate": 2.3,
-  "avg_response_time": 1.2,
-  "active_users": 23,
-  "system_health": "healthy"
-}
-```
-
-#### GET /api/analytics/trends
-Get usage trends and analytics.
-
-**Headers**: `Authorization: Bearer <jwt_token>`
-**Query Parameters**: 
-- `period`: day/week/month
-- `start_date`: YYYY-MM-DD
-- `end_date`: YYYY-MM-DD
-
-**Response**:
-```json
-{
-  "period": "week",
-  "classifications": {
-    "legit": 65,
-    "suspicious": 25,
-    "scam": 10
-  },
-  "daily_counts": [
-    {"date": "2025-01-15", "count": 45}
-  ]
-}
-```
-
-For complete API documentation, visit `/docs` when running the application.
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-#### 1. OpenAI API Errors
-```
-Error: OpenAI API key not configured
-```
-**Solution**: Ensure `OPENAI_API_KEY` is set in your `.env` file with a valid API key.
-
-#### 2. Twilio Webhook Issues
-```
-Error: Invalid webhook signature
-```
-**Solution**: Check that `TWILIO_AUTH_TOKEN` is correct and webhook validation is properly configured.
-
-#### 3. PDF Processing Errors
-```
-Error: Could not process PDF file
-```
-**Solution**: Ensure the PDF is valid, under size limit, and contains extractable text.
-
-#### 4. Database Connection Issues
-```
-Error: Database connection failed
-```
-**Solution**: Check database permissions and ensure SQLite file is writable.
-
-### Debug Mode
-
-Enable debug logging for troubleshooting:
-
-```bash
-export LOG_LEVEL=DEBUG
-uvicorn app.main:app --reload
-```
-
-### Health Checks
-
-Use health endpoints to diagnose issues:
-
-```bash
-# Basic health
-curl http://localhost:8000/health
-
-# Detailed health with service status
-curl http://localhost:8000/health/detailed
-
-# Application metrics
-curl http://localhost:8000/health/metrics
-```
-
-## 📈 Performance
-
-### Performance Characteristics
-
-- **Response Time**: < 2 seconds for text analysis
-- **Throughput**: 100+ requests per minute
-- **Concurrent Users**: 50+ simultaneous users
-- **PDF Processing**: Files up to 10MB
-- **Memory Usage**: ~200MB base memory
-
-### Performance Optimization
-
-1. **Caching**: Implement Redis for response caching
-2. **Database**: Use PostgreSQL for better performance
-3. **CDN**: Use CDN for static assets
-4. **Load Balancing**: Distribute load across multiple instances
-5. **Monitoring**: Set up performance monitoring and alerting
-
-## 📚 Additional Resources
-
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [React Documentation](https://reactjs.org/docs/)
-- [Twilio WhatsApp API](https://www.twilio.com/docs/whatsapp)
-- [OpenAI API Documentation](https://platform.openai.com/docs)
-- [Material-UI Documentation](https://mui.com/)
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/yourusername/reality-checker-whatsapp-bot/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/reality-checker-whatsapp-bot/discussions)
-- **Email**: support@realitychecker.com
-
-## 📜 License
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## 🆘 Support
+
+- **Documentation**: Check this README and API docs
+- **Issues**: Report bugs on GitHub Issues
+- **Discussions**: Join GitHub Discussions for questions
+- **Email**: Contact support@yourcompany.com
+
 ## 🙏 Acknowledgments
 
-- OpenAI for providing the GPT-4 API
-- Twilio for WhatsApp Business API integration
-- The open-source community for the amazing tools and libraries
+- OpenAI for GPT-4 API
+- Twilio for WhatsApp Business API
+- FastAPI and React communities
+- All contributors and testers
 
 ---
 
-**Made with ❤️ by the Reality Checker Team**
+**⚠️ Security Notice**: This application processes user messages and interacts with external APIs. Always follow security best practices and keep dependencies updated.
 
-*Protecting job seekers from scams, one message at a time.*
+**📱 WhatsApp Policy**: Ensure compliance with WhatsApp Business API policies and terms of service.
