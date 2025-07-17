@@ -32,34 +32,39 @@ The frontend components are properly implemented:
 To manually test the dashboard:
 
 1. **Start the Backend Server**:
+
    ```bash
    # Navigate to the project root
    cd /path/to/reality-checker-whatsapp-bot
-   
+
    # Start the FastAPI server
    uvicorn app.main:app --reload
    ```
 
 2. **Start the Frontend Development Server**:
+
    ```bash
    # Navigate to the dashboard directory
    cd /path/to/reality-checker-whatsapp-bot/dashboard
-   
+
    # Start the React development server
    npm start
    ```
 
 3. **Access the Dashboard**:
+
    - Open your browser and navigate to `http://localhost:3000`
    - Log in with valid credentials
    - Navigate to the Monitoring page
 
 4. **Test WebSocket Connection**:
+
    - Check the browser console for WebSocket connection messages
    - Verify that the "WebSocket Connected" status appears on the monitoring page
    - The LiveMetricsCard should update automatically every 5 seconds
 
 5. **Test Real-Time Updates**:
+
    - Make some API requests to the backend to generate metrics
    - Verify that the metrics update in real-time on the dashboard
    - The charts should update with new data points
@@ -71,21 +76,25 @@ To manually test the dashboard:
 ## 4. Specific Features to Test
 
 1. **LiveMetricsCard**:
+
    - Should display current request count, error rate, and response time
    - Should update automatically with new data
    - Should show service health status for each service
 
 2. **ActiveRequestsTable**:
+
    - Should display currently processing requests
    - Should show request type, status, duration, and user
    - Should update as new requests come in and existing ones complete
 
 3. **ErrorRateChart**:
+
    - Should display error rate over time
    - Should update with new data points
    - Should show both error rate percentage and error count
 
 4. **ResponseTimeChart**:
+
    - Should display response time over time
    - Should show average, 95th percentile, and 99th percentile
    - Should update with new data points
@@ -100,16 +109,19 @@ To manually test the dashboard:
 If you encounter issues during testing:
 
 1. **WebSocket Connection Issues**:
+
    - Check that CORS is properly configured in the backend
    - Verify that the WebSocket URL is correct (ws:// for HTTP, wss:// for HTTPS)
    - Check browser console for connection errors
 
 2. **No Real-Time Updates**:
+
    - Verify that the WebSocket manager's broadcast task is running
    - Check that metrics are being collected in the backend
    - Ensure the frontend is correctly processing WebSocket messages
 
 3. **Chart Data Issues**:
+
    - Verify that the data format matches what the charts expect
    - Check that timestamps are properly formatted
    - Ensure data arrays aren't growing too large (should be limited to ~20 points)
@@ -134,6 +146,7 @@ When everything is working correctly:
 To generate test data for the monitoring dashboard:
 
 1. **Generate Request Metrics**:
+
    ```bash
    # Make multiple API requests to generate metrics
    curl http://localhost:8000/health
@@ -142,6 +155,7 @@ To generate test data for the monitoring dashboard:
    ```
 
 2. **Generate Errors**:
+
    ```bash
    # Make invalid requests to generate errors
    curl http://localhost:8000/nonexistent-endpoint
@@ -157,10 +171,12 @@ To generate test data for the monitoring dashboard:
 To test the performance of the real-time monitoring:
 
 1. **Connection Handling**:
+
    - Open multiple browser tabs with the monitoring dashboard
    - Verify that all instances receive updates correctly
 
 2. **Data Volume**:
+
    - Generate a large volume of metrics data
    - Verify that the dashboard remains responsive
    - Check that charts handle large datasets appropriately

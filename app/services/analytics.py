@@ -22,6 +22,10 @@ from app.models.data_models import (
 )
 from app.services.user_management import UserManagementService
 from app.utils.logging import get_logger, log_with_context
+from app.services.analytics_extensions_integration import (
+    get_metric_time_series, get_report, store_report, list_reports,
+    record_analytics_event, get_analytics_insights
+)
 
 
 logger = get_logger(__name__)
@@ -36,6 +40,9 @@ class AnalyticsService:
     - Classification breakdown and usage statistics calculation
     - Trend analysis and user engagement metrics
     - Report generation with multiple export formats
+    - Advanced analytics and pattern recognition
+    - A/B testing and user behavior clustering
+    - Business intelligence insights
     """
     
     def __init__(self, config: AppConfig, user_service: UserManagementService):
@@ -52,6 +59,10 @@ class AnalyticsService:
         self._cache_timestamps: Dict[str, datetime] = {}
         self._cache_ttl = timedelta(minutes=5)  # Cache TTL for expensive calculations
         self._lock = threading.RLock()
+        
+        # Initialize analytics extensions
+        from app.services.analytics_extensions import AnalyticsServiceExtensions
+        self._extensions = AnalyticsServiceExtensions()
         
         logger.info("AnalyticsService initialized")
     

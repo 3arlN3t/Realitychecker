@@ -193,6 +193,10 @@ app.include_router(dashboard_router)
 from app.api.monitoring import router as monitoring_router
 app.include_router(monitoring_router)
 
+# Include analytics router
+from app.api.analytics import router as analytics_router
+app.include_router(analytics_router)
+
 # Add security middleware
 app.add_middleware(
     TrustedHostMiddleware, 

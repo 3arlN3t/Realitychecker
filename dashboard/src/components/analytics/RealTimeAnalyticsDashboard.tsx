@@ -51,7 +51,7 @@ import {
   Security as SecurityIcon,
   Assessment as AssessmentIcon,
   ShowChart as ShowChartIcon,
-  AutorenewIcon
+  Autorenew as AutorenewIcon
 } from '@mui/icons-material';
 import {
   LineChart,
