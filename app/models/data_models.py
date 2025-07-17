@@ -113,6 +113,18 @@ class AppConfig:
     log_level: str = "INFO"
     webhook_validation: bool = True
     
+    # Enhanced AI Analysis Configuration
+    openai_fallback_model: str = "gpt-3.5-turbo"
+    enable_rule_based_detection: bool = True
+    enable_similarity_checking: bool = True
+    similarity_threshold: float = 0.75
+    analysis_history_max_size: int = 1000
+    rule_based_confidence_threshold: float = 0.7
+    enable_enhanced_analysis: bool = True
+    batch_analysis_size: int = 5
+    enable_streaming_analysis: bool = True
+    enable_feedback_learning: bool = True
+    
     def __post_init__(self):
         """Validate configuration values after initialization."""
         if not self.openai_api_key:
@@ -129,6 +141,14 @@ class AppConfig:
             raise ValueError("OpenAI model is required")
         if self.log_level not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
             raise ValueError("Invalid log level")
+        if not (0.0 <= self.similarity_threshold <= 1.0):
+            raise ValueError("Similarity threshold must be between 0.0 and 1.0")
+        if self.analysis_history_max_size <= 0:
+            raise ValueError("Analysis history max size must be positive")
+        if not (0.0 <= self.rule_based_confidence_threshold <= 1.0):
+            raise ValueError("Rule-based confidence threshold must be between 0.0 and 1.0")
+        if self.batch_analysis_size <= 0:
+            raise ValueError("Batch analysis size must be positive")
     
     @classmethod
     def from_env(cls) -> 'AppConfig':
@@ -149,7 +169,19 @@ class AppConfig:
             max_pdf_size_mb=int(os.getenv("MAX_PDF_SIZE_MB", "10")),
             openai_model=os.getenv("OPENAI_MODEL", "gpt-4"),
             log_level=os.getenv("LOG_LEVEL", "INFO"),
-            webhook_validation=os.getenv("WEBHOOK_VALIDATION", "true").lower() == "true"
+            webhook_validation=os.getenv("WEBHOOK_VALIDATION", "true").lower() == "true",
+            
+            # Enhanced AI Analysis Configuration
+            openai_fallback_model=os.getenv("OPENAI_FALLBACK_MODEL", "gpt-3.5-turbo"),
+            enable_rule_based_detection=os.getenv("ENABLE_RULE_BASED_DETECTION", "true").lower() == "true",
+            enable_similarity_checking=os.getenv("ENABLE_SIMILARITY_CHECKING", "true").lower() == "true",
+            similarity_threshold=float(os.getenv("SIMILARITY_THRESHOLD", "0.75")),
+            analysis_history_max_size=int(os.getenv("ANALYSIS_HISTORY_MAX_SIZE", "1000")),
+            rule_based_confidence_threshold=float(os.getenv("RULE_BASED_CONFIDENCE_THRESHOLD", "0.7")),
+            enable_enhanced_analysis=os.getenv("ENABLE_ENHANCED_ANALYSIS", "true").lower() == "true",
+            batch_analysis_size=int(os.getenv("BATCH_ANALYSIS_SIZE", "5")),
+            enable_streaming_analysis=os.getenv("ENABLE_STREAMING_ANALYSIS", "true").lower() == "true",
+            enable_feedback_learning=os.getenv("ENABLE_FEEDBACK_LEARNING", "true").lower() == "true"
         )
 
 

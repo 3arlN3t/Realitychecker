@@ -12,7 +12,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.config import get_config, AppConfig
 from app.services.message_handler import MessageHandlerService
 from app.services.pdf_processing import PDFProcessingService
-from app.services.openai_analysis import OpenAIAnalysisService
+from app.services.enhanced_ai_analysis import EnhancedAIAnalysisService
 from app.services.twilio_response import TwilioResponseService
 from app.services.user_management import UserManagementService
 from app.services.analytics import AnalyticsService
@@ -37,7 +37,7 @@ class ServiceContainer:
         """Initialize the service container."""
         self._config: Optional[AppConfig] = config
         self._pdf_service: Optional[PDFProcessingService] = None
-        self._openai_service: Optional[OpenAIAnalysisService] = None
+        self._openai_service: Optional[EnhancedAIAnalysisService] = None
         self._twilio_service: Optional[TwilioResponseService] = None
         self._message_handler: Optional[MessageHandlerService] = None
         self._user_management_service: Optional[UserManagementService] = None
@@ -57,11 +57,11 @@ class ServiceContainer:
             self._pdf_service = PDFProcessingService(config)
         return self._pdf_service
     
-    def get_openai_service(self) -> OpenAIAnalysisService:
-        """Get OpenAI analysis service."""
+    def get_openai_service(self) -> EnhancedAIAnalysisService:
+        """Get Enhanced AI analysis service."""
         if self._openai_service is None:
             config = self.get_config()
-            self._openai_service = OpenAIAnalysisService(config)
+            self._openai_service = EnhancedAIAnalysisService(config)
         return self._openai_service
     
     def get_twilio_service(self) -> TwilioResponseService:
@@ -213,8 +213,8 @@ def get_pdf_processing_service() -> PDFProcessingService:
     return get_service_container().get_pdf_service()
 
 
-def get_openai_analysis_service() -> OpenAIAnalysisService:
-    """Dependency to get OpenAI analysis service."""
+def get_openai_analysis_service() -> EnhancedAIAnalysisService:
+    """Dependency to get Enhanced AI analysis service."""
     return get_service_container().get_openai_service()
 
 

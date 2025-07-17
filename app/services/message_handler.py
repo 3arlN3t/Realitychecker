@@ -10,7 +10,7 @@ from typing import Optional
 
 from app.models.data_models import TwilioWebhookRequest, JobAnalysisResult, AppConfig
 from app.services.pdf_processing import PDFProcessingService, PDFProcessingError
-from app.services.openai_analysis import OpenAIAnalysisService
+from app.services.enhanced_ai_analysis import EnhancedAIAnalysisService
 from app.services.twilio_response import TwilioResponseService
 from app.services.user_management import UserManagementService
 from app.utils.logging import get_logger, get_correlation_id, log_with_context, sanitize_phone_number
@@ -38,7 +38,7 @@ class MessageHandlerService:
         """
         self.config = config
         self.pdf_service = PDFProcessingService(config)
-        self.openai_service = OpenAIAnalysisService(config)
+        self.openai_service = EnhancedAIAnalysisService(config)
         self.twilio_service = TwilioResponseService(config)
         self.user_service = UserManagementService(config)
         
