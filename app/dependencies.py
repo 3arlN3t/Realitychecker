@@ -33,9 +33,9 @@ class ServiceContainer:
     Manages service instances and their dependencies.
     """
     
-    def __init__(self):
+    def __init__(self, config: AppConfig):
         """Initialize the service container."""
-        self._config: Optional[AppConfig] = None
+        self._config: Optional[AppConfig] = config
         self._pdf_service: Optional[PDFProcessingService] = None
         self._openai_service: Optional[OpenAIAnalysisService] = None
         self._twilio_service: Optional[TwilioResponseService] = None
@@ -184,11 +184,11 @@ class ServiceContainer:
 _service_container: Optional[ServiceContainer] = None
 
 
-def get_service_container() -> ServiceContainer:
+def get_service_container(config: AppConfig = Depends(get_config)) -> ServiceContainer:
     """Get the global service container instance."""
     global _service_container
     if _service_container is None:
-        _service_container = ServiceContainer()
+        _service_container = ServiceContainer(config)
     return _service_container
 
 

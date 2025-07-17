@@ -831,3 +831,28 @@ class AnalyticsService:
         # This would require a library like openpyxl
         # For now, return a placeholder
         return f"Excel export not implemented. Report type: {report.report_type}"
+
+    async def get_ab_test_results(self, experiment_name: str) -> Dict[str, Any]:
+        from app.utils.ab_testing import ABTesting
+        ab_testing = ABTesting(self.config.AB_TESTING_CONFIG)
+        
+        user_list = await self.user_service.get_users(page=1, limit=10000)
+        
+        results = defaultdict(lambda: {"users": 0, "conversions": 0})
+        
+        for user in user_list.users:
+            variant = ab_testing.get_variant(user.phone_number, experiment_name)
+            if variant:
+                results[variant]["users"] += 1
+                # Define conversion event here
+                # For example, a successful analysis
+                if any(i.was_successful for i in user.interaction_history):
+                    results[variant]["conversions"] += 1
+        
+        for variant, data in results.items():
+            data["conversion_rate"] = (data["conversions"] / data["users"]) * 100 if data["users"] > 0 else 0
+            
+        return {
+            "experiment_name": experiment_name,
+            "results": dict(results)
+        }

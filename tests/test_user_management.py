@@ -391,6 +391,50 @@ class TestUserManagementService:
         results = await user_service.search_users("2222")
         assert len(results) == 1
         assert results[0].phone_number == phone2
+
+    @pytest.mark.asyncio
+    async def test_get_user_retention(self, user_service):
+        now = datetime.utcnow()
+        user_1_interactions = [
+            UserInteraction(timestamp=now - timedelta(days=31)),
+            UserInteraction(timestamp=now - timedelta(days=25)),
+            UserInteraction(timestamp=now - timedelta(days=15))
+        ]
+        user_2_interactions = [
+            UserInteraction(timestamp=now - timedelta(days=61)),
+            UserInteraction(timestamp=now - timedelta(days=35))
+        ]
+        user_3_interactions = [
+            UserInteraction(timestamp=now - timedelta(days=5))
+        ]
+
+        user_1 = UserDetails(phone_number="+1", first_interaction=now - timedelta(days=31), last_interaction=now - timedelta(days=15), interaction_history=user_1_interactions)
+        user_2 = UserDetails(phone_number="+2", first_interaction=now - timedelta(days=61), last_interaction=now - timedelta(days=35), interaction_history=user_2_interactions)
+        user_3 = UserDetails(phone_number="+3", first_interaction=now - timedelta(days=5), last_interaction=now - timedelta(days=5), interaction_history=user_3_interactions)
+
+        user_service._users = {
+            "+1": user_1,
+            "+2": user_2,
+            "+3": user_3
+        }
+
+        retention_data = await user_service.get_user_retention()
+
+        this_month_cohort = now.strftime("%Y-%m")
+        last_month_cohort = (now - timedelta(days=31)).strftime("%Y-%m")
+        two_months_ago_cohort = (now - timedelta(days=61)).strftime("%Y-%m")
+
+        assert this_month_cohort in retention_data
+        assert last_month_cohort in retention_data
+        assert two_months_ago_cohort in retention_data
+
+        assert retention_data[this_month_cohort]["cohort_size"] == 1
+        assert retention_data[last_month_cohort]["cohort_size"] == 1
+        assert retention_data[two_months_ago_cohort]["cohort_size"] == 1
+
+        assert retention_data[last_month_cohort]["retention"]["1d"] == 100.0
+        assert retention_data[last_month_cohort]["retention"]["7d"] == 100.0
+        assert retention_data[last_month_cohort]["retention"]["30d"] == 0.0
     
     @pytest.mark.asyncio
     async def test_get_user_interaction_history(self, user_service, sample_analysis_result):

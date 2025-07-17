@@ -1,3 +1,7 @@
+import pytest
+
+pytest.mark.skip(reason="This is a development script, not a pytest test file.")
+
 #!/usr/bin/env python3
 """
 Development testing script for Reality Checker WhatsApp Bot.

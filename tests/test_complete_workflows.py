@@ -317,8 +317,6 @@ class TestCompleteUserWorkflows:
         call_args = mock_twilio_service.send_error_message.call_args
         assert call_args[0][0] == TestPhoneNumbers.LEGITIMATE_USER
         assert call_args[0][1] == "pdf_processing"
-"""    
-@patch('app.api.webhook.get_config')
     @patch('app.services.openai_analysis.OpenAIAnalysisService')
     @patch('app.services.twilio_response.TwilioResponseService')
     def test_openai_error_workflow(self, mock_twilio_service_class, mock_openai_service_class, 

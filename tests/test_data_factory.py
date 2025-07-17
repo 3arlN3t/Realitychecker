@@ -440,4 +440,3 @@ if __name__ == "__main__":
     print(TestDataFactory.generate_user_data())
     print("\nExample system metrics:")
     print(TestDataFactory.generate_system_metrics())
-"""

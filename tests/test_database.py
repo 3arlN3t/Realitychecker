@@ -32,22 +32,6 @@ from app.models.data_models import (
 class TestDatabase:
     """Test database connection and basic operations."""
     
-    @pytest.fixture
-    async def temp_db(self):
-        """Create a temporary database for testing."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
-            db_path = f.name
-        
-        database_url = f"sqlite+aiosqlite:///{db_path}"
-        db = Database(database_url)
-        
-        await db.initialize()
-        
-        yield db
-        
-        await db.close()
-        os.unlink(db_path)
-    
     @pytest.mark.asyncio
     async def test_database_initialization(self, temp_db):
         """Test database initialization."""

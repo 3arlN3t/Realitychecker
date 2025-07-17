@@ -639,6 +639,32 @@ class TestAnalyticsService:
         assert distribution["Tuesday"] == 1
         assert len(distribution) == 2
 
+    @pytest.mark.asyncio
+    async def test_get_ab_test_results(self, analytics_service, mock_user_service, sample_user_list):
+        analytics_service.config.AB_TESTING_CONFIG = {
+            "test_experiment": {
+                "variants": {
+                    "A": 1,
+                    "B": 1
+                }
+            }
+        }
+
+        mock_user_service.get_users.return_value = sample_user_list
+
+        results = await analytics_service.get_ab_test_results("test_experiment")
+
+        assert results["experiment_name"] == "test_experiment"
+        assert "A" in results["results"]
+        assert "B" in results["results"]
+
+        assert results["results"]["A"]["users"] >= 0
+        assert results["results"]["B"]["users"] >= 0
+        assert results["results"]["A"]["conversions"] >= 0
+        assert results["results"]["B"]["conversions"] >= 0
+        assert results["results"]["A"]["conversion_rate"] >= 0
+        assert results["results"]["B"]["conversion_rate"] >= 0
+
 
 class TestAnalyticsDataModels:
     """Test cases for analytics data models."""

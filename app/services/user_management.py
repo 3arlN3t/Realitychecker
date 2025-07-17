@@ -6,7 +6,7 @@ interactions, managing user sessions, and providing user blocking/unblocking fun
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime, timedelta
 import threading
 from collections import defaultdict
@@ -501,3 +501,33 @@ class UserManagementService:
             )
             
             return matching_users
+
+    async def get_user_retention(self,
+                                 cohort_period: str = "monthly",
+                                 retention_periods: List[int] = [1, 7, 30]) -> Dict[str, Any]:
+        
+        with self._lock:
+            cohorts = defaultdict(list)
+            for user in self._users.values():
+                cohort_key = user.first_interaction.strftime("%Y-%m")
+                cohorts[cohort_key].append(user)
+
+            retention_data = {}
+            for cohort_key, cohort_users in cohorts.items():
+                cohort_start_date = datetime.strptime(cohort_key, "%Y-%m")
+                retention_data[cohort_key] = {
+                    "cohort_size": len(cohort_users),
+                    "retention": {}
+                }
+                for period in retention_periods:
+                    retention_end_date = cohort_start_date + timedelta(days=period)
+                    retained_users = 0
+                    for user in cohort_users:
+                        for interaction in user.interaction_history:
+                            if interaction.timestamp >= retention_end_date:
+                                retained_users += 1
+                                break
+                    retention_rate = (retained_users / len(cohort_users)) * 100 if cohort_users else 0
+                    retention_data[cohort_key]["retention"][f"{period}d"] = round(retention_rate, 2)
+            
+            return retention_data
