@@ -8,7 +8,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Grid,
   Button,
   SelectChangeEvent
 } from '@mui/material';
@@ -133,8 +132,8 @@ const UserSearchBar: React.FC<UserSearchProps> = ({ onSearch, searchQuery }) => 
       </Box>
       
       {showFilters && (
-        <Grid container spacing={2} sx={{ mt: 2 }}>
-          <Grid item xs={12} sm={4}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 2 }}>
+          <Box sx={{ flex: { xs: '1 1 100%', sm: '1 1 calc(33.333% - 11px)' } }}>
             <FormControl fullWidth size="small">
               <InputLabel id="status-filter-label">Status</InputLabel>
               <Select
@@ -149,9 +148,9 @@ const UserSearchBar: React.FC<UserSearchProps> = ({ onSearch, searchQuery }) => 
                 <MenuItem value="blocked">Blocked</MenuItem>
               </Select>
             </FormControl>
-          </Grid>
+          </Box>
           
-          <Grid item xs={12} sm={4}>
+          <Box sx={{ flex: { xs: '1 1 100%', sm: '1 1 calc(33.333% - 11px)' } }}>
             <FormControl fullWidth size="small">
               <InputLabel id="engagement-filter-label">Engagement</InputLabel>
               <Select
@@ -167,9 +166,9 @@ const UserSearchBar: React.FC<UserSearchProps> = ({ onSearch, searchQuery }) => 
                 <MenuItem value="low">Low</MenuItem>
               </Select>
             </FormControl>
-          </Grid>
+          </Box>
           
-          <Grid item xs={12} sm={4}>
+          <Box sx={{ flex: { xs: '1 1 100%', sm: '1 1 calc(33.333% - 11px)' } }}>
             <FormControl fullWidth size="small">
               <InputLabel id="classification-filter-label">Classification</InputLabel>
               <Select
@@ -185,9 +184,9 @@ const UserSearchBar: React.FC<UserSearchProps> = ({ onSearch, searchQuery }) => 
                 <MenuItem value="scam">Mostly Scam</MenuItem>
               </Select>
             </FormControl>
-          </Grid>
+          </Box>
           
-          <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Box sx={{ flex: '1 1 100%', display: 'flex', justifyContent: 'flex-end' }}>
             <Button
               variant="outlined"
               onClick={handleResetFilters}
@@ -201,8 +200,8 @@ const UserSearchBar: React.FC<UserSearchProps> = ({ onSearch, searchQuery }) => 
             >
               Apply Filters
             </Button>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       )}
     </Box>
   );

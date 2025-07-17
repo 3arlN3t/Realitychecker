@@ -648,4 +648,3 @@ class ReportScheduler:
         else:
             # Default to tomorrow
             return datetime(now.year, now.month, now.day, 0, 0) + timedelta(days=1)
-"""

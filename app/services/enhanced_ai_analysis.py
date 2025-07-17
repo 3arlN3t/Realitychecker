@@ -245,8 +245,8 @@ class EnhancedAIAnalysisService(OpenAIAnalysisService):
             
             # Re-raise the original exception if all fallbacks fail
             raise    
-  
-  async def analyze_job_ads_batch(self, job_texts: List[str]) -> List[JobAnalysisResult]:
+    
+    async def analyze_job_ads_batch(self, job_texts: List[str]) -> List[JobAnalysisResult]:
         """
         Analyze multiple job advertisements in batch.
         

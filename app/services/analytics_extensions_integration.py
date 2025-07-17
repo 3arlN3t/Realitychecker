@@ -97,4 +97,3 @@ async def get_analytics_insights(self, metrics=None, days=7):
         List of insights
     """
     return await self._extensions.get_analytics_insights(metrics, days)
-"""

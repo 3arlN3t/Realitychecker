@@ -496,4 +496,3 @@ class UserBehaviorClusteringEngine:
     def _humanize_feature_name(self, feature_name: str) -> str:
         """Convert feature name to human-readable format."""
         return feature_name.replace('_', ' ')
-"""

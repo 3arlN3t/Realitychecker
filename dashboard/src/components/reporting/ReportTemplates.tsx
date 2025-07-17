@@ -3,7 +3,6 @@ import {
   Box, 
   Paper, 
   Typography, 
-  Grid, 
   Card, 
   CardContent, 
   CardActions, 
@@ -61,9 +60,9 @@ const ReportTemplates: React.FC<ReportTemplatesProps> = ({
       
       <Divider sx={{ my: 2 }} />
       
-      <Grid container spacing={3}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
         {templates.map((template) => (
-          <Grid item xs={12} sm={6} md={4} key={template.id}>
+          <Box key={template.id} sx={{ flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 12px)', md: '1 1 calc(33.333% - 16px)' } }}>
             <Card variant="outlined">
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
@@ -115,11 +114,11 @@ const ReportTemplates: React.FC<ReportTemplatesProps> = ({
                 )}
               </CardActions>
             </Card>
-          </Grid>
+          </Box>
         ))}
         
         {templates.length === 0 && (
-          <Grid item xs={12}>
+          <Box sx={{ flex: '1 1 100%' }}>
             <Box sx={{ textAlign: 'center', py: 4 }}>
               <Typography variant="body1" color="textSecondary">
                 No report templates available
@@ -135,9 +134,9 @@ const ReportTemplates: React.FC<ReportTemplatesProps> = ({
                 </Button>
               )}
             </Box>
-          </Grid>
+          </Box>
         )}
-      </Grid>
+      </Box>
     </Paper>
   );
 };

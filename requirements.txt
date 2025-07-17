@@ -35,7 +35,7 @@ PyJWT==2.8.0
 bcrypt==4.1.2
 pyotp==2.8.0
 qrcode[pil]==7.4.2
-secrets==0.3.0
+# secrets==0.3.0  # This is a built-in Python module, not needed as external dependency
 
 # Testing dependencies
 pytest==7.4.3

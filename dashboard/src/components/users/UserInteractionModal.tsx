@@ -18,7 +18,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Grid,
   Card,
   CardContent,
   LinearProgress,
@@ -183,8 +182,8 @@ const UserInteractionModal: React.FC<UserInteractionModalProps> = ({
       <DialogContent dividers sx={{ p: 0 }}>
         {/* Overview Tab */}
         <TabPanel value={tabValue} index={0}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+            <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(50% - 12px)' } }}>
               <Paper sx={{ p: 2 }}>
                 <Typography variant="h6" gutterBottom>User Information</Typography>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
@@ -259,31 +258,31 @@ const UserInteractionModal: React.FC<UserInteractionModalProps> = ({
                   </Box>
                 </Box>
               </Paper>
-            </Grid>
+            </Box>
             
-            <Grid item xs={12} md={6}>
+            <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(50% - 12px)' } }}>
               <Paper sx={{ p: 2 }}>
                 <Typography variant="h6" gutterBottom>Interaction Summary</Typography>
                 
-                <Grid container spacing={2} sx={{ mb: 2 }}>
-                  <Grid item xs={6}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+                  <Box sx={{ flex: { xs: '1 1 calc(50% - 8px)' } }}>
                     <Card variant="outlined">
                       <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
                         <Typography variant="body2" color="text.secondary">Text Messages</Typography>
                         <Typography variant="h6">{stats.textCount}</Typography>
                       </CardContent>
                     </Card>
-                  </Grid>
+                  </Box>
                   
-                  <Grid item xs={6}>
+                  <Box sx={{ flex: { xs: '1 1 calc(50% - 8px)' } }}>
                     <Card variant="outlined">
                       <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
                         <Typography variant="body2" color="text.secondary">PDF Uploads</Typography>
                         <Typography variant="h6">{stats.pdfCount}</Typography>
                       </CardContent>
                     </Card>
-                  </Grid>
-                </Grid>
+                  </Box>
+                </Box>
                 
                 <Typography variant="subtitle2" gutterBottom>Classification Breakdown</Typography>
                 
@@ -330,8 +329,8 @@ const UserInteractionModal: React.FC<UserInteractionModalProps> = ({
                   </Typography>
                 </Box>
               </Paper>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </TabPanel>
         
         {/* Interaction History Tab */}
@@ -410,13 +409,13 @@ const UserInteractionModal: React.FC<UserInteractionModalProps> = ({
         
         {/* Analytics Tab */}
         <TabPanel value={tabValue} index={2}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+            <Box sx={{ flex: '1 1 100%' }}>
               <Paper sx={{ p: 2 }}>
                 <Typography variant="h6" gutterBottom>User Behavior Insights</Typography>
                 
-                <Grid container spacing={2}>
-                  <Grid item xs={12} md={6}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                  <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(50% - 8px)' } }}>
                     <Card variant="outlined" sx={{ height: '100%' }}>
                       <CardContent>
                         <Typography variant="subtitle2" gutterBottom>Activity Pattern</Typography>
@@ -434,9 +433,9 @@ const UserInteractionModal: React.FC<UserInteractionModalProps> = ({
                         </Typography>
                       </CardContent>
                     </Card>
-                  </Grid>
+                  </Box>
                   
-                  <Grid item xs={12} md={6}>
+                  <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(50% - 8px)' } }}>
                     <Card variant="outlined" sx={{ height: '100%' }}>
                       <CardContent>
                         <Typography variant="subtitle2" gutterBottom>Content Analysis</Typography>
@@ -459,9 +458,9 @@ const UserInteractionModal: React.FC<UserInteractionModalProps> = ({
                         </Typography>
                       </CardContent>
                     </Card>
-                  </Grid>
+                  </Box>
                   
-                  <Grid item xs={12}>
+                  <Box sx={{ flex: '1 1 100%' }}>
                     <Card variant="outlined">
                       <CardContent>
                         <Typography variant="subtitle2" gutterBottom>Recommendations</Typography>
@@ -481,11 +480,11 @@ const UserInteractionModal: React.FC<UserInteractionModalProps> = ({
                         )}
                       </CardContent>
                     </Card>
-                  </Grid>
-                </Grid>
+                  </Box>
+                </Box>
               </Paper>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </TabPanel>
       </DialogContent>
       

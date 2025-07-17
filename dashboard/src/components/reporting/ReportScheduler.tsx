@@ -3,7 +3,6 @@ import {
   Box,
   Paper,
   Typography,
-  Grid,
   TextField,
   FormControl,
   InputLabel,
@@ -302,8 +301,8 @@ const ReportScheduler: React.FC<ReportSchedulerProps> = ({
           </IconButton>
         </DialogTitle>
         <DialogContent dividers>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+            <Box sx={{ flex: '1 1 100%' }}>
               <TextField
                 fullWidth
                 label="Report Name"
@@ -311,9 +310,9 @@ const ReportScheduler: React.FC<ReportSchedulerProps> = ({
                 onChange={(e) => setReportName(e.target.value)}
                 required
               />
-            </Grid>
+            </Box>
             
-            <Grid item xs={12} sm={6}>
+            <Box sx={{ flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 12px)' } }}>
               <FormControl fullWidth>
                 <InputLabel>Frequency</InputLabel>
                 <Select
@@ -326,10 +325,10 @@ const ReportScheduler: React.FC<ReportSchedulerProps> = ({
                   <MenuItem value="monthly">Monthly</MenuItem>
                 </Select>
               </FormControl>
-            </Grid>
+            </Box>
             
             {frequency !== 'daily' && (
-              <Grid item xs={12} sm={6}>
+              <Box sx={{ flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 12px)' } }}>
                 <FormControl fullWidth>
                   <InputLabel>Day</InputLabel>
                   <Select
@@ -344,10 +343,10 @@ const ReportScheduler: React.FC<ReportSchedulerProps> = ({
                     ))}
                   </Select>
                 </FormControl>
-              </Grid>
+              </Box>
             )}
             
-            <Grid item xs={12} sm={frequency === 'daily' ? 12 : 6}>
+            <Box sx={{ flex: { xs: '1 1 100%', sm: frequency === 'daily' ? '1 1 100%' : '1 1 calc(50% - 12px)' } }}>
               <LocalizationProvider dateAdapter={AdapterDateFns}>
                 <TimePicker
                   label="Time"
@@ -356,9 +355,9 @@ const ReportScheduler: React.FC<ReportSchedulerProps> = ({
                   slotProps={{ textField: { fullWidth: true } }}
                 />
               </LocalizationProvider>
-            </Grid>
+            </Box>
             
-            <Grid item xs={12}>
+            <Box sx={{ flex: '1 1 100%' }}>
               <Typography variant="subtitle2" gutterBottom>
                 <EmailIcon sx={{ mr: 1, verticalAlign: 'middle', fontSize: '1rem' }} />
                 Recipients
@@ -390,14 +389,14 @@ const ReportScheduler: React.FC<ReportSchedulerProps> = ({
                   />
                 ))}
               </Box>
-            </Grid>
+            </Box>
             
             {error && (
-              <Grid item xs={12}>
+              <Box sx={{ flex: '1 1 100%' }}>
                 <Alert severity="error">{error}</Alert>
-              </Grid>
+              </Box>
             )}
-          </Grid>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>

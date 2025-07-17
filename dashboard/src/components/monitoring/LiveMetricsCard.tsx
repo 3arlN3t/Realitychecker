@@ -3,7 +3,6 @@ import {
   Card, 
   CardContent, 
   Typography, 
-  Grid, 
   Box, 
   LinearProgress, 
   Chip,
@@ -61,50 +60,50 @@ const LiveMetricsCard: React.FC<LiveMetricsCardProps> = ({ metrics }) => {
           />
         </Box>
 
-        <Grid container spacing={2}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
           {/* Request Rate */}
-          <Grid item xs={6} sm={3}>
+          <Box sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: '1 1 calc(25% - 12px)' } }}>
             <Box sx={{ textAlign: 'center' }}>
               <SpeedIcon color="primary" />
               <Typography variant="body2" color="text.secondary">Requests</Typography>
               <Typography variant="h6">{requests.total}</Typography>
             </Box>
-          </Grid>
+          </Box>
 
           {/* Error Rate */}
-          <Grid item xs={6} sm={3}>
+          <Box sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: '1 1 calc(25% - 12px)' } }}>
             <Box sx={{ textAlign: 'center' }}>
               <ErrorIcon color={requests.error_rate_percent > 5 ? "error" : "success"} />
               <Typography variant="body2" color="text.secondary">Error Rate</Typography>
               <Typography variant="h6">{requests.error_rate_percent.toFixed(1)}%</Typography>
             </Box>
-          </Grid>
+          </Box>
 
           {/* Response Time */}
-          <Grid item xs={6} sm={3}>
+          <Box sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: '1 1 calc(25% - 12px)' } }}>
             <Box sx={{ textAlign: 'center' }}>
               <AccessTimeIcon color="primary" />
               <Typography variant="body2" color="text.secondary">Avg Response</Typography>
               <Typography variant="h6">{requests.avg_response_time_seconds.toFixed(2)}s</Typography>
             </Box>
-          </Grid>
+          </Box>
 
           {/* Success Rate */}
-          <Grid item xs={6} sm={3}>
+          <Box sx={{ flex: { xs: '1 1 calc(50% - 8px)', sm: '1 1 calc(25% - 12px)' } }}>
             <Box sx={{ textAlign: 'center' }}>
               <MemoryIcon color="primary" />
               <Typography variant="body2" color="text.secondary">Success Rate</Typography>
               <Typography variant="h6">{(100 - requests.error_rate_percent).toFixed(1)}%</Typography>
             </Box>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
 
         <Divider sx={{ my: 2 }} />
         
         <Typography variant="subtitle2" gutterBottom>Service Health</Typography>
-        <Grid container spacing={1}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
           {serviceHealth.map((service) => (
-            <Grid item xs={6} key={service.name}>
+            <Box key={service.name} sx={{ flex: '1 1 calc(50% - 4px)' }}>
               <Box sx={{ 
                 display: 'flex', 
                 justifyContent: 'space-between',
@@ -120,9 +119,9 @@ const LiveMetricsCard: React.FC<LiveMetricsCardProps> = ({ metrics }) => {
                   color={service.status === 'healthy' ? 'success' : 'warning'}
                 />
               </Box>
-            </Grid>
+            </Box>
           ))}
-        </Grid>
+        </Box>
       </CardContent>
     </Card>
   );

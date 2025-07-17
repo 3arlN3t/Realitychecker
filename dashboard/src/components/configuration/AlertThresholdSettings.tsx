@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-  Grid, 
+  Box, 
   TextField, 
   Typography, 
   InputAdornment
@@ -27,8 +27,8 @@ const AlertThresholdSettings: React.FC<AlertThresholdSettingsProps> = ({
       <Typography variant="subtitle1" gutterBottom>
         Alert Thresholds
       </Typography>
-      <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+        <Box sx={{ flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 8px)' } }}>
           <TextField
             fullWidth
             id="error-rate-threshold"
@@ -47,8 +47,8 @@ const AlertThresholdSettings: React.FC<AlertThresholdSettingsProps> = ({
             }}
             sx={{ mb: 2 }}
           />
-        </Grid>
-        <Grid item xs={12} sm={6}>
+        </Box>
+        <Box sx={{ flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 8px)' } }}>
           <TextField
             fullWidth
             id="response-time-threshold"
@@ -67,8 +67,8 @@ const AlertThresholdSettings: React.FC<AlertThresholdSettingsProps> = ({
             }}
             sx={{ mb: 2 }}
           />
-        </Grid>
-        <Grid item xs={12} sm={6}>
+        </Box>
+        <Box sx={{ flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 8px)' } }}>
           <TextField
             fullWidth
             id="cpu-usage-threshold"
@@ -88,8 +88,8 @@ const AlertThresholdSettings: React.FC<AlertThresholdSettingsProps> = ({
             }}
             sx={{ mb: 2 }}
           />
-        </Grid>
-        <Grid item xs={12} sm={6}>
+        </Box>
+        <Box sx={{ flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 8px)' } }}>
           <TextField
             fullWidth
             id="memory-usage-threshold"
@@ -109,8 +109,8 @@ const AlertThresholdSettings: React.FC<AlertThresholdSettingsProps> = ({
             }}
             sx={{ mb: 2 }}
           />
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </div>
   );
 };

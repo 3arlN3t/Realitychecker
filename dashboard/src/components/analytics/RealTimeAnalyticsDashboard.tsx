@@ -12,7 +12,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
-  Grid,
   Paper,
   Typography,
   Card,
@@ -650,71 +649,71 @@ const RealTimeAnalyticsDashboard: React.FC = () => {
       {currentTab === 0 && (
         <Box>
           {/* Key Metrics Grid */}
-          <Grid container spacing={3} mb={4}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 4 }}>
             {realTimeMetrics.map((metric, index) => (
-              <Grid item xs={12} sm={6} md={4} key={index}>
+              <Box key={index} sx={{ flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 12px)', md: '1 1 calc(33.333% - 16px)' } }}>
                 <MetricCard metric={metric} />
-              </Grid>
+              </Box>
             ))}
-          </Grid>
+          </Box>
 
           {/* Charts and Alerts */}
-          <Grid container spacing={3}>
-            <Grid item xs={12} lg={8}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+            <Box sx={{ flex: { xs: '1 1 100%', lg: '1 1 calc(66.667% - 12px)' } }}>
               <PerformanceChart />
-            </Grid>
-            <Grid item xs={12} lg={4}>
+            </Box>
+            <Box sx={{ flex: { xs: '1 1 100%', lg: '1 1 calc(33.333% - 12px)' } }}>
               <AlertsPanel />
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </Box>
       )}
 
       {/* Performance Tab */}
       {currentTab === 1 && (
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+          <Box sx={{ flex: '1 1 100%' }}>
             <PerformanceChart />
-          </Grid>
+          </Box>
           {/* Additional performance charts would go here */}
-        </Grid>
+        </Box>
       )}
 
       {/* Users Tab */}
       {currentTab === 2 && (
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+          <Box sx={{ flex: '1 1 100%' }}>
             <Card>
               <CardHeader title="User Analytics" />
               <CardContent>
                 <Typography>User analytics content would go here</Typography>
               </CardContent>
             </Card>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       )}
 
       {/* Security Tab */}
       {currentTab === 3 && (
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+          <Box sx={{ flex: '1 1 100%' }}>
             <Card>
               <CardHeader title="Security Monitoring" />
               <CardContent>
                 <Typography>Security monitoring content would go here</Typography>
               </CardContent>
             </Card>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       )}
 
       {/* Insights Tab */}
       {currentTab === 4 && (
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+          <Box sx={{ flex: '1 1 100%' }}>
             <InsightsPanel />
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       )}
     </Box>
   );

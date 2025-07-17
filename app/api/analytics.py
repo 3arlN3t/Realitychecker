@@ -29,7 +29,7 @@ from app.dependencies import (
 )
 from app.utils.logging import get_logger, log_with_context
 from app.utils.pattern_recognition import PatternRecognitionEngine
-from app.utils.ab_testing import ABTestingEngine
+from app.utils.ab_testing import ABTesting
 from app.utils.reporting_engine import ReportingEngine, ReportScheduler
 from app.api.dashboard import get_current_user, require_admin, require_analyst_or_admin
 
@@ -40,7 +40,7 @@ router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
 # Initialize analytics engines
 pattern_engine = PatternRecognitionEngine()
-ab_testing_engine = ABTestingEngine()
+ab_testing_engine = ABTesting({})
 reporting_engine = ReportingEngine()
 report_scheduler = ReportScheduler(reporting_engine)
 
@@ -770,4 +770,3 @@ async def download_report(
             status_code=500,
             detail=f"Failed to download report: {str(e)}"
         )
-"""

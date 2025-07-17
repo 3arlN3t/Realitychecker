@@ -3,7 +3,6 @@ import {
   Box, 
   Paper, 
   Typography, 
-  Grid, 
   Button, 
   FormControl, 
   InputLabel, 
@@ -172,9 +171,9 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
         
         <Divider sx={{ my: 2 }} />
         
-        <Grid container spacing={3}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
           {/* Report Type Selection */}
-          <Grid item xs={12} md={6}>
+          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(50% - 12px)' } }}>
             <FormControl fullWidth>
               <InputLabel id="report-type-label">Report Type</InputLabel>
               <Select
@@ -194,10 +193,10 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
             <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
               {getSelectedReportTypeDescription()}
             </Typography>
-          </Grid>
+          </Box>
           
           {/* Export Format Selection */}
-          <Grid item xs={12} md={6}>
+          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(50% - 12px)' } }}>
             <FormControl fullWidth>
               <InputLabel id="export-format-label">Export Format</InputLabel>
               <Select
@@ -219,10 +218,10 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
                 ))}
               </Select>
             </FormControl>
-          </Grid>
+          </Box>
           
           {/* Date Range Selection */}
-          <Grid item xs={12} md={6}>
+          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(50% - 12px)' } }}>
             <DatePicker
               label="Start Date"
               value={startDate}
@@ -230,9 +229,9 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
               maxDate={new Date()}
               slotProps={{ textField: { fullWidth: true } }}
             />
-          </Grid>
+          </Box>
           
-          <Grid item xs={12} md={6}>
+          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(50% - 12px)' } }}>
             <DatePicker
               label="End Date"
               value={endDate}
@@ -241,10 +240,10 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
               maxDate={new Date()}
               slotProps={{ textField: { fullWidth: true } }}
             />
-          </Grid>
+          </Box>
           
           {/* Additional Options */}
-          <Grid item xs={12}>
+          <Box sx={{ flex: '1 1 100%' }}>
             <Typography variant="subtitle2" gutterBottom>
               Additional Options
             </Typography>
@@ -268,10 +267,10 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
                 label="Include Error Details"
               />
             </Box>
-          </Grid>
+          </Box>
           
           {/* User Filter */}
-          <Grid item xs={12}>
+          <Box sx={{ flex: '1 1 100%' }}>
             <TextField
               fullWidth
               label="Filter by User (Phone Number)"
@@ -280,17 +279,17 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
               placeholder="e.g., whatsapp:+1234567890"
               helperText="Optional: Filter report to specific user"
             />
-          </Grid>
+          </Box>
           
           {/* Error Display */}
           {error && (
-            <Grid item xs={12}>
+            <Box sx={{ flex: '1 1 100%' }}>
               <Alert severity="error">{error}</Alert>
-            </Grid>
+            </Box>
           )}
           
           {/* Generate Button */}
-          <Grid item xs={12}>
+          <Box sx={{ flex: '1 1 100%' }}>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
               <Button
                 variant="contained"
@@ -302,8 +301,8 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
                 {loading ? 'Generating...' : 'Generate Report'}
               </Button>
             </Box>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       </Paper>
       
       {/* Generated Report Display */}
@@ -312,8 +311,8 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
           <Typography variant="h6" gutterBottom>
             Generated Report
           </Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(50% - 8px)' } }}>
               <Typography variant="body2">
                 <strong>Report Type:</strong> {reportTypeOptions.find(o => o.value === generatedReport.report_type)?.label}
               </Typography>
@@ -323,8 +322,8 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
               <Typography variant="body2">
                 <strong>Period:</strong> {generatedReport.period}
               </Typography>
-            </Grid>
-            <Grid item xs={12} md={6}>
+            </Box>
+            <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(50% - 8px)' } }}>
               <Typography variant="body2">
                 <strong>Format:</strong> {exportFormatOptions.find(o => o.value === generatedReport.export_format)?.label}
               </Typography>
@@ -333,8 +332,8 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
                   <strong>File Size:</strong> {(generatedReport.file_size / 1024).toFixed(2)} KB
                 </Typography>
               )}
-            </Grid>
-            <Grid item xs={12}>
+            </Box>
+            <Box sx={{ flex: '1 1 100%' }}>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
                 {generatedReport.download_url && (
                   <Button
@@ -347,8 +346,8 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
                   </Button>
                 )}
               </Box>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </Paper>
       )}
       
