@@ -5,6 +5,8 @@ An AI-powered WhatsApp bot that analyzes job advertisements to detect potential 
 ![Reality Checker Logo](https://via.placeholder.com/150x50/4CAF50/FFFFFF?text=Reality+Checker)
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/your-org/reality-checker-whatsapp-bot)
+[![CI](https://github.com/your-org/reality-checker-whatsapp-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/reality-checker-whatsapp-bot/actions/workflows/ci.yml)
+[![CD](https://github.com/your-org/reality-checker-whatsapp-bot/actions/workflows/cd.yml/badge.svg)](https://github.com/your-org/reality-checker-whatsapp-bot/actions/workflows/cd.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com)
@@ -388,6 +390,22 @@ gcloud run deploy reality-checker \
 - [ ] Set up alerting for critical errors
 
 ## 🛠️ Development
+## 📦 CI/CD Pipeline
+
+### GitHub Actions Workflows
+
+- **CI Workflow** (`.github/workflows/ci.yml`): Lint, type-check, build frontend, and run tests on each push and pull request to `main`.
+- **CD Workflow** (`.github/workflows/cd.yml`): Builds and pushes Docker images tagged with `latest` and commit SHA, then deploys to Kubernetes on pushes to `main`.
+
+### Repository Secrets
+
+| Secret               | Description                                              |
+|----------------------|----------------------------------------------------------|
+| `DOCKER_REGISTRY`    | Docker registry URL (e.g., `ghcr.io` or `docker.io`).    |
+| `DOCKER_REPOSITORY`  | Repository path (e.g., `your-org/reality-checker`).      |
+| `DOCKER_USERNAME`    | Username for Docker registry authentication.             |
+| `DOCKER_PASSWORD`    | Password or token for Docker registry authentication.    |
+| `KUBE_CONFIG`        | Base64-encoded Kubernetes `kubeconfig` for deployment.   |
 
 ### Development Setup
 

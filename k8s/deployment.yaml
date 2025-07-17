@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reality-checker
+  namespace: reality-checker
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: reality-checker
+  template:
+    metadata:
+      labels:
+        app: reality-checker
+    spec:
+      containers:
+      - name: reality-checker
+        image: $IMAGE
+        ports:
+        - containerPort: 8000
+        env:
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: reality-checker-secrets
+              key: openai-api-key
+        - name: TWILIO_ACCOUNT_SID
+          valueFrom:
+            secretKeyRef:
+              name: reality-checker-secrets
+              key: twilio-account-sid
+        - name: TWILIO_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: reality-checker-secrets
+              key: twilio-auth-token
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: reality-checker-secrets
+              key: jwt-secret-key
+        envFrom:
+        - configMapRef:
+            name: reality-checker-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: reality-checker-service
+  namespace: reality-checker
+spec:
+  selector:
+    app: reality-checker
+  ports:
+  - port: 80
+    targetPort: 8000
+  type: ClusterIP
