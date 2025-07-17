@@ -197,6 +197,10 @@ app.include_router(monitoring_router)
 from app.api.analytics import router as analytics_router
 app.include_router(analytics_router)
 
+# Include MFA router
+from app.api.mfa import router as mfa_router
+app.include_router(mfa_router)
+
 # Add security middleware
 app.add_middleware(
     TrustedHostMiddleware, 

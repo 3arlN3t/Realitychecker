@@ -5,7 +5,7 @@ This module provides dependency injection for services, authentication, authoriz
 and other common functionality.
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
@@ -17,7 +17,9 @@ from app.services.twilio_response import TwilioResponseService
 from app.services.user_management import UserManagementService
 from app.services.analytics import AnalyticsService
 from app.services.authentication import get_auth_service, AuthenticationService
-from app.models.data_models import User, UserRole
+from app.services.mfa_service import MFAService
+from app.services.security_service import SecurityService
+from app.models.data_models import User
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -43,6 +45,8 @@ class ServiceContainer:
         self._user_management_service: Optional[UserManagementService] = None
         self._analytics_service: Optional[AnalyticsService] = None
         self._auth_service: Optional[AuthenticationService] = None
+        self._mfa_service: Optional[MFAService] = None
+        self._security_service: Optional[SecurityService] = None
     
     def get_config(self) -> AppConfig:
         """Get application configuration."""
@@ -98,6 +102,20 @@ class ServiceContainer:
         if self._auth_service is None:
             self._auth_service = get_auth_service()
         return self._auth_service
+    
+    def get_mfa_service(self) -> MFAService:
+        """Get MFA service."""
+        if self._mfa_service is None:
+            config = self.get_config()
+            self._mfa_service = MFAService(config)
+        return self._mfa_service
+    
+    def get_security_service(self) -> SecurityService:
+        """Get security service."""
+        if self._security_service is None:
+            config = self.get_config()
+            self._security_service = SecurityService(config)
+        return self._security_service
     
     async def perform_health_checks(self) -> Dict[str, str]:
         """
@@ -157,6 +175,22 @@ class ServiceContainer:
         except Exception as e:
             logger.error(f"Authentication health check failed: {e}")
             health_status["authentication"] = "error"
+        
+        try:
+            # Check MFA service
+            mfa_service = self.get_mfa_service()
+            health_status["mfa"] = "ready"
+        except Exception as e:
+            logger.error(f"MFA health check failed: {e}")
+            health_status["mfa"] = "error"
+        
+        try:
+            # Check security service
+            security_service = self.get_security_service()
+            health_status["security"] = "ready"
+        except Exception as e:
+            logger.error(f"Security health check failed: {e}")
+            health_status["security"] = "error"
         
         return health_status
     
@@ -231,6 +265,16 @@ def get_user_management_service() -> UserManagementService:
 def get_analytics_service() -> AnalyticsService:
     """Dependency to get analytics service."""
     return get_service_container().get_analytics_service()
+
+
+def get_mfa_service() -> MFAService:
+    """Dependency to get MFA service."""
+    return get_service_container().get_mfa_service()
+
+
+def get_security_service() -> SecurityService:
+    """Dependency to get security service."""
+    return get_service_container().get_security_service()
 
 
 # Authentication Dependencies

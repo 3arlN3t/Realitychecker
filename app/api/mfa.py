@@ -9,14 +9,13 @@ This module provides REST API endpoints for managing MFA:
 """
 
 import logging
-from typing import Dict, Any, List
-from datetime import datetime
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.models.data_models import User
-from app.services.mfa_service import MFAService, MFAEnrollmentData, MFAVerificationResult, MFAStatus
+from app.services.mfa_service import MFAService
 from app.dependencies import get_current_active_user, require_admin_user
 from app.utils.logging import get_logger, get_correlation_id, log_with_context
 
@@ -80,12 +79,8 @@ class MFAStatisticsResponse(BaseModel):
 # Dependency to get MFA service
 async def get_mfa_service() -> MFAService:
     """Get MFA service instance."""
-    from app.dependencies import get_service_container
-    # For now, we'll create a service instance
-    # In production, this should be properly integrated with the service container
-    from app.config import get_config
-    config = get_config()
-    return MFAService(config)
+    from app.dependencies import get_mfa_service as get_mfa_service_dep
+    return get_mfa_service_dep()
 
 
 # MFA Enrollment Endpoints
