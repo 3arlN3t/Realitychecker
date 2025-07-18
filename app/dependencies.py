@@ -226,6 +226,15 @@ def get_service_container(config: AppConfig = Depends(get_config)) -> ServiceCon
     return _service_container
 
 
+def initialize_service_container() -> ServiceContainer:
+    """Initialize the global service container with actual config (not dependency)."""
+    global _service_container
+    if _service_container is None:
+        config = get_config()
+        _service_container = ServiceContainer(config)
+    return _service_container
+
+
 def reset_service_container():
     """Reset the global service container (for testing)."""
     global _service_container

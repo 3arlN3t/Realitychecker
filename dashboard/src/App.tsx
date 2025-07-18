@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme, responsiveFontSizes } from '@mui/material/styles';
-import { CssBaseline, useMediaQuery, Box, Snackbar, Alert } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
 import { QueryProvider } from './providers/QueryProvider';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -13,167 +11,42 @@ import MonitoringPage from './pages/MonitoringPage';
 import UsersPage from './pages/UsersPage';
 import ConfigurationPage from './pages/ConfigurationPage';
 import ReportingPage from './pages/ReportingPage';
+import { Alert, AlertDescription } from './components/ui/alert';
+// Badge import removed as it's not used
+import { Wifi, WifiOff } from 'lucide-react';
 
-// Enhanced theme with accessibility and responsive design
-const createAppTheme = (prefersDarkMode: boolean, prefersHighContrast: boolean) => {
-  let theme = createTheme({
-    palette: {
-      mode: prefersDarkMode ? 'dark' : 'light',
-      primary: {
-        main: prefersHighContrast ? '#000080' : '#1976d2',
-        contrastText: '#ffffff',
-      },
-      secondary: {
-        main: '#dc004e',
-        contrastText: '#ffffff',
-      },
-      background: {
-        default: prefersDarkMode ? '#121212' : '#f5f5f5',
-        paper: prefersDarkMode ? '#1e1e1e' : '#ffffff',
-      },
-      error: {
-        main: prefersHighContrast ? '#cc0000' : '#d32f2f',
-      },
-      success: {
-        main: prefersHighContrast ? '#006600' : '#2e7d32',
-      },
-      warning: {
-        main: '#ed6c02',
-      },
-      info: {
-        main: '#0288d1',
-      },
-    },
-    typography: {
-      fontFamily: '"Roboto", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-      h1: {
-        fontSize: '2.5rem',
-        fontWeight: 600,
-        lineHeight: 1.2,
-      },
-      h2: {
-        fontSize: '2rem',
-        fontWeight: 600,
-        lineHeight: 1.3,
-      },
-      h3: {
-        fontSize: '1.75rem',
-        fontWeight: 500,
-        lineHeight: 1.3,
-      },
-      h4: {
-        fontSize: '1.5rem',
-        fontWeight: 500,
-        lineHeight: 1.4,
-      },
-      h5: {
-        fontSize: '1.25rem',
-        fontWeight: 500,
-        lineHeight: 1.4,
-      },
-      h6: {
-        fontSize: '1.1rem',
-        fontWeight: 500,
-        lineHeight: 1.4,
-      },
-      body1: {
-        lineHeight: 1.6,
-      },
-      body2: {
-        lineHeight: 1.5,
-      },
-    },
-    shape: {
-      borderRadius: 8,
-    },
-    spacing: 8,
-    components: {
-      MuiButton: {
-        styleOverrides: {
-          root: {
-            textTransform: 'none',
-            borderRadius: 8,
-            padding: '10px 20px',
-            '&:focus': {
-              outline: `2px solid ${prefersHighContrast ? '#000080' : '#1976d2'}`,
-              outlineOffset: '2px',
-            },
-          },
-        },
-      },
-      MuiTextField: {
-        styleOverrides: {
-          root: {
-            '& .MuiOutlinedInput-root': {
-              '&:focus-within': {
-                outline: `2px solid ${prefersHighContrast ? '#000080' : '#1976d2'}`,
-                outlineOffset: '2px',
-              },
-            },
-          },
-        },
-      },
-      MuiCard: {
-        styleOverrides: {
-          root: {
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-            '&:focus': {
-              outline: `2px solid ${prefersHighContrast ? '#000080' : '#1976d2'}`,
-              outlineOffset: '2px',
-            },
-          },
-        },
-      },
-      MuiTableCell: {
-        styleOverrides: {
-          head: {
-            fontWeight: 600,
-          },
-        },
-      },
-      MuiAlert: {
-        styleOverrides: {
-          root: {
-            borderRadius: 8,
-          },
-        },
-      },
-    },
-    breakpoints: {
-      values: {
-        xs: 0,
-        sm: 600,
-        md: 900,
-        lg: 1200,
-        xl: 1536,
-      },
-    },
-  });
+// Custom hook for media queries
+const useMediaQuery = (query: string) => {
+  const [matches, setMatches] = useState(false);
 
-  // Make theme responsive
-  theme = responsiveFontSizes(theme);
-  
-  return theme;
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    if (media.matches !== matches) {
+      setMatches(media.matches);
+    }
+    const listener = () => setMatches(media.matches);
+    media.addListener(listener);
+    return () => media.removeListener(listener);
+  }, [matches, query]);
+
+  return matches;
 };
 
 function App() {
   // Detect user preferences for accessibility
   const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
-  const prefersHighContrast = useMediaQuery('(prefers-contrast: high)');
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   
   // State for notifications and announcements
   const [networkStatus, setNetworkStatus] = useState<'online' | 'offline'>('online');
   const [showNetworkNotification, setShowNetworkNotification] = useState(false);
   
-  // Create theme based on user preferences
-  const theme = createAppTheme(prefersDarkMode, prefersHighContrast);
-  
   // Monitor network status for better UX
   useEffect(() => {
     const handleOnline = () => {
       setNetworkStatus('online');
       setShowNetworkNotification(true);
+      setTimeout(() => setShowNetworkNotification(false), 3000);
     };
     
     const handleOffline = () => {
@@ -198,140 +71,111 @@ function App() {
     }
   }, []);
   
-  // Announce route changes for screen readers
-  const announceRouteChange = (route: string) => {
-    const announcementsElement = document.getElementById('announcements');
-    if (announcementsElement) {
-      announcementsElement.textContent = `Navigated to ${route} page`;
+  // Apply dark mode class to document
+  useEffect(() => {
+    if (prefersDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
     }
-  };
+  }, [prefersDarkMode]);
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Box
-        sx={{
-          // Respect user's motion preferences
-          '& *': {
-            animationDuration: prefersReducedMotion ? '0.01ms !important' : undefined,
-            animationIterationCount: prefersReducedMotion ? '1 !important' : undefined,
-            transitionDuration: prefersReducedMotion ? '0.01ms !important' : undefined,
-          },
-        }}
-      >
-        <QueryProvider>
-          <AuthProvider>
-            <Router>
-              <Routes>
-                <Route 
-                  path="/login" 
-                  element={
-                    <Box onFocus={() => announceRouteChange('login')}>
-                      <LoginPage />
-                    </Box>
-                  } 
-                />
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <Layout>
-                        <Box onFocus={() => announceRouteChange('dashboard')}>
-                          <DashboardPage />
-                        </Box>
-                      </Layout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/analytics"
-                  element={
-                    <ProtectedRoute>
-                      <Layout>
-                        <Box onFocus={() => announceRouteChange('analytics')}>
-                          <AnalyticsPage />
-                        </Box>
-                      </Layout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/monitoring"
-                  element={
-                    <ProtectedRoute>
-                      <Layout>
-                        <Box onFocus={() => announceRouteChange('monitoring')}>
-                          <MonitoringPage />
-                        </Box>
-                      </Layout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/users"
-                  element={
-                    <ProtectedRoute>
-                      <Layout>
-                        <Box onFocus={() => announceRouteChange('users')}>
-                          <UsersPage />
-                        </Box>
-                      </Layout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/reports"
-                  element={
-                    <ProtectedRoute>
-                      <Layout>
-                        <Box onFocus={() => announceRouteChange('reports')}>
-                          <ReportingPage />
-                        </Box>
-                      </Layout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/config"
-                  element={
-                    <ProtectedRoute requiredRole="admin">
-                      <Layout>
-                        <Box onFocus={() => announceRouteChange('configuration')}>
-                          <ConfigurationPage />
-                        </Box>
-                      </Layout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
-              </Routes>
-            </Router>
-          </AuthProvider>
-        </QueryProvider>
-        
-        {/* Network status notification */}
-        <Snackbar
-          open={showNetworkNotification}
-          autoHideDuration={networkStatus === 'online' ? 3000 : null}
-          onClose={() => setShowNetworkNotification(false)}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        >
-          <Alert
-            onClose={() => setShowNetworkNotification(false)}
-            severity={networkStatus === 'online' ? 'success' : 'warning'}
-            variant="filled"
-            role="alert"
-            aria-live="assertive"
-          >
-            {networkStatus === 'online' 
-              ? 'Connection restored' 
-              : 'Connection lost. Some features may not work properly.'
-            }
+    <div className={`min-h-screen bg-background text-foreground ${prefersReducedMotion ? 'motion-reduce' : ''}`}>
+      <QueryProvider>
+        <AuthProvider>
+          <Router>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <DashboardPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/analytics"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <AnalyticsPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/monitoring"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <MonitoringPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/users"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <UsersPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/reports"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <ReportingPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/config"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <Layout>
+                      <ConfigurationPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </Router>
+        </AuthProvider>
+      </QueryProvider>
+      
+      {/* Network status notification */}
+      {showNetworkNotification && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
+          <Alert variant={networkStatus === 'offline' ? 'destructive' : 'default'}>
+            {networkStatus === 'online' ? (
+              <Wifi className="h-4 w-4" />
+            ) : (
+              <WifiOff className="h-4 w-4" />
+            )}
+            <AlertDescription>
+              {networkStatus === 'online' 
+                ? 'Connection restored' 
+                : 'Connection lost. Some features may not work properly.'
+              }
+            </AlertDescription>
           </Alert>
-        </Snackbar>
-      </Box>
-    </ThemeProvider>
+        </div>
+      )}
+      
+      {/* Screen reader announcements */}
+      <div id="announcements" className="sr-only" aria-live="polite" aria-atomic="true" />
+    </div>
   );
 }
 

@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Typography, Box, Grid, Paper, Alert, Snackbar } from '@mui/material';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
+import { Badge } from '../components/ui/badge';
+import { AlertTriangle, Activity, Users, Clock, TrendingDown } from 'lucide-react';
 import LiveMetricsCard from '../components/monitoring/LiveMetricsCard';
 import ActiveRequestsTable from '../components/monitoring/ActiveRequestsTable';
 import ErrorRateChart from '../components/monitoring/ErrorRateChart';
@@ -105,7 +108,7 @@ const MonitoringPage: React.FC = () => {
           }
         } else if (data.type === 'alert') {
           // Add new alert
-          const newAlert: Alert = {
+          const newAlert: MonitoringAlert = {
             id: data.data.id,
             alert_type: data.data.alert_type,
             severity: data.data.severity,
@@ -201,85 +204,177 @@ const MonitoringPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [fetchActiveRequests, fetchInitialData]);
 
-  // Handle notification close
-  const handleCloseNotification = () => {
-    setNotification(prev => ({ ...prev, open: false }));
-  };
+  // Handle notification close - removed as it's not used
 
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom sx={{ mb: 3 }}>
-        Real-Time Monitoring
-      </Typography>
+    <div className="space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight">Real-Time Monitoring</h1>
+        <div className="flex items-center space-x-2">
+          <Badge variant={connectionStatus === 'Connected' ? 'default' : 'destructive'}>
+            <Activity className="w-3 h-3 mr-1" />
+            {connectionStatus}
+          </Badge>
+        </div>
+      </div>
       
       {connectionStatus !== 'Connected' && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          WebSocket {connectionStatus}. Real-time updates may be delayed.
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Connection Warning</AlertTitle>
+          <AlertDescription>
+            WebSocket {connectionStatus}. Real-time updates may be delayed.
+          </AlertDescription>
         </Alert>
       )}
       
-      <Grid container spacing={3}>
+      {/* Overview Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics?.requests.total || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {metrics?.requests.errors || 0} errors
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Error Rate</CardTitle>
+            <TrendingDown className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {metrics?.requests.error_rate_percent?.toFixed(1) || 0}%
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Last 24 hours
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg Response Time</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {metrics?.requests.avg_response_time_seconds?.toFixed(2) || 0}s
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Current average
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Requests</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{activeRequests.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Currently processing
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* Main Content Grid */}
+      <div className="grid gap-6 md:grid-cols-2">
         {/* Live Metrics Card */}
-        <Grid item xs={12} md={6}>
-          <LiveMetricsCard metrics={metrics} />
-        </Grid>
+        <Card>
+          <CardHeader>
+            <CardTitle>Live Metrics</CardTitle>
+            <CardDescription>Real-time system performance metrics</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <LiveMetricsCard metrics={metrics} />
+          </CardContent>
+        </Card>
         
         {/* Active Requests Table */}
-        <Grid item xs={12} md={6}>
-          <ActiveRequestsTable requests={activeRequests} />
-        </Grid>
+        <Card>
+          <CardHeader>
+            <CardTitle>Active Requests</CardTitle>
+            <CardDescription>Currently processing requests</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ActiveRequestsTable requests={activeRequests} />
+          </CardContent>
+        </Card>
         
         {/* Error Rate Chart */}
-        <Grid item xs={12} md={6}>
-          <ErrorRateChart data={errorRates} />
-        </Grid>
+        <Card>
+          <CardHeader>
+            <CardTitle>Error Rate Trends</CardTitle>
+            <CardDescription>Error rate over time</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ErrorRateChart data={errorRates} />
+          </CardContent>
+        </Card>
         
         {/* Response Time Chart */}
-        <Grid item xs={12} md={6}>
-          <ResponseTimeChart data={responseTimes} />
-        </Grid>
-        
-        {/* Recent Alerts */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>Recent Alerts</Typography>
-            {alerts.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">No recent alerts</Typography>
-            ) : (
-              alerts.slice(0, 5).map(alert => (
-                <Alert 
-                  key={alert.id} 
-                  severity={
-                    alert.severity === 'critical' ? 'error' : 
-                    alert.severity === 'high' ? 'warning' : 
-                    alert.severity === 'medium' ? 'info' : 'success'
-                  }
-                  sx={{ mb: 1 }}
-                >
-                  <Typography variant="subtitle2">{alert.title}</Typography>
-                  <Typography variant="body2">{alert.message}</Typography>
-                  <Typography variant="caption" display="block">
-                    {new Date(alert.timestamp).toLocaleString()}
-                  </Typography>
-                </Alert>
-              ))
-            )}
-          </Paper>
-        </Grid>
-      </Grid>
+        <Card>
+          <CardHeader>
+            <CardTitle>Response Time Trends</CardTitle>
+            <CardDescription>Response time percentiles</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponseTimeChart data={responseTimes} />
+          </CardContent>
+        </Card>
+      </div>
       
-      {/* Alert Notifications */}
-      <Snackbar
-        open={notification.open}
-        autoHideDuration={6000}
-        onClose={handleCloseNotification}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert onClose={handleCloseNotification} severity={notification.severity}>
-          {notification.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+      {/* Recent Alerts */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Alerts</CardTitle>
+          <CardDescription>Latest system alerts and notifications</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {alerts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No recent alerts</p>
+          ) : (
+            <div className="space-y-3">
+              {alerts.slice(0, 5).map(alert => (
+                <Alert 
+                  key={alert.id}
+                  variant={alert.severity === 'critical' ? 'destructive' : 'default'}
+                >
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>{alert.title}</AlertTitle>
+                  <AlertDescription>
+                    {alert.message}
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {new Date(alert.timestamp).toLocaleString()}
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* Notification Toast - Simple implementation */}
+      {notification.open && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <Alert variant={notification.severity === 'error' ? 'destructive' : 'default'}>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{notification.message}</AlertDescription>
+          </Alert>
+        </div>
+      )}
+    </div>
   );
 };
 

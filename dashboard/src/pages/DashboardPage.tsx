@@ -1,8 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Box } from '@mui/material';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+// Removed unused Alert imports
+import { 
+  Activity, 
+  AlertTriangle, 
+  CheckCircle, 
+  TrendingUp, 
+  TrendingDown, 
+  Users, 
+  Server,
+  Zap
+} from 'lucide-react';
 import SystemHealthCard, { SystemHealth } from '../components/admin/SystemHealthCard';
 import MetricsOverviewCard, { MetricsOverview } from '../components/admin/MetricsOverviewCard';
-import ActiveAlertsCard, { Alert } from '../components/admin/ActiveAlertsCard';
+import ActiveAlertsCard, { Alert as AlertType } from '../components/admin/ActiveAlertsCard';
 import ServiceStatusGrid, { ServiceDetails } from '../components/admin/ServiceStatusGrid';
 
 // Sample data generators
@@ -72,8 +84,8 @@ const generateMetricsOverview = (): MetricsOverview => {
   };
 };
 
-const generateAlerts = (): Alert[] => {
-  const sampleAlerts: Alert[] = [
+const generateAlerts = (): AlertType[] => {
+  const sampleAlerts: AlertType[] = [
     {
       id: '1',
       type: 'warning',
@@ -189,7 +201,7 @@ const DashboardPage: React.FC = () => {
   // const { user } = useAuth();
   const [systemHealth, setSystemHealth] = useState<SystemHealth>(generateSystemHealth());
   const [metricsOverview, setMetricsOverview] = useState<MetricsOverview>(generateMetricsOverview());
-  const [alerts, setAlerts] = useState<Alert[]>(generateAlerts());
+  const [alerts, setAlerts] = useState<AlertType[]>(generateAlerts());
   const [serviceDetails, setServiceDetails] = useState<Record<string, ServiceDetails>>(generateServiceDetails());
 
   // Simulate real-time updates
@@ -230,33 +242,161 @@ const DashboardPage: React.FC = () => {
   };
 
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom sx={{ mb: 3 }}>
-        Admin Dashboard
-      </Typography>
+    <div className="space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+        <Badge variant="outline" className="text-sm">
+          <Activity className="w-4 h-4 mr-1" />
+          Live Data
+        </Badge>
+      </div>
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        {/* Top Row - System Health and Metrics Overview */}
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, 1fr)' }, gap: 3 }}>
-          <SystemHealthCard health={systemHealth} />
-          <MetricsOverviewCard metrics={metricsOverview} />
-        </Box>
+      {/* Quick Stats Overview */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">System Status</CardTitle>
+            <Server className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center space-x-2">
+              <Badge variant={systemHealth.status === 'healthy' ? 'default' : 'destructive'}>
+                {systemHealth.status === 'healthy' ? (
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                ) : (
+                  <AlertTriangle className="w-3 h-3 mr-1" />
+                )}
+                {systemHealth.status}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Uptime: {systemHealth.uptime}
+            </p>
+          </CardContent>
+        </Card>
 
-        {/* Second Row - Active Alerts */}
-        <ActiveAlertsCard
-          alerts={alerts}
-          onAcknowledgeAlert={handleAcknowledgeAlert}
-          onDismissAlert={handleDismissAlert}
-          maxDisplayed={5}
-        />
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metricsOverview.totalRequests.toLocaleString()}</div>
+            <div className="flex items-center text-xs text-muted-foreground">
+              {metricsOverview.requestsTrend === 'up' ? (
+                <TrendingUp className="w-3 h-3 mr-1 text-green-500" />
+              ) : metricsOverview.requestsTrend === 'down' ? (
+                <TrendingDown className="w-3 h-3 mr-1 text-red-500" />
+              ) : null}
+              {metricsOverview.requestsToday} today
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Third Row - Service Status Grid */}
-        <ServiceStatusGrid
-          services={serviceDetails}
-          onRefreshService={handleRefreshService}
-        />
-      </Box>
-    </Box>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Error Rate</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metricsOverview.errorRate}%</div>
+            <div className="flex items-center text-xs text-muted-foreground">
+              {metricsOverview.errorTrend === 'down' ? (
+                <TrendingDown className="w-3 h-3 mr-1 text-green-500" />
+              ) : metricsOverview.errorTrend === 'up' ? (
+                <TrendingUp className="w-3 h-3 mr-1 text-red-500" />
+              ) : null}
+              Success: {metricsOverview.successRate}%
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metricsOverview.activeUsers}</div>
+            <p className="text-xs text-muted-foreground">
+              Peak: {metricsOverview.peakHour}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* System Health Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Server className="w-5 h-5 mr-2" />
+              System Health
+            </CardTitle>
+            <CardDescription>Current system performance and resource usage</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SystemHealthCard health={systemHealth} />
+          </CardContent>
+        </Card>
+
+        {/* Metrics Overview Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Activity className="w-5 h-5 mr-2" />
+              Performance Metrics
+            </CardTitle>
+            <CardDescription>Key performance indicators and trends</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <MetricsOverviewCard metrics={metricsOverview} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Active Alerts */}
+      {alerts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <AlertTriangle className="w-5 h-5 mr-2" />
+              Active Alerts
+              <Badge variant="destructive" className="ml-2">
+                {alerts.length}
+              </Badge>
+            </CardTitle>
+            <CardDescription>System alerts requiring attention</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ActiveAlertsCard
+              alerts={alerts}
+              onAcknowledgeAlert={handleAcknowledgeAlert}
+              onDismissAlert={handleDismissAlert}
+              maxDisplayed={5}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Service Status Grid */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Zap className="w-5 h-5 mr-2" />
+            Service Status
+          </CardTitle>
+          <CardDescription>Status and performance of all system services</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ServiceStatusGrid
+            services={serviceDetails}
+            onRefreshService={handleRefreshService}
+          />
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

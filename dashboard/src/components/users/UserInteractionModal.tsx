@@ -371,7 +371,7 @@ const UserInteractionModal: React.FC<UserInteractionModalProps> = ({
                       <TableCell>
                         {interaction.analysisResult ? (
                           <Chip
-                            icon={getClassificationIcon(interaction.analysisResult.classification)}
+                            icon={getClassificationIcon(interaction.analysisResult.classification) || undefined}
                             label={interaction.analysisResult.classification}
                             color={getClassificationColor(interaction.analysisResult.classification) as any}
                             size="small"

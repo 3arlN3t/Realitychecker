@@ -1,14 +1,8 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Paper,
-  TextField,
-  Button,
-  Typography,
-  Alert,
-  Container,
-  CircularProgress,
-} from '@mui/material';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Alert, AlertDescription } from '../components/ui/alert';
+import { Shield, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -45,69 +39,90 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <Container component="main" maxWidth="xs">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
-        <Paper elevation={3} sx={{ padding: 4, width: '100%' }}>
-          <Typography component="h1" variant="h4" align="center" gutterBottom>
-            Reality Checker
-          </Typography>
-          <Typography component="h2" variant="h6" align="center" color="textSecondary" gutterBottom>
-            Admin Dashboard
-          </Typography>
-          
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <Card className="w-full">
+          <CardHeader className="space-y-1 text-center">
+            <div className="flex justify-center mb-4">
+              <Shield className="h-12 w-12 text-primary" />
+            </div>
+            <CardTitle className="text-2xl font-bold">Reality Checker</CardTitle>
+            <CardDescription>
+              Admin Dashboard - Sign in to your account
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="username"
-              label="Username"
-              name="username"
-              autoComplete="username"
-              autoFocus
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              disabled={isLoading}
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="password"
-              label="Password"
-              type="password"
-              id="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading}
-            />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2 }}
-              disabled={isLoading || !username || !password}
-            >
-              {isLoading ? <CircularProgress size={24} /> : 'Sign In'}
-            </Button>
-          </Box>
-        </Paper>
-      </Box>
-    </Container>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="username" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  Username
+                </label>
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  autoComplete="username"
+                  required
+                  autoFocus
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  disabled={isLoading}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Enter your username"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Enter your password"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading || !username || !password}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  'Sign In'
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center text-sm text-muted-foreground">
+              <p>Default credentials for testing:</p>
+              <p className="font-mono text-xs mt-1">
+                admin / admin123
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 };
 

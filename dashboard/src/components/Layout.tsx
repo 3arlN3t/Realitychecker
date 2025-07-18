@@ -1,37 +1,23 @@
 import React, { useState } from 'react';
-import {
-  AppBar,
-  Box,
-  CssBaseline,
-  Drawer,
-  IconButton,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Toolbar,
-  Typography,
-  Avatar,
-  Menu,
-  MenuItem,
-  Divider,
-} from '@mui/material';
-import {
-  Menu as MenuIcon,
-  Dashboard as DashboardIcon,
-  Analytics as AnalyticsIcon,
-  People as PeopleIcon,
-  Settings as SettingsIcon,
-  MonitorHeart as MonitorIcon,
-  Assessment as ReportsIcon,
-  AccountCircle,
-  Logout,
-} from '@mui/icons-material';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
+import { 
+  Menu, 
+  Home, 
+  BarChart3, 
+  Users, 
+  Settings, 
+  Activity, 
+  FileText, 
+  User, 
+  LogOut,
+  Shield,
+  X
+} from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-const drawerWidth = 240;
+// drawerWidth removed as it's not used in the new layout
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -47,32 +33,32 @@ interface NavigationItem {
 const navigationItems: NavigationItem[] = [
   {
     text: 'Dashboard',
-    icon: <DashboardIcon />,
+    icon: <Home className="w-4 h-4" />,
     path: '/dashboard',
   },
   {
     text: 'Analytics',
-    icon: <AnalyticsIcon />,
+    icon: <BarChart3 className="w-4 h-4" />,
     path: '/analytics',
   },
   {
     text: 'Real-time Monitoring',
-    icon: <MonitorIcon />,
+    icon: <Activity className="w-4 h-4" />,
     path: '/monitoring',
   },
   {
     text: 'User Management',
-    icon: <PeopleIcon />,
+    icon: <Users className="w-4 h-4" />,
     path: '/users',
   },
   {
     text: 'Reports',
-    icon: <ReportsIcon />,
+    icon: <FileText className="w-4 h-4" />,
     path: '/reports',
   },
   {
     text: 'Configuration',
-    icon: <SettingsIcon />,
+    icon: <Settings className="w-4 h-4" />,
     path: '/config',
     requiredRole: 'admin',
   },
@@ -108,139 +94,131 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     setMobileOpen(false);
   };
 
-  const drawer = (
-    <div>
-      <Toolbar>
-        <Typography variant="h6" noWrap component="div">
-          Reality Checker
-        </Typography>
-      </Toolbar>
-      <Divider />
-      <List>
+  const sidebarContent = (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center px-6 py-4 border-b">
+        <Shield className="w-6 h-6 mr-2 text-primary" />
+        <h2 className="text-lg font-semibold">Reality Checker</h2>
+      </div>
+      <nav className="flex-1 px-4 py-4 space-y-2">
         {navigationItems
           .filter(item => !item.requiredRole || item.requiredRole === user?.role)
           .map((item) => (
-            <ListItem key={item.text} disablePadding>
-              <ListItemButton
-                selected={location.pathname === item.path}
-                onClick={() => handleNavigation(item.path)}
-              >
-                <ListItemIcon>
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText primary={item.text} />
-              </ListItemButton>
-            </ListItem>
+            <Button
+              key={item.text}
+              variant={location.pathname === item.path ? "default" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => handleNavigation(item.path)}
+            >
+              {item.icon}
+              <span className="ml-2">{item.text}</span>
+            </Button>
           ))}
-      </List>
+      </nav>
     </div>
   );
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      <CssBaseline />
-      <AppBar
-        position="fixed"
-        sx={{
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
-        }}
-      >
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Admin Dashboard
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Typography variant="body2" sx={{ mr: 2 }}>
-              {user?.username} ({user?.role})
-            </Typography>
-            <IconButton
-              size="large"
-              aria-label="account of current user"
-              aria-controls="profile-menu"
-              aria-haspopup="true"
-              onClick={handleProfileMenuOpen}
-              color="inherit"
+    <div className="flex h-screen bg-background">
+      {/* Mobile sidebar overlay */}
+      {mobileOpen && (
+        <div 
+          className="fixed inset-0 z-50 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        >
+          <div className="fixed inset-y-0 left-0 w-64 bg-background border-r shadow-lg">
+            <div className="flex items-center justify-between px-4 py-4 border-b">
+              <div className="flex items-center">
+                <Shield className="w-6 h-6 mr-2 text-primary" />
+                <h2 className="text-lg font-semibold">Reality Checker</h2>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setMobileOpen(false)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            <nav className="px-4 py-4 space-y-2">
+              {navigationItems
+                .filter(item => !item.requiredRole || item.requiredRole === user?.role)
+                .map((item) => (
+                  <Button
+                    key={item.text}
+                    variant={location.pathname === item.path ? "default" : "ghost"}
+                    className="w-full justify-start"
+                    onClick={() => handleNavigation(item.path)}
+                  >
+                    {item.icon}
+                    <span className="ml-2">{item.text}</span>
+                  </Button>
+                ))}
+            </nav>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop sidebar */}
+      <div className="hidden lg:flex lg:flex-col lg:w-64 lg:border-r lg:bg-background">
+        {sidebarContent}
+      </div>
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <header className="flex items-center justify-between px-6 py-4 bg-background border-b">
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden mr-2"
+              onClick={handleDrawerToggle}
             >
-              <Avatar sx={{ width: 32, height: 32 }}>
-                <AccountCircle />
-              </Avatar>
-            </IconButton>
-          </Box>
-        </Toolbar>
-      </AppBar>
-      <Menu
-        id="profile-menu"
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleProfileMenuClose}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-      >
-        <MenuItem onClick={handleLogout}>
-          <ListItemIcon>
-            <Logout fontSize="small" />
-          </ListItemIcon>
-          Logout
-        </MenuItem>
-      </Menu>
-      <Box
-        component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
-        aria-label="navigation"
-      >
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true, // Better open performance on mobile.
-          }}
-          sx={{
-            display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-          }}
-        >
-          {drawer}
-        </Drawer>
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-          }}
-          open
-        >
-          {drawer}
-        </Drawer>
-      </Box>
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-        }}
-      >
-        <Toolbar />
-        {children}
-      </Box>
-    </Box>
+              <Menu className="w-4 h-4" />
+            </Button>
+            <h1 className="text-xl font-semibold">Admin Dashboard</h1>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <div className="hidden sm:flex items-center space-x-2">
+              <span className="text-sm text-muted-foreground">{user?.username}</span>
+              <Badge variant="outline">{user?.role}</Badge>
+            </div>
+            
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleProfileMenuOpen}
+                className="relative"
+              >
+                <User className="w-4 h-4" />
+              </Button>
+              
+              {anchorEl && (
+                <div className="absolute right-0 mt-2 w-48 bg-background border rounded-md shadow-lg z-50">
+                  <div className="py-1">
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center w-full px-4 py-2 text-sm text-left hover:bg-muted"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 overflow-auto">
+          {children}
+        </main>
+      </div>
+    </div>
   );
 };
 

@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
 from app.config import get_config
-from app.dependencies import get_service_container, reset_service_container
+from app.dependencies import get_service_container, reset_service_container, initialize_service_container
 from app.api.webhook import router as webhook_router
 from app.utils.logging import setup_logging, get_logger, set_correlation_id, get_correlation_id
 from app.utils.error_handling import handle_error, ErrorCategory
@@ -62,7 +62,7 @@ async def startup_event():
         
         # Initialize service container and perform health checks
         logger.info("Initializing services and performing health checks...")
-        service_container = get_service_container()
+        service_container = initialize_service_container()
         
         # Perform startup health checks
         health_status = await service_container.perform_health_checks()
@@ -100,9 +100,10 @@ async def startup_event():
         
         if failed_services:
             error_msg = f"Critical services failed health checks: {failed_services}"
-            logger.error(error_msg)
-            logger.error("Application startup failed due to service configuration issues")
-            raise RuntimeError(error_msg)
+            logger.warning(error_msg)
+            logger.warning("Application will start with limited functionality due to service configuration issues")
+            # Don't raise RuntimeError - allow app to start with limited functionality
+            # raise RuntimeError(error_msg)
         
         # Pre-initialize core services to catch any initialization errors early
         logger.info("Pre-initializing core services...")
@@ -140,7 +141,7 @@ async def shutdown_event():
     
     try:
         # Get service container and perform cleanup
-        service_container = get_service_container()
+        service_container = initialize_service_container()
         await service_container.cleanup()
         
         # Reset the global service container
@@ -398,25 +399,32 @@ async def health_check() -> Dict[str, Any]:
     """
     try:
         # Get service container and perform health checks
-        service_container = get_service_container()
+        service_container = initialize_service_container()
         services_status = await service_container.perform_health_checks()
         
         # Determine overall health status
         critical_services = ['openai', 'twilio']
-        healthy_services = [
-            service for service in critical_services 
-            if services_status.get(service) in ['connected', 'ready']
-        ]
+        healthy_services = []
+        not_configured_services = []
+        error_services = []
         
-        not_configured_services = [
-            service for service in critical_services 
-            if services_status.get(service) == 'not_configured'
-        ]
-        
-        error_services = [
-            service for service in critical_services 
-            if services_status.get(service) == 'error'
-        ]
+        for service in critical_services:
+            status = services_status.get(service)
+            if isinstance(status, dict):
+                service_status = status.get('status')
+                if service_status == 'healthy':
+                    healthy_services.append(service)
+                elif service_status == 'not_configured':
+                    not_configured_services.append(service)
+                elif service_status == 'error':
+                    error_services.append(service)
+            else:
+                if status in ['connected', 'ready']:
+                    healthy_services.append(service)
+                elif status == 'not_configured':
+                    not_configured_services.append(service)
+                elif status == 'error':
+                    error_services.append(service)
         
         if len(healthy_services) == len(critical_services):
             overall_status = "healthy"

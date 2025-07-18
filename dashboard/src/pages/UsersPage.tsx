@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Box, Paper } from '@mui/material';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { Users, Search, UserCheck, UserX } from 'lucide-react';
 import UserTable from '../components/users/UserTable';
 import UserSearchBar from '../components/users/UserSearchBar';
 import UserInteractionModal from '../components/users/UserInteractionModal';
@@ -152,36 +154,130 @@ const UsersPage: React.FC = () => {
     setCurrentPage(0);
   };
   
+  // Calculate stats
+  const totalUsers = users.length;
+  const activeUsers = users.filter(user => !user.blocked).length;
+  const blockedUsers = users.filter(user => user.blocked).length;
+  const avgEngagement = users.reduce((sum, user) => sum + user.engagementScore, 0) / users.length || 0;
+
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom sx={{ mb: 3 }}>
-        User Management
-      </Typography>
+    <div className="space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
+        <Badge variant="outline">
+          <Users className="w-4 h-4 mr-1" />
+          {totalUsers} Total Users
+        </Badge>
+      </div>
+
+      {/* User Stats Overview */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalUsers}</div>
+            <p className="text-xs text-muted-foreground">
+              Registered users
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+            <UserCheck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{activeUsers}</div>
+            <p className="text-xs text-muted-foreground">
+              Not blocked
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Blocked Users</CardTitle>
+            <UserX className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{blockedUsers}</div>
+            <p className="text-xs text-muted-foreground">
+              Restricted access
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg Engagement</CardTitle>
+            <Search className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{avgEngagement.toFixed(0)}</div>
+            <p className="text-xs text-muted-foreground">
+              Engagement score
+            </p>
+          </CardContent>
+        </Card>
+      </div>
       
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <UserSearchBar 
-          onSearch={handleSearch} 
-          searchQuery={searchQuery}
-        />
-      </Paper>
+      {/* Search Bar */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Search className="w-5 h-5 mr-2" />
+            Search Users
+          </CardTitle>
+          <CardDescription>Find users by phone number, date, or request count</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <UserSearchBar 
+            onSearch={handleSearch} 
+            searchQuery={searchQuery}
+          />
+        </CardContent>
+      </Card>
       
-      <UserTable 
-        users={filteredUsers}
-        onBlockUser={handleBlockUser}
-        onUnblockUser={handleUnblockUser}
-        onUserSelect={handleUserSelect}
-        page={currentPage}
-        rowsPerPage={rowsPerPage}
-        onPageChange={handlePageChange}
-        onRowsPerPageChange={handleRowsPerPageChange}
-      />
+      {/* User Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Users className="w-5 h-5 mr-2" />
+            User Directory
+            {searchQuery && (
+              <Badge variant="secondary" className="ml-2">
+                {filteredUsers.length} results
+              </Badge>
+            )}
+          </CardTitle>
+          <CardDescription>
+            Manage WhatsApp users and view their interaction history
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <UserTable 
+            users={filteredUsers}
+            onBlockUser={handleBlockUser}
+            onUnblockUser={handleUnblockUser}
+            onUserSelect={handleUserSelect}
+            page={currentPage}
+            rowsPerPage={rowsPerPage}
+            onPageChange={handlePageChange}
+            onRowsPerPageChange={handleRowsPerPageChange}
+          />
+        </CardContent>
+      </Card>
       
       <UserInteractionModal 
         user={selectedUser}
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       />
-    </Box>
+    </div>
   );
 };
 

@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Container, 
-  Typography, 
-  Box, 
-  Paper, 
-  Alert, 
-  Snackbar 
-} from '@mui/material';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Alert, AlertDescription } from '../components/ui/alert';
+import { Badge } from '../components/ui/badge';
+import { Settings, Shield, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import ConfigurationForm from '../components/configuration/ConfigurationForm';
 import { SystemConfiguration } from '../components/configuration/types';
 import { useAuth } from '../contexts/AuthContext';
@@ -89,60 +85,83 @@ const ConfigurationPage: React.FC = () => {
     }
   };
 
-  const handleCloseSnackbar = () => {
-    setSuccessMessage(null);
-  };
+  // Removed handleCloseSnackbar as we're using shadcn/ui Alert instead of Snackbar
 
   if (!user || user.role !== 'admin') {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Alert severity="error">
-          You don't have permission to access this page. Admin role required.
+      <div className="p-6">
+        <Alert variant="destructive">
+          <Shield className="h-4 w-4" />
+          <AlertDescription>
+            You don't have permission to access this page. Admin role required.
+          </AlertDescription>
         </Alert>
-      </Container>
+      </div>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h4" gutterBottom>
-          System Configuration
-        </Typography>
-        <Typography variant="body1" color="text.secondary" paragraph>
-          Manage system settings, API configurations, and alert thresholds. Changes will take effect immediately.
-        </Typography>
-        
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
-          </Alert>
-        )}
-        
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-            <Typography>Loading configuration...</Typography>
-          </Box>
-        ) : config ? (
-          <ConfigurationForm 
-            config={config} 
-            onSave={handleSaveConfiguration}
-            isLoading={saving}
-          />
-        ) : (
-          <Alert severity="error">
-            Failed to load configuration data. Please refresh the page.
-          </Alert>
-        )}
-      </Paper>
+    <div className="space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">System Configuration</h1>
+          <p className="text-muted-foreground">
+            Manage system settings, API configurations, and alert thresholds. Changes will take effect immediately.
+          </p>
+        </div>
+        <Badge variant="outline">
+          <Settings className="w-4 h-4 mr-1" />
+          Admin Only
+        </Badge>
+      </div>
       
-      <Snackbar
-        open={!!successMessage}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-        message={successMessage}
-      />
-    </Container>
+      {error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {successMessage && (
+        <Alert>
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription>{successMessage}</AlertDescription>
+        </Alert>
+      )}
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Settings className="w-5 h-5 mr-2" />
+            Configuration Settings
+          </CardTitle>
+          <CardDescription>
+            Configure system parameters and operational settings
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center p-8">
+              <Loader2 className="h-8 w-8 animate-spin mr-2" />
+              <span>Loading configuration...</span>
+            </div>
+          ) : config ? (
+            <ConfigurationForm 
+              config={config} 
+              onSave={handleSaveConfiguration}
+              isLoading={saving}
+            />
+          ) : (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Failed to load configuration data. Please refresh the page.
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

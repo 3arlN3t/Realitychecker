@@ -81,11 +81,11 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
     { value: 'json', label: 'JSON Data', icon: 'data_object' },
   ];
 
-  const handleReportTypeChange = (event: React.ChangeEvent<{ value: unknown }>) => {
+  const handleReportTypeChange = (event: any) => {
     setReportType(event.target.value as ReportType);
   };
 
-  const handleExportFormatChange = (event: React.ChangeEvent<{ value: unknown }>) => {
+  const handleExportFormatChange = (event: any) => {
     setExportFormat(event.target.value as ExportFormat);
   };
 

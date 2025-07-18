@@ -1,5 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Box, Paper, Chip } from '@mui/material';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { 
+  BarChart3, 
+  TrendingUp, 
+  Users, 
+  Clock, 
+  Target, 
+  Activity,
+  CheckCircle,
+  AlertCircle,
+  Info
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ClassificationChart from '../components/analytics/ClassificationChart';
 import UsageTrendsChart from '../components/analytics/UsageTrendsChart';
@@ -139,17 +151,14 @@ const AnalyticsPage: React.FC = () => {
   }, [period]);
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" gutterBottom>
-          Analytics Dashboard
-        </Typography>
-        <Chip 
-          label={`Viewing as: ${user?.role?.toUpperCase()}`}
-          color="primary"
-          variant="outlined"
-        />
-      </Box>
+    <div className="space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
+        <Badge variant="outline">
+          <Users className="w-4 h-4 mr-1" />
+          {user?.role?.toUpperCase()}
+        </Badge>
+      </div>
 
       {/* Period Selector */}
       <PeriodSelector 
@@ -158,116 +167,180 @@ const AnalyticsPage: React.FC = () => {
       />
 
       {/* Key Metrics */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 4 }}>
-        <Box sx={{ flex: '1 1 250px', minWidth: '250px' }}>
-          <Paper sx={{ p: 2, textAlign: 'center' }}>
-            <Typography variant="h6" color="textSecondary">
-              Classification Accuracy
-            </Typography>
-            <Typography variant="h3" color="success.main">
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Classification Accuracy</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
               {analyticsData.classificationAccuracy}%
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
+            </div>
+            <p className="text-xs text-muted-foreground">
               AI Model Performance
-            </Typography>
-          </Paper>
-        </Box>
-        <Box sx={{ flex: '1 1 250px', minWidth: '250px' }}>
-          <Paper sx={{ p: 2, textAlign: 'center' }}>
-            <Typography variant="h6" color="textSecondary">
-              Total Analyses
-            </Typography>
-            <Typography variant="h3" color="primary">
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Analyses</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
               {analyticsData.totalAnalyses.toLocaleString()}
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
+            </div>
+            <p className="text-xs text-muted-foreground">
               All time
-            </Typography>
-          </Paper>
-        </Box>
-        <Box sx={{ flex: '1 1 250px', minWidth: '250px' }}>
-          <Paper sx={{ p: 2, textAlign: 'center' }}>
-            <Typography variant="h6" color="textSecondary">
-              Weekly Growth
-            </Typography>
-            <Typography variant="h3" color="success.main">
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Weekly Growth</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
               +{analyticsData.weeklyGrowth}%
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
+            </div>
+            <p className="text-xs text-muted-foreground">
               vs last week
-            </Typography>
-          </Paper>
-        </Box>
-      </Box>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Charts - First Row */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 4 }}>
-        <ClassificationChart data={analyticsData.classifications} />
-        <UsageTrendsChart data={analyticsData.usageTrends} period={period} />
-      </Box>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <BarChart3 className="w-5 h-5 mr-2" />
+              Classification Breakdown
+            </CardTitle>
+            <CardDescription>Distribution of job posting classifications</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ClassificationChart data={analyticsData.classifications} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <TrendingUp className="w-5 h-5 mr-2" />
+              Usage Trends
+            </CardTitle>
+            <CardDescription>Request volume over time</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <UsageTrendsChart data={analyticsData.usageTrends} period={period} />
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Charts - Second Row */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 4 }}>
-        <PeakHoursChart data={analyticsData.peakHours} />
-        <UserEngagementMetrics data={analyticsData.userEngagement} />
-      </Box>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Clock className="w-5 h-5 mr-2" />
+              Peak Hours
+            </CardTitle>
+            <CardDescription>Usage patterns throughout the day</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PeakHoursChart data={analyticsData.peakHours} />
+          </CardContent>
+        </Card>
 
-      {/* System Performance */}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-        <Box sx={{ flex: '1 1 400px', minWidth: '400px' }}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Users className="w-5 h-5 mr-2" />
+              User Engagement
+            </CardTitle>
+            <CardDescription>User behavior and engagement metrics</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <UserEngagementMetrics data={analyticsData.userEngagement} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* System Performance & Insights */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Activity className="w-5 h-5 mr-2" />
               System Performance
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography variant="body2">Average Response Time:</Typography>
-                <Typography variant="body2" fontWeight="bold" color="info.main">
+            </CardTitle>
+            <CardDescription>Current system health and performance metrics</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Average Response Time:</span>
+                <Badge variant="outline" className="text-blue-600">
                   {analyticsData.systemPerformance.avgResponseTime}s
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography variant="body2">Success Rate:</Typography>
-                <Typography variant="body2" fontWeight="bold" color="success.main">
+                </Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Success Rate:</span>
+                <Badge variant="outline" className="text-green-600">
                   {analyticsData.systemPerformance.successRate}%
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography variant="body2">System Uptime:</Typography>
-                <Typography variant="body2" fontWeight="bold" color="success.main">
+                </Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm">System Uptime:</span>
+                <Badge variant="outline" className="text-green-600">
                   {analyticsData.systemPerformance.uptime}%
-                </Typography>
-              </Box>
-            </Box>
-          </Paper>
-        </Box>
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Info className="w-5 h-5 mr-2" />
               Recent Insights
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Typography variant="body2" color="success.main">
-                • Job posting detection accuracy improved by 3%
-              </Typography>
-              <Typography variant="body2" color="info.main">
-                • Peak usage hours: 2-4 PM weekdays
-              </Typography>
-              <Typography variant="body2" color="warning.main">
-                • Scam detection requests increased 15%
-              </Typography>
-              <Typography variant="body2" color="primary">
-                • New user onboarding rate: 85%
-              </Typography>
-              <Typography variant="body2">
-                • Most common query: Job legitimacy check
-              </Typography>
-            </Box>
-          </Paper>
-        </Box>
-      </Box>
-    </Box>
+            </CardTitle>
+            <CardDescription>Key findings and trends</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-start space-x-2">
+                <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
+                <span className="text-sm">Job posting detection accuracy improved by 3%</span>
+              </div>
+              <div className="flex items-start space-x-2">
+                <Info className="w-4 h-4 text-blue-500 mt-0.5" />
+                <span className="text-sm">Peak usage hours: 2-4 PM weekdays</span>
+              </div>
+              <div className="flex items-start space-x-2">
+                <AlertCircle className="w-4 h-4 text-orange-500 mt-0.5" />
+                <span className="text-sm">Scam detection requests increased 15%</span>
+              </div>
+              <div className="flex items-start space-x-2">
+                <TrendingUp className="w-4 h-4 text-blue-500 mt-0.5" />
+                <span className="text-sm">New user onboarding rate: 85%</span>
+              </div>
+              <div className="flex items-start space-x-2">
+                <BarChart3 className="w-4 h-4 text-gray-500 mt-0.5" />
+                <span className="text-sm">Most common query: Job legitimacy check</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 };
 
