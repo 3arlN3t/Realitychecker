@@ -78,7 +78,7 @@ const SystemHealthCard: React.FC<SystemHealthCardProps> = ({ health }) => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <div>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-muted-foreground">
             Uptime
           </p>
           <p className="text-lg font-medium text-green-500">
@@ -86,7 +86,7 @@ const SystemHealthCard: React.FC<SystemHealthCardProps> = ({ health }) => {
           </p>
         </div>
         <div>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-muted-foreground">
             Last Updated
           </p>
           <p className="text-sm">
@@ -105,7 +105,7 @@ const SystemHealthCard: React.FC<SystemHealthCardProps> = ({ health }) => {
             <span className="text-sm">Memory</span>
             <span className="text-sm">{health.memoryUsage}%</span>
           </div>
-          <div className="w-full bg-gray-700 rounded-full h-2">
+          <div className="w-full bg-secondary rounded-full h-2">
             <div 
               className={`h-2 rounded-full ${getProgressColor(health.memoryUsage)}`} 
               style={{ width: `${health.memoryUsage}%` }}
@@ -122,7 +122,7 @@ const SystemHealthCard: React.FC<SystemHealthCardProps> = ({ health }) => {
             <span className="text-sm">CPU</span>
             <span className="text-sm">{health.cpuUsage}%</span>
           </div>
-          <div className="w-full bg-gray-700 rounded-full h-2">
+          <div className="w-full bg-secondary rounded-full h-2">
             <div 
               className={`h-2 rounded-full ${getProgressColor(health.cpuUsage)}`} 
               style={{ width: `${health.cpuUsage}%` }}
@@ -143,14 +143,14 @@ const SystemHealthCard: React.FC<SystemHealthCardProps> = ({ health }) => {
           {Object.entries(health.services).map(([serviceName, service]) => (
             <div
               key={serviceName}
-              className={`flex items-center p-2 border rounded ${
+              className={`flex items-center p-2 border rounded backdrop-blur-sm ${
                 service.status === 'healthy' 
-                  ? 'bg-green-500/5 border-green-500/20' 
+                  ? 'bg-green-500/10 border-green-500/30 text-green-400' 
                   : service.status === 'warning'
-                  ? 'bg-yellow-500/5 border-yellow-500/20'
+                  ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
                   : service.status === 'critical'
-                  ? 'bg-red-500/5 border-red-500/20'
-                  : 'bg-gray-500/5 border-gray-500/20'
+                  ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                  : 'bg-gray-500/10 border-gray-500/30 text-gray-400'
               }`}
             >
               {getStatusIcon(service.status)}
@@ -159,7 +159,7 @@ const SystemHealthCard: React.FC<SystemHealthCardProps> = ({ health }) => {
                   {serviceName}
                 </p>
                 {service.responseTime && (
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-muted-foreground">
                     {service.responseTime}ms
                   </p>
                 )}

@@ -141,7 +141,7 @@ const ServiceStatusGrid: React.FC<ServiceStatusGridProps> = ({
         <h3 className="ml-2 flex-grow text-lg font-medium">
           Service Health Monitoring
         </h3>
-        <span className="text-xs text-gray-400">
+        <span className="text-xs text-muted-foreground">
           {Object.keys(services).length} Services
         </span>
       </div>

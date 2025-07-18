@@ -115,7 +115,7 @@ const ActiveAlertsCard: React.FC<ActiveAlertsCardProps> = ({
           <h4 className="text-lg font-medium text-green-500 mb-1">
             All Clear!
           </h4>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-muted-foreground">
             No active alerts at this time
           </p>
         </div>
@@ -125,10 +125,10 @@ const ActiveAlertsCard: React.FC<ActiveAlertsCardProps> = ({
             {displayedAlerts.map((alert) => (
               <React.Fragment key={alert.id}>
                 <div
-                  className={`border rounded mb-2 ${
+                  className={`border rounded mb-2 backdrop-blur-sm ${
                     alert.severity === 'critical' 
-                      ? 'border-red-500 bg-red-500/5' 
-                      : 'border-gray-700 bg-gray-900'
+                      ? 'border-red-500/50 bg-red-500/10' 
+                      : 'border-border/50 bg-card/30'
                   }`}
                 >
                   <div className="flex items-start p-3">
@@ -149,11 +149,11 @@ const ActiveAlertsCard: React.FC<ActiveAlertsCardProps> = ({
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-gray-300">
+                      <p className="text-sm text-foreground">
                         {alert.message}
                       </p>
                       <div className="flex justify-between mt-1">
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-muted-foreground">
                           {alert.source} • {formatTimestamp(alert.timestamp)}
                         </span>
                       </div>
@@ -192,11 +192,11 @@ const ActiveAlertsCard: React.FC<ActiveAlertsCardProps> = ({
                     </div>
                   </div>
                   {alert.details && expanded === alert.id && (
-                    <div className="ml-10 mr-4 mb-3 p-3 bg-gray-800 rounded">
-                      <p className="text-sm text-gray-300 font-medium mb-1">
+                    <div className="ml-10 mr-4 mb-3 p-3 bg-secondary/50 rounded">
+                      <p className="text-sm text-foreground font-medium mb-1">
                         Details:
                       </p>
-                      <p className="text-sm text-gray-300 whitespace-pre-wrap">
+                      <p className="text-sm text-foreground whitespace-pre-wrap">
                         {alert.details}
                       </p>
                     </div>
@@ -209,7 +209,7 @@ const ActiveAlertsCard: React.FC<ActiveAlertsCardProps> = ({
           {activeAlerts.length > maxDisplayed && (
             <div className="text-center mt-4">
               <button
-                className="px-3 py-1 text-sm border border-gray-600 rounded hover:bg-gray-800"
+                className="px-3 py-1 text-sm border border-border rounded hover:bg-secondary/50 transition-colors"
                 onClick={() => setShowAll(!showAll)}
               >
                 {showAll ? 'Show Less' : `Show All (${activeAlerts.length})`}
@@ -218,8 +218,8 @@ const ActiveAlertsCard: React.FC<ActiveAlertsCardProps> = ({
           )}
 
           {activeAlerts.length > 0 && (
-            <div className="mt-4 pt-3 border-t border-gray-700">
-              <p className="text-xs text-gray-400">
+            <div className="mt-4 pt-3 border-t border-border">
+              <p className="text-xs text-muted-foreground">
                 {activeAlerts.length} active alert{activeAlerts.length !== 1 ? 's' : ''} • 
                 {criticalAlerts.length} critical • 
                 {alerts.filter(a => a.acknowledged).length} acknowledged

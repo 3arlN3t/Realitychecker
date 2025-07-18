@@ -75,14 +75,14 @@ const MetricItem: React.FC<MetricItemProps> = ({
   isGoodWhenUp = true, 
   suffix = '' 
 }) => (
-  <div className="text-center p-2">
+  <div className="text-center p-2 bg-card/30 backdrop-blur-sm rounded-lg border border-border/50 shadow-lg">
     <div className="flex justify-center mb-2">
       <div className="text-primary">{icon}</div>
     </div>
     <div className="text-xl font-bold mb-1">
       {typeof value === 'number' ? formatNumber(value) : value}{suffix}
     </div>
-    <div className="text-sm text-gray-400 mb-1">
+    <div className="text-sm text-muted-foreground mb-1">
       {title}
     </div>
     <div className={`flex items-center justify-center ${getTrendColor(trend, isGoodWhenUp)}`}>
@@ -106,7 +106,7 @@ const MetricsOverviewCard: React.FC<MetricsOverviewCardProps> = ({ metrics }) =>
         <h3 className="ml-2 flex-grow text-lg font-medium">
           Key Performance Indicators
         </h3>
-        <span className="text-xs text-gray-400">
+        <span className="text-xs text-muted-foreground">
           Updated: {metrics.lastUpdated}
         </span>
       </div>
@@ -147,11 +147,11 @@ const MetricsOverviewCard: React.FC<MetricsOverviewCardProps> = ({ metrics }) =>
       <div className="border-t border-gray-800 my-4"></div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="text-center">
+        <div className="text-center p-3 bg-card/30 backdrop-blur-sm rounded-lg border border-border/50">
           <div className="text-xl font-bold text-primary">
             {metrics.avgResponseTime.toFixed(1)}s
           </div>
-          <div className="text-sm text-gray-400">
+          <div className="text-sm text-muted-foreground">
             Avg Response Time
           </div>
           <div className={`flex items-center justify-center mt-1 ${getTrendColor(metrics.responseTrend, false)}`}>
@@ -161,25 +161,25 @@ const MetricsOverviewCard: React.FC<MetricsOverviewCardProps> = ({ metrics }) =>
             </span>
           </div>
         </div>
-        <div className="text-center">
+        <div className="text-center p-3 bg-card/30 backdrop-blur-sm rounded-lg border border-border/50">
           <div className="text-xl font-bold text-green-500">
             {metrics.successRate.toFixed(1)}%
           </div>
-          <div className="text-sm text-gray-400">
+          <div className="text-sm text-muted-foreground">
             Success Rate
           </div>
-          <div className="text-xs text-gray-400">
+          <div className="text-xs text-muted-foreground">
             Last 24 hours
           </div>
         </div>
-        <div className="text-center">
+        <div className="text-center p-3 bg-card/30 backdrop-blur-sm rounded-lg border border-border/50">
           <div className="text-xl font-bold text-blue-500">
             {metrics.peakHour}
           </div>
-          <div className="text-sm text-gray-400">
+          <div className="text-sm text-muted-foreground">
             Peak Hour
           </div>
-          <div className="text-xs text-gray-400">
+          <div className="text-xs text-muted-foreground">
             Highest activity
           </div>
         </div>

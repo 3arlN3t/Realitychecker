@@ -1,28 +1,27 @@
 import React, { useState } from 'react';
 import { 
-  Box, 
-  Paper, 
-  Typography, 
-  Button, 
-  FormControl, 
-  InputLabel, 
-  Select, 
-  MenuItem, 
-  TextField, 
-  FormControlLabel, 
-  Checkbox, 
-  CircularProgress, 
-  Alert, 
-  Snackbar,
-  Divider
-} from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { subDays, isAfter, isBefore } from 'date-fns';
-import DescriptionIcon from '@mui/icons-material/Description';
-import FileDownloadIcon from '@mui/icons-material/FileDownload';
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription
+} from '../ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Checkbox } from '../ui/checkbox';
+import { Label } from '../ui/label';
+import { DatePicker } from '../ui/date-picker';
+import { subDays, isBefore } from 'date-fns';
+import { FileText, Loader2 } from 'lucide-react';
 import { ReportParameters, ReportType, ExportFormat, ReportData } from './types';
+import { Alert, AlertDescription } from '../ui/alert';
 
 interface ReportGeneratorProps {
   onGenerateReport: (parameters: ReportParameters) => Promise<ReportData>;
@@ -38,7 +37,6 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
   const [userFilter, setUserFilter] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const [generatedReport, setGeneratedReport] = useState<ReportData | null>(null);
 
   const reportTypeOptions: { value: ReportType; label: string; description: string }[] = [
@@ -74,42 +72,12 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
     },
   ];
 
-  const exportFormatOptions: { value: ExportFormat; label: string; icon: string }[] = [
-    { value: 'pdf', label: 'PDF Document', icon: 'picture_as_pdf' },
-    { value: 'csv', label: 'CSV Spreadsheet', icon: 'table_chart' },
-    { value: 'xlsx', label: 'Excel Spreadsheet', icon: 'table_view' },
-    { value: 'json', label: 'JSON Data', icon: 'data_object' },
+  const exportFormatOptions: { value: ExportFormat; label: string }[] = [
+    { value: 'pdf', label: 'PDF Document' },
+    { value: 'csv', label: 'CSV Spreadsheet' },
+    { value: 'xlsx', label: 'Excel Spreadsheet' },
+    { value: 'json', label: 'JSON Data' },
   ];
-
-  const handleReportTypeChange = (event: any) => {
-    setReportType(event.target.value as ReportType);
-  };
-
-  const handleExportFormatChange = (event: any) => {
-    setExportFormat(event.target.value as ExportFormat);
-  };
-
-  const handleStartDateChange = (date: Date | null) => {
-    if (date) {
-      setStartDate(date);
-      
-      // Ensure end date is not before start date
-      if (isBefore(endDate, date)) {
-        setEndDate(date);
-      }
-    }
-  };
-
-  const handleEndDateChange = (date: Date | null) => {
-    if (date) {
-      setEndDate(date);
-      
-      // Ensure start date is not after end date
-      if (isAfter(startDate, date)) {
-        setStartDate(date);
-      }
-    }
-  };
 
   const validateDateRange = (): boolean => {
     // Check if date range is valid (not more than 365 days)
@@ -136,21 +104,16 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
         export_format: exportFormat,
         include_user_details: includeUserDetails,
         include_error_details: includeErrorDetails,
-        user_filter: userFilter || null,
+        user_filter: userFilter || undefined,
       };
       
       const report = await onGenerateReport(parameters);
       setGeneratedReport(report);
-      setSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate report');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleCloseSnackbar = () => {
-    setSuccess(false);
   };
 
   const getSelectedReportTypeDescription = () => {
@@ -159,205 +122,183 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
   };
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5" gutterBottom>
-          <DescriptionIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-          Generate Custom Report
-        </Typography>
-        <Typography variant="body2" color="textSecondary" paragraph>
-          Create custom reports with specific parameters and export in your preferred format.
-        </Typography>
-        
-        <Divider sx={{ my: 2 }} />
-        
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-          {/* Report Type Selection */}
-          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(50% - 12px)' } }}>
-            <FormControl fullWidth>
-              <InputLabel id="report-type-label">Report Type</InputLabel>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <FileText className="h-5 w-5 mr-2" />
+            Generate Custom Report
+          </CardTitle>
+          <CardDescription>
+            Create custom reports with specific parameters and export in your preferred format.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Report Type Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="report-type">Report Type</Label>
               <Select
-                labelId="report-type-label"
-                id="report-type"
                 value={reportType}
-                label="Report Type"
-                onChange={handleReportTypeChange}
+                onValueChange={(value) => setReportType(value as ReportType)}
               >
-                {reportTypeOptions.map(option => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-              {getSelectedReportTypeDescription()}
-            </Typography>
-          </Box>
-          
-          {/* Export Format Selection */}
-          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(50% - 12px)' } }}>
-            <FormControl fullWidth>
-              <InputLabel id="export-format-label">Export Format</InputLabel>
-              <Select
-                labelId="export-format-label"
-                id="export-format"
-                value={exportFormat}
-                label="Export Format"
-                onChange={handleExportFormatChange}
-              >
-                {exportFormatOptions.map(option => (
-                  <MenuItem key={option.value} value={option.value}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <span className="material-icons" style={{ marginRight: 8 }}>
-                        {option.icon}
-                      </span>
+                <SelectTrigger id="report-type" className="w-full">
+                  <SelectValue placeholder="Select report type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {reportTypeOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
                       {option.label}
-                    </Box>
-                  </MenuItem>
-                ))}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
-            </FormControl>
-          </Box>
-          
-          {/* Date Range Selection */}
-          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(50% - 12px)' } }}>
+              <p className="text-sm text-muted-foreground">
+                {getSelectedReportTypeDescription()}
+              </p>
+            </div>
+            
+            {/* Export Format Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="export-format">Export Format</Label>
+              <Select
+                value={exportFormat}
+                onValueChange={(value) => setExportFormat(value as ExportFormat)}
+              >
+                <SelectTrigger id="export-format" className="w-full">
+                  <SelectValue placeholder="Select export format" />
+                </SelectTrigger>
+                <SelectContent>
+                  {exportFormatOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Date Range Selection */}
             <DatePicker
+              id="start-date"
               label="Start Date"
               value={startDate}
-              onChange={handleStartDateChange}
-              maxDate={new Date()}
-              slotProps={{ textField: { fullWidth: true } }}
+              onChange={(date) => {
+                setStartDate(date);
+                if (isBefore(endDate, date)) {
+                  setEndDate(date);
+                }
+              }}
+              max={new Date()}
             />
-          </Box>
-          
-          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(50% - 12px)' } }}>
+            
             <DatePicker
+              id="end-date"
               label="End Date"
               value={endDate}
-              onChange={handleEndDateChange}
-              minDate={startDate}
-              maxDate={new Date()}
-              slotProps={{ textField: { fullWidth: true } }}
+              onChange={(date) => setEndDate(date)}
+              min={startDate}
+              max={new Date()}
             />
-          </Box>
+          </div>
           
           {/* Additional Options */}
-          <Box sx={{ flex: '1 1 100%' }}>
-            <Typography variant="subtitle2" gutterBottom>
-              Additional Options
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={includeUserDetails}
-                    onChange={(e) => setIncludeUserDetails(e.target.checked)}
-                  />
-                }
-                label="Include User Details"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={includeErrorDetails}
-                    onChange={(e) => setIncludeErrorDetails(e.target.checked)}
-                  />
-                }
-                label="Include Error Details"
-              />
-            </Box>
-          </Box>
+          <div className="mt-6 space-y-4">
+            <h3 className="text-sm font-medium">Additional Options</h3>
+            <div className="flex flex-wrap gap-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="include-user-details" 
+                  checked={includeUserDetails}
+                  onCheckedChange={(checked) => setIncludeUserDetails(checked === true)}
+                />
+                <Label htmlFor="include-user-details">Include User Details</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="include-error-details" 
+                  checked={includeErrorDetails}
+                  onCheckedChange={(checked) => setIncludeErrorDetails(checked === true)}
+                />
+                <Label htmlFor="include-error-details">Include Error Details</Label>
+              </div>
+            </div>
+          </div>
           
           {/* User Filter */}
-          <Box sx={{ flex: '1 1 100%' }}>
-            <TextField
-              fullWidth
-              label="Filter by User (Phone Number)"
+          <div className="mt-4 space-y-2">
+            <Label htmlFor="user-filter">Filter by User (Optional)</Label>
+            <Input
+              id="user-filter"
+              placeholder="e.g., whatsapp:+1234567890"
               value={userFilter}
               onChange={(e) => setUserFilter(e.target.value)}
-              placeholder="e.g., whatsapp:+1234567890"
-              helperText="Optional: Filter report to specific user"
             />
-          </Box>
+            <p className="text-xs text-muted-foreground">
+              Optional: Filter report to specific user
+            </p>
+          </div>
           
           {/* Error Display */}
           {error && (
-            <Box sx={{ flex: '1 1 100%' }}>
-              <Alert severity="error">{error}</Alert>
-            </Box>
+            <Alert variant="destructive" className="mt-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
           
           {/* Generate Button */}
-          <Box sx={{ flex: '1 1 100%' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleGenerateReport}
-                disabled={loading}
-                startIcon={loading ? <CircularProgress size={20} /> : <DescriptionIcon />}
-              >
-                {loading ? 'Generating...' : 'Generate Report'}
-              </Button>
-            </Box>
-          </Box>
-        </Box>
-      </Paper>
+          <div className="mt-6 flex justify-end">
+            <Button
+              onClick={handleGenerateReport}
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Generate Report
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
       
       {/* Generated Report Display */}
       {generatedReport && (
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Generated Report
-          </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-            <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(50% - 8px)' } }}>
-              <Typography variant="body2">
-                <strong>Report Type:</strong> {reportTypeOptions.find(o => o.value === generatedReport.report_type)?.label}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Generated At:</strong> {new Date(generatedReport.generated_at).toLocaleString()}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Period:</strong> {generatedReport.period}
-              </Typography>
-            </Box>
-            <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 calc(50% - 8px)' } }}>
-              <Typography variant="body2">
-                <strong>Format:</strong> {exportFormatOptions.find(o => o.value === generatedReport.export_format)?.label}
-              </Typography>
-              {generatedReport.file_size && (
-                <Typography variant="body2">
-                  <strong>File Size:</strong> {(generatedReport.file_size / 1024).toFixed(2)} KB
-                </Typography>
-              )}
-            </Box>
-            <Box sx={{ flex: '1 1 100%' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                {generatedReport.download_url && (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    href={generatedReport.download_url}
-                    startIcon={<FileDownloadIcon />}
-                  >
-                    Download Report
-                  </Button>
+        <Card>
+          <CardHeader>
+            <CardTitle>Generated Report</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm"><span className="font-medium">Report Type:</span> {reportTypeOptions.find(o => o.value === generatedReport.report_type)?.label}</p>
+                <p className="text-sm"><span className="font-medium">Generated At:</span> {new Date(generatedReport.generated_at).toLocaleString()}</p>
+                <p className="text-sm"><span className="font-medium">Period:</span> {generatedReport.period}</p>
+              </div>
+              <div>
+                <p className="text-sm"><span className="font-medium">Format:</span> {exportFormatOptions.find(o => o.value === generatedReport.export_format)?.label}</p>
+                {generatedReport.file_size && (
+                  <p className="text-sm"><span className="font-medium">File Size:</span> {(generatedReport.file_size / 1024).toFixed(2)} KB</p>
                 )}
-              </Box>
-            </Box>
-          </Box>
-        </Paper>
+              </div>
+            </div>
+            {generatedReport.download_url && (
+              <div className="mt-4 flex justify-end">
+                <Button asChild>
+                  <a href={generatedReport.download_url}>Download Report</a>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
-      
-      <Snackbar
-        open={success}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-        message="Report generated successfully"
-      />
-    </LocalizationProvider>
+    </div>
   );
 };
 
