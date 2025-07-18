@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
 import { 
   Menu, 
   Home, 
@@ -94,129 +92,143 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     setMobileOpen(false);
   };
 
-  const sidebarContent = (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center px-6 py-4 border-b">
-        <Shield className="w-6 h-6 mr-2 text-primary" />
+  return (
+    <div className="flex h-screen bg-black text-white">
+      {/* Top header with logo */}
+      <div className="fixed top-0 left-0 w-full bg-black border-b border-gray-800 z-10 flex items-center px-4 py-3">
+        <Shield className="w-6 h-6 mr-2" />
         <h2 className="text-lg font-semibold">Reality Checker</h2>
       </div>
-      <nav className="flex-1 px-4 py-4 space-y-2">
-        {navigationItems
-          .filter(item => !item.requiredRole || item.requiredRole === user?.role)
-          .map((item) => (
-            <Button
-              key={item.text}
-              variant={location.pathname === item.path ? "default" : "ghost"}
-              className="w-full justify-start"
-              onClick={() => handleNavigation(item.path)}
-            >
-              {item.icon}
-              <span className="ml-2">{item.text}</span>
-            </Button>
-          ))}
-      </nav>
-    </div>
-  );
 
-  return (
-    <div className="flex h-screen bg-background">
+      {/* Navigation bar */}
+      <div className="fixed top-16 left-0 right-0 bg-black border-b border-gray-800 z-10">
+        <div className="flex overflow-x-auto">
+          {navigationItems
+            .filter(item => !item.requiredRole || item.requiredRole === user?.role)
+            .map((item) => (
+              <button
+                key={item.text}
+                type="button"
+                className={`flex items-center px-4 py-3 ${
+                  location.pathname === item.path 
+                    ? "border-b-2 border-white" 
+                    : "text-gray-400 hover:text-white"
+                }`}
+                onClick={() => handleNavigation(item.path)}
+              >
+                {item.icon}
+                <span className="ml-2 whitespace-nowrap">{item.text}</span>
+              </button>
+            ))}
+        </div>
+      </div>
+
+      {/* Mobile menu button */}
+      <button
+        type="button"
+        className="fixed top-4 left-4 z-20 lg:hidden"
+        onClick={handleDrawerToggle}
+        aria-label="Toggle menu"
+        aria-expanded={mobileOpen}
+        aria-controls="mobile-navigation"
+      >
+        <Menu className="w-6 h-6" />
+      </button>
+
       {/* Mobile sidebar overlay */}
       {mobileOpen && (
         <div 
-          className="fixed inset-0 z-50 lg:hidden"
+          className="fixed inset-0 z-50 lg:hidden bg-black bg-opacity-50"
           onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
         >
-          <div className="fixed inset-y-0 left-0 w-64 bg-background border-r shadow-lg">
-            <div className="flex items-center justify-between px-4 py-4 border-b">
+          {/* Mobile sidebar content */}
+          <div 
+            className="fixed inset-y-0 left-0 w-64 bg-black border-r border-gray-800"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setMobileOpen(false);
+            }}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation menu"
+          >
+            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-800">
               <div className="flex items-center">
-                <Shield className="w-6 h-6 mr-2 text-primary" />
+                <Shield className="w-6 h-6 mr-2" />
                 <h2 className="text-lg font-semibold">Reality Checker</h2>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
+              <button
+                type="button"
+                className="p-1 rounded-full hover:bg-gray-800"
                 onClick={() => setMobileOpen(false)}
               >
-                <X className="w-4 h-4" />
-              </Button>
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <nav className="px-4 py-4 space-y-2">
+            <nav className="px-2 py-4">
               {navigationItems
                 .filter(item => !item.requiredRole || item.requiredRole === user?.role)
                 .map((item) => (
-                  <Button
+                  <button
                     key={item.text}
-                    variant={location.pathname === item.path ? "default" : "ghost"}
-                    className="w-full justify-start"
+                    type="button"
+                    className={`flex items-center w-full px-4 py-2 my-1 rounded ${
+                      location.pathname === item.path 
+                        ? "bg-gray-800 text-white" 
+                        : "text-gray-400 hover:bg-gray-800 hover:text-white"
+                    }`}
                     onClick={() => handleNavigation(item.path)}
                   >
                     {item.icon}
-                    <span className="ml-2">{item.text}</span>
-                  </Button>
+                    <span className="ml-3">{item.text}</span>
+                  </button>
                 ))}
             </nav>
           </div>
         </div>
       )}
 
-      {/* Desktop sidebar */}
-      <div className="hidden lg:flex lg:flex-col lg:w-64 lg:border-r lg:bg-background">
-        {sidebarContent}
+      {/* User info */}
+      <div className="fixed top-4 right-4 z-20 flex items-center">
+        <div className="text-sm mr-2">
+          <div>{user?.username}</div>
+          <div className="text-gray-400">{user?.role}</div>
+        </div>
+        <button
+          type="button"
+          className="p-2 rounded-full hover:bg-gray-800"
+          onClick={handleProfileMenuOpen}
+          aria-label="User menu"
+          aria-expanded={Boolean(anchorEl)}
+          aria-haspopup="true"
+        >
+          <User className="w-5 h-5" />
+        </button>
+        
+        {anchorEl && (
+          <div 
+            className="absolute right-0 top-full mt-2 w-48 bg-black border border-gray-800 rounded shadow-lg z-50"
+            role="menu"
+            aria-orientation="vertical"
+          >
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center w-full px-4 py-2 text-sm text-left hover:bg-gray-800"
+              role="menuitem"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="flex items-center justify-between px-6 py-4 bg-background border-b">
-          <div className="flex items-center">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden mr-2"
-              onClick={handleDrawerToggle}
-            >
-              <Menu className="w-4 h-4" />
-            </Button>
-            <h1 className="text-xl font-semibold">Admin Dashboard</h1>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            <div className="hidden sm:flex items-center space-x-2">
-              <span className="text-sm text-muted-foreground">{user?.username}</span>
-              <Badge variant="outline">{user?.role}</Badge>
-            </div>
-            
-            <div className="relative">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleProfileMenuOpen}
-                className="relative"
-              >
-                <User className="w-4 h-4" />
-              </Button>
-              
-              {anchorEl && (
-                <div className="absolute right-0 mt-2 w-48 bg-background border rounded-md shadow-lg z-50">
-                  <div className="py-1">
-                    <button
-                      onClick={handleLogout}
-                      className="flex items-center w-full px-4 py-2 text-sm text-left hover:bg-muted"
-                    >
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Logout
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </header>
-
-        {/* Page content */}
-        <main className="flex-1 overflow-auto">
-          {children}
-        </main>
+      <div className="w-full pt-32 pb-4 px-4 overflow-auto">
+        {children}
       </div>
     </div>
   );

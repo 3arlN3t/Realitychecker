@@ -71,14 +71,10 @@ function App() {
     }
   }, []);
   
-  // Apply dark mode class to document
+  // Always apply dark mode for now to match the screenshots
   useEffect(() => {
-    if (prefersDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [prefersDarkMode]);
+    document.documentElement.classList.add('dark');
+  }, []);
 
   return (
     <div className={`min-h-screen bg-background text-foreground ${prefersReducedMotion ? 'motion-reduce' : ''}`}>

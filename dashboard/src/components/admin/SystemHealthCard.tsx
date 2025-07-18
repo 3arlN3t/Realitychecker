@@ -1,20 +1,10 @@
 import React from 'react';
 import {
-  Card,
-  CardContent,
-  Typography,
-  Box,
-  Chip,
-  LinearProgress,
-  useTheme,
-  useMediaQuery,
-} from '@mui/material';
-import {
-  CheckCircle as HealthyIcon,
-  Warning as WarningIcon,
-  Error as ErrorIcon,
-  Info as InfoIcon,
-} from '@mui/icons-material';
+  CheckCircle,
+  AlertTriangle,
+  AlertCircle,
+  Info
+} from 'lucide-react';
 
 export interface SystemHealth {
   status: 'healthy' | 'warning' | 'critical' | 'unknown';
@@ -42,149 +32,143 @@ interface SystemHealthCardProps {
 }
 
 const SystemHealthCard: React.FC<SystemHealthCardProps> = ({ health }) => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <HealthyIcon color="success" />;
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
       case 'warning':
-        return <WarningIcon color="warning" />;
+        return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
       case 'critical':
-        return <ErrorIcon color="error" />;
+        return <AlertCircle className="w-4 h-4 text-red-500" />;
       default:
-        return <InfoIcon color="info" />;
+        return <Info className="w-4 h-4 text-blue-500" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'healthy':
-        return 'success';
+        return 'bg-green-500/10 text-green-500 border-green-500/20';
       case 'warning':
-        return 'warning';
+        return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
       case 'critical':
-        return 'error';
+        return 'bg-red-500/10 text-red-500 border-red-500/20';
       default:
-        return 'default';
+        return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
     }
   };
 
   const getProgressColor = (percentage: number) => {
-    if (percentage < 70) return 'success';
-    if (percentage < 85) return 'warning';
-    return 'error';
+    if (percentage < 70) return 'bg-green-500';
+    if (percentage < 85) return 'bg-yellow-500';
+    return 'bg-red-500';
   };
 
   return (
-    <Card sx={{ height: '100%' }}>
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          {getStatusIcon(health.status)}
-          <Typography variant="h6" sx={{ ml: 1, flexGrow: 1 }}>
-            System Health
-          </Typography>
-          <Chip
-            label={health.status.toUpperCase()}
-            color={getStatusColor(health.status) as any}
-            size="small"
-            variant="filled"
-          />
-        </Box>
+    <div className="h-full">
+      <div className="flex items-center mb-4">
+        {getStatusIcon(health.status)}
+        <h3 className="ml-2 flex-grow text-lg font-medium">
+          System Health
+        </h3>
+        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(health.status)}`}>
+          {health.status.toUpperCase()}
+        </span>
+      </div>
 
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2 }}>
-          <Box>
-            <Typography variant="body2" color="textSecondary">
-              Uptime
-            </Typography>
-            <Typography variant="h6" color="success.main">
-              {health.uptime}
-            </Typography>
-          </Box>
-          <Box>
-            <Typography variant="body2" color="textSecondary">
-              Last Updated
-            </Typography>
-            <Typography variant="body2">
-              {health.lastUpdated}
-            </Typography>
-          </Box>
-        </Box>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        <div>
+          <p className="text-sm text-gray-400">
+            Uptime
+          </p>
+          <p className="text-lg font-medium text-green-500">
+            {health.uptime}
+          </p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-400">
+            Last Updated
+          </p>
+          <p className="text-sm">
+            {health.lastUpdated}
+          </p>
+        </div>
+      </div>
 
-        <Box sx={{ mt: 3 }}>
-          <Typography variant="subtitle2" gutterBottom>
-            Resource Usage
-          </Typography>
-          
-          <Box sx={{ mb: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-              <Typography variant="body2">Memory</Typography>
-              <Typography variant="body2">{health.memoryUsage}%</Typography>
-            </Box>
-            <LinearProgress
-              variant="determinate"
-              value={health.memoryUsage}
-              color={getProgressColor(health.memoryUsage)}
-              sx={{ height: 6, borderRadius: 3 }}
-            />
-          </Box>
+      <div className="mt-6">
+        <h4 className="text-sm font-medium mb-2">
+          Resource Usage
+        </h4>
+        
+        <div className="mb-4">
+          <div className="flex justify-between mb-1">
+            <span className="text-sm">Memory</span>
+            <span className="text-sm">{health.memoryUsage}%</span>
+          </div>
+          <div className="w-full bg-gray-700 rounded-full h-2">
+            <div 
+              className={`h-2 rounded-full ${getProgressColor(health.memoryUsage)}`} 
+              style={{ width: `${health.memoryUsage}%` }}
+              role="progressbar"
+              aria-valuenow={health.memoryUsage}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            ></div>
+          </div>
+        </div>
 
-          <Box sx={{ mb: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-              <Typography variant="body2">CPU</Typography>
-              <Typography variant="body2">{health.cpuUsage}%</Typography>
-            </Box>
-            <LinearProgress
-              variant="determinate"
-              value={health.cpuUsage}
-              color={getProgressColor(health.cpuUsage)}
-              sx={{ height: 6, borderRadius: 3 }}
-            />
-          </Box>
-        </Box>
+        <div className="mb-4">
+          <div className="flex justify-between mb-1">
+            <span className="text-sm">CPU</span>
+            <span className="text-sm">{health.cpuUsage}%</span>
+          </div>
+          <div className="w-full bg-gray-700 rounded-full h-2">
+            <div 
+              className={`h-2 rounded-full ${getProgressColor(health.cpuUsage)}`} 
+              style={{ width: `${health.cpuUsage}%` }}
+              role="progressbar"
+              aria-valuenow={health.cpuUsage}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            ></div>
+          </div>
+        </div>
+      </div>
 
-        <Box sx={{ mt: 3 }}>
-          <Typography variant="subtitle2" gutterBottom>
-            Service Status
-          </Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)' }, gap: 1 }}>
-            {Object.entries(health.services).map(([serviceName, service]) => (
-              <Box
-                key={serviceName}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  p: 1,
-                  border: 1,
-                  borderColor: 'divider',
-                  borderRadius: 1,
-                  bgcolor: (() => {
-                    if (service.status === 'healthy') return 'success.light';
-                    if (service.status === 'warning') return 'warning.light';
-                    if (service.status === 'critical') return 'error.light';
-                    return 'grey.100';
-                  })(),
-                  opacity: service.status === 'healthy' ? 0.1 : 0.2,
-                }}
-              >
-                {getStatusIcon(service.status)}
-                <Box sx={{ ml: 1, minWidth: 0 }}>
-                  <Typography variant="caption" sx={{ textTransform: 'capitalize' }}>
-                    {serviceName}
-                  </Typography>
-                  {service.responseTime && (
-                    <Typography variant="caption" display="block" color="textSecondary">
-                      {service.responseTime}ms
-                    </Typography>
-                  )}
-                </Box>
-              </Box>
-            ))}
-          </Box>
-        </Box>
-      </CardContent>
-    </Card>
+      <div className="mt-6">
+        <h4 className="text-sm font-medium mb-2">
+          Service Status
+        </h4>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {Object.entries(health.services).map(([serviceName, service]) => (
+            <div
+              key={serviceName}
+              className={`flex items-center p-2 border rounded ${
+                service.status === 'healthy' 
+                  ? 'bg-green-500/5 border-green-500/20' 
+                  : service.status === 'warning'
+                  ? 'bg-yellow-500/5 border-yellow-500/20'
+                  : service.status === 'critical'
+                  ? 'bg-red-500/5 border-red-500/20'
+                  : 'bg-gray-500/5 border-gray-500/20'
+              }`}
+            >
+              {getStatusIcon(service.status)}
+              <div className="ml-2 min-w-0">
+                <p className="text-xs capitalize">
+                  {serviceName}
+                </p>
+                {service.responseTime && (
+                  <p className="text-xs text-gray-400">
+                    {service.responseTime}ms
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 };
 
