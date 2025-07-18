@@ -1,18 +1,28 @@
 import React, { useState } from 'react';
 import {
-  CheckCircle,
-  AlertTriangle,
-  AlertCircle,
-  Info,
-  ChevronDown,
-  ChevronUp,
-  RefreshCw,
-  Activity,
-  Database,
-  Cloud,
-  Webhook,
-  Brain
-} from 'lucide-react';
+  Box,
+  Typography,
+  Paper,
+  Chip,
+  IconButton,
+  LinearProgress,
+  Divider,
+  Grid
+} from '@mui/material';
+import {
+  CheckCircle as CheckCircleIcon,
+  Warning as WarningIcon,
+  Error as ErrorIcon,
+  Info as InfoIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  Refresh as RefreshIcon,
+  Timeline as TimelineIcon,
+  Storage as DatabaseIcon,
+  Cloud as CloudIcon,
+  Http as WebhookIcon,
+  Psychology as BrainIcon
+} from '@mui/icons-material';
 import { ServiceStatus } from './SystemHealthCard';
 
 export interface ServiceDetails extends ServiceStatus {
@@ -50,67 +60,41 @@ const ServiceStatusGrid: React.FC<ServiceStatusGridProps> = ({
   const getServiceIcon = (serviceName: string) => {
     switch (serviceName.toLowerCase()) {
       case 'openai':
-        return <Brain className="w-5 h-5" />;
+        return <BrainIcon />;
       case 'twilio':
-        return <Cloud className="w-5 h-5" />;
+        return <CloudIcon />;
       case 'database':
-        return <Database className="w-5 h-5" />;
+        return <DatabaseIcon />;
       case 'webhook':
-        return <Webhook className="w-5 h-5" />;
+        return <WebhookIcon />;
       default:
-        return <Info className="w-5 h-5" />;
+        return <InfoIcon />;
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
+        return <CheckCircleIcon fontSize="small" color="success" />;
       case 'warning':
-        return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
+        return <WarningIcon fontSize="small" color="warning" />;
       case 'critical':
-        return <AlertCircle className="w-4 h-4 text-red-500" />;
+        return <ErrorIcon fontSize="small" color="error" />;
       default:
-        return <Info className="w-4 h-4 text-blue-500" />;
+        return <InfoIcon fontSize="small" color="info" />;
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): 'success' | 'warning' | 'error' | 'info' => {
     switch (status) {
       case 'healthy':
-        return 'bg-green-500/10 text-green-500 border-green-500/20';
+        return 'success';
       case 'warning':
-        return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+        return 'warning';
       case 'critical':
-        return 'bg-red-500/10 text-red-500 border-red-500/20';
+        return 'error';
       default:
-        return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-    }
-  };
-
-  const getStatusBorder = (status: string) => {
-    switch (status) {
-      case 'healthy':
-        return 'border-green-500/30';
-      case 'warning':
-        return 'border-yellow-500/30';
-      case 'critical':
-        return 'border-red-500/30';
-      default:
-        return 'border-gray-700';
-    }
-  };
-
-  const getStatusBackground = (status: string) => {
-    switch (status) {
-      case 'healthy':
-        return 'bg-green-500/5';
-      case 'warning':
-        return 'bg-yellow-500/5';
-      case 'critical':
-        return 'bg-red-500/5';
-      default:
-        return 'bg-gray-800';
+        return 'info';
     }
   };
 
@@ -128,209 +112,216 @@ const ServiceStatusGrid: React.FC<ServiceStatusGridProps> = ({
     setExpandedService(expandedService === serviceName ? null : serviceName);
   };
 
-  const getProgressColor = (percentage: number) => {
-    if (percentage > 95) return 'bg-green-500';
-    if (percentage > 90) return 'bg-yellow-500';
-    return 'bg-red-500';
+  const getProgressColor = (percentage: number): 'success' | 'warning' | 'error' => {
+    if (percentage > 95) return 'success';
+    if (percentage > 90) return 'warning';
+    return 'error';
   };
 
   return (
-    <div className="h-full">
-      <div className="flex items-center mb-4">
-        <Activity className="w-5 h-5 text-primary" />
-        <h3 className="ml-2 flex-grow text-lg font-medium">
+    <Box sx={{ height: '100%' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <TimelineIcon color="primary" />
+        <Typography variant="h6" sx={{ ml: 1, flexGrow: 1 }}>
           Service Health Monitoring
-        </h3>
-        <span className="text-xs text-muted-foreground">
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
           {Object.keys(services).length} Services
-        </span>
-      </div>
+        </Typography>
+      </Box>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr', lg: '1fr 1fr 1fr' }, gap: 2 }}>
         {Object.entries(services).map(([serviceName, service]) => (
-          <div key={serviceName} className="h-full">
-            <div
-              className={`h-full border-2 rounded-lg ${getStatusBorder(service.status)} ${getStatusBackground(service.status)}`}
-            >
-              <div className="p-4">
-                <div className="flex items-center mb-2">
-                  <div className="flex items-center flex-grow">
-                    <div className="text-primary">
-                      {getServiceIcon(serviceName)}
-                    </div>
-                    <h4 className="ml-2 text-base font-medium capitalize">
-                      {service.name || serviceName}
-                    </h4>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    {onRefreshService && (
-                      <button
-                        className="p-1 hover:bg-gray-700 rounded-full"
-                        onClick={() => onRefreshService(serviceName)}
-                        aria-label="Refresh status"
-                        title="Refresh status"
-                      >
-                        <RefreshCw className="w-4 h-4" />
-                      </button>
-                    )}
-                    <button
-                      className="p-1 hover:bg-gray-700 rounded-full"
-                      onClick={() => handleExpandClick(serviceName)}
-                      aria-label={expandedService === serviceName ? "Hide details" : "Show details"}
-                      title={expandedService === serviceName ? "Hide details" : "Show details"}
+          <Paper
+            key={serviceName}
+            elevation={1}
+            sx={{
+              height: '100%',
+              border: 2,
+              borderColor: `${getStatusColor(service.status)}.main`,
+              bgcolor: `${getStatusColor(service.status)}.main`,
+              opacity: 0.05,
+              borderRadius: 2,
+              overflow: 'hidden'
+            }}
+          >
+            <Box sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+                  <Box sx={{ color: 'primary.main', mr: 1 }}>
+                    {getServiceIcon(serviceName)}
+                  </Box>
+                  <Typography variant="subtitle1" sx={{ textTransform: 'capitalize' }}>
+                    {service.name || serviceName}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  {onRefreshService && (
+                    <IconButton
+                      size="small"
+                      onClick={() => onRefreshService(serviceName)}
+                      aria-label="Refresh status"
+                      title="Refresh status"
                     >
-                      {expandedService === serviceName ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
+                      <RefreshIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                  <IconButton
+                    size="small"
+                    onClick={() => handleExpandClick(serviceName)}
+                    aria-label={expandedService === serviceName ? "Hide details" : "Show details"}
+                    title={expandedService === serviceName ? "Hide details" : "Show details"}
+                  >
+                    {expandedService === serviceName ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                  </IconButton>
+                </Box>
+              </Box>
 
-                <div className="flex items-center mb-2">
-                  {getStatusIcon(service.status)}
-                  <span className={`ml-2 px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(service.status)}`}>
-                    {service.status.toUpperCase()}
-                  </span>
-                </div>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                {getStatusIcon(service.status)}
+                <Chip
+                  label={service.status.toUpperCase()}
+                  color={getStatusColor(service.status)}
+                  size="small"
+                  sx={{ ml: 1 }}
+                />
+              </Box>
 
-                <p className="text-sm text-gray-300 mb-3">
-                  {service.description}
-                </p>
+              <Typography variant="body2" sx={{ mb: 1.5 }}>
+                {service.description}
+              </Typography>
 
-                <div className="flex justify-between mb-2">
-                  <span className="text-xs text-gray-400">
-                    Response Time
-                  </span>
-                  <span className="text-xs font-medium">
-                    {formatResponseTime(service.responseTime)}
-                  </span>
-                </div>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Response Time
+                </Typography>
+                <Typography variant="caption" fontWeight="medium">
+                  {formatResponseTime(service.responseTime)}
+                </Typography>
+              </Box>
 
-                <div className="flex justify-between mb-2">
-                  <span className="text-xs text-gray-400">
-                    Last Check
-                  </span>
-                  <span className="text-xs">
-                    {formatTimestamp(service.lastCheck)}
-                  </span>
-                </div>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Last Check
+                </Typography>
+                <Typography variant="caption">
+                  {formatTimestamp(service.lastCheck)}
+                </Typography>
+              </Box>
 
-                {service.errorCount !== undefined && service.errorCount > 0 && (
-                  <div className="flex justify-between mb-2">
-                    <span className="text-xs text-red-500">
-                      Recent Errors
-                    </span>
-                    <span className="text-xs font-medium text-red-500">
-                      {service.errorCount}
-                    </span>
-                  </div>
-                )}
+              {service.errorCount !== undefined && service.errorCount > 0 && (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                  <Typography variant="caption" color="error">
+                    Recent Errors
+                  </Typography>
+                  <Typography variant="caption" fontWeight="medium" color="error">
+                    {service.errorCount}
+                  </Typography>
+                </Box>
+              )}
 
-                {expandedService === serviceName && (
-                  <div className="mt-3 pt-3 border-t border-gray-700">
-                    {service.version && (
-                      <div className="flex justify-between mb-2">
-                        <span className="text-xs text-gray-400">
-                          Version
-                        </span>
-                        <span className="text-xs">
-                          {service.version}
-                        </span>
-                      </div>
-                    )}
+              {expandedService === serviceName && (
+                <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+                  {service.version && (
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                      <Typography variant="caption" color="text.secondary">
+                        Version
+                      </Typography>
+                      <Typography variant="caption">
+                        {service.version}
+                      </Typography>
+                    </Box>
+                  )}
 
-                    {service.endpoint && (
-                      <div className="mb-2">
-                        <span className="text-xs text-gray-400 block mb-1">
-                          Endpoint
-                        </span>
-                        <span className="text-xs break-all">
-                          {service.endpoint}
-                        </span>
-                      </div>
-                    )}
+                  {service.endpoint && (
+                    <Box sx={{ mb: 1 }}>
+                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                        Endpoint
+                      </Typography>
+                      <Typography variant="caption" sx={{ wordBreak: 'break-all' }}>
+                        {service.endpoint}
+                      </Typography>
+                    </Box>
+                  )}
 
-                    {service.dependencies && service.dependencies.length > 0 && (
-                      <div className="mb-3">
-                        <span className="text-xs text-gray-400 block mb-1">
-                          Dependencies
-                        </span>
-                        <div className="flex flex-wrap gap-1">
-                          {service.dependencies.map((dep) => (
-                            <span
-                              key={`${serviceName}-dep-${dep}`}
-                              className="px-2 py-0.5 text-xs border border-gray-700 rounded-full"
-                            >
-                              {dep}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                  {service.dependencies && service.dependencies.length > 0 && (
+                    <Box sx={{ mb: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                        Dependencies
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {service.dependencies.map((dep) => (
+                          <Chip
+                            key={`${serviceName}-dep-${dep}`}
+                            label={dep}
+                            size="small"
+                            variant="outlined"
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
 
-                    {service.metrics && (
-                      <div className="mb-2">
-                        <span className="text-xs text-gray-400 block mb-2">
-                          Performance Metrics
-                        </span>
-                        <div className="mt-2">
-                          <div className="flex justify-between mb-1">
-                            <span className="text-xs">Success Rate</span>
-                            <span className="text-xs font-medium">
-                              {service.metrics.successRate.toFixed(1)}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-700 rounded-full h-1 mb-2">
-                            <div 
-                              className={`h-1 rounded-full ${getProgressColor(service.metrics.successRate)}`} 
-                              style={{ width: `${service.metrics.successRate}%` }}
-                              role="progressbar"
-                              aria-valuenow={service.metrics.successRate}
-                              aria-valuemin={0}
-                              aria-valuemax={100}
-                            ></div>
-                          </div>
-                          <div className="flex justify-between mb-1">
-                            <span className="text-xs">Requests/min</span>
-                            <span className="text-xs font-medium">
-                              {service.metrics.requestsPerMinute}
-                            </span>
-                          </div>
-                          <div className="flex justify-between mb-1">
-                            <span className="text-xs">Uptime</span>
-                            <span className="text-xs font-medium">
-                              {service.metrics.uptime}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                  {service.metrics && (
+                    <Box sx={{ mb: 1 }}>
+                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                        Performance Metrics
+                      </Typography>
+                      <Box sx={{ mt: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                          <Typography variant="caption">Success Rate</Typography>
+                          <Typography variant="caption" fontWeight="medium">
+                            {service.metrics.successRate.toFixed(1)}%
+                          </Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={service.metrics.successRate}
+                          color={getProgressColor(service.metrics.successRate)}
+                          sx={{ height: 4, borderRadius: 1, mb: 1 }}
+                        />
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                          <Typography variant="caption">Requests/min</Typography>
+                          <Typography variant="caption" fontWeight="medium">
+                            {service.metrics.requestsPerMinute}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                          <Typography variant="caption">Uptime</Typography>
+                          <Typography variant="caption" fontWeight="medium">
+                            {service.metrics.uptime}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Box>
+                  )}
 
-                    {service.recentErrors && service.recentErrors.length > 0 && (
-                      <div>
-                        <span className="text-xs text-red-500 block mb-1">
-                          Recent Errors
-                        </span>
-                        <div className="max-h-24 overflow-auto">
-                          {service.recentErrors.slice(0, 3).map((error) => (
-                            <div key={`${serviceName}-error-${error.timestamp}-${error.error}`} className="mb-2">
-                              <span className="text-xs text-red-500 block">
-                                {formatTimestamp(error.timestamp)} ({error.count}x)
-                              </span>
-                              <span className="text-xs text-gray-400 block">
-                                {error.error}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+                  {service.recentErrors && service.recentErrors.length > 0 && (
+                    <Box>
+                      <Typography variant="caption" color="error" display="block" sx={{ mb: 0.5 }}>
+                        Recent Errors
+                      </Typography>
+                      <Box sx={{ maxHeight: 100, overflow: 'auto' }}>
+                        {service.recentErrors.slice(0, 3).map((error) => (
+                          <Box key={`${serviceName}-error-${error.timestamp}-${error.error}`} sx={{ mb: 1 }}>
+                            <Typography variant="caption" color="error" display="block">
+                              {formatTimestamp(error.timestamp)} ({error.count}x)
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              {error.error}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+                </Box>
+              )}
+            </Box>
+          </Paper>
         ))}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 

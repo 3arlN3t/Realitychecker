@@ -1,13 +1,19 @@
 import React from 'react';
 import {
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  Gauge,
-  Users,
-  BarChart,
-  AlertTriangle,
-} from 'lucide-react';
+  Box,
+  Typography,
+  Paper,
+  Divider
+} from '@mui/material';
+import {
+  TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon,
+  Remove as MinusIcon,
+  Speed as SpeedIcon,
+  People as PeopleIcon,
+  BarChart as BarChartIcon,
+  Warning as WarningIcon,
+} from '@mui/icons-material';
 
 // Define a type alias for trend directions
 type TrendDirection = 'up' | 'down' | 'stable';
@@ -35,18 +41,18 @@ export interface MetricsOverview {
 const getTrendIcon = (trend: TrendDirection) => {
   switch (trend) {
     case 'up':
-      return <TrendingUp className="w-4 h-4" />;
+      return <TrendingUpIcon fontSize="small" />;
     case 'down':
-      return <TrendingDown className="w-4 h-4" />;
+      return <TrendingDownIcon fontSize="small" />;
     default:
-      return <Minus className="w-4 h-4" />;
+      return <MinusIcon fontSize="small" />;
   }
 };
 
-const getTrendColor = (trend: TrendDirection, isGoodWhenUp: boolean = true) => {
-  if (trend === 'stable') return 'text-gray-400';
+const getTrendColor = (trend: TrendDirection, isGoodWhenUp: boolean = true): string => {
+  if (trend === 'stable') return 'text.secondary';
   const isPositive = isGoodWhenUp ? trend === 'up' : trend === 'down';
-  return isPositive ? 'text-green-500' : 'text-red-500';
+  return isPositive ? 'success.main' : 'error.main';
 };
 
 const formatNumber = (num: number) => {
@@ -75,23 +81,35 @@ const MetricItem: React.FC<MetricItemProps> = ({
   isGoodWhenUp = true, 
   suffix = '' 
 }) => (
-  <div className="text-center p-2 bg-card/30 backdrop-blur-sm rounded-lg border border-border/50 shadow-lg">
-    <div className="flex justify-center mb-2">
-      <div className="text-primary">{icon}</div>
-    </div>
-    <div className="text-xl font-bold mb-1">
+  <Paper
+    elevation={0}
+    sx={{
+      p: 2,
+      textAlign: 'center',
+      bgcolor: 'background.paper',
+      backdropFilter: 'blur(10px)',
+      border: '1px solid',
+      borderColor: 'divider',
+      borderRadius: 2,
+      boxShadow: 2
+    }}
+  >
+    <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
+      <Box sx={{ color: 'primary.main' }}>{icon}</Box>
+    </Box>
+    <Typography variant="h5" sx={{ mb: 0.5 }}>
       {typeof value === 'number' ? formatNumber(value) : value}{suffix}
-    </div>
-    <div className="text-sm text-muted-foreground mb-1">
+    </Typography>
+    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
       {title}
-    </div>
-    <div className={`flex items-center justify-center ${getTrendColor(trend, isGoodWhenUp)}`}>
+    </Typography>
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: getTrendColor(trend, isGoodWhenUp) }}>
       {getTrendIcon(trend)}
-      <span className="text-xs ml-1">
+      <Typography variant="caption" sx={{ ml: 0.5 }}>
         {change > 0 ? '+' : ''}{change.toFixed(1)}%
-      </span>
-    </div>
-  </div>
+      </Typography>
+    </Box>
+  </Paper>
 );
 
 interface MetricsOverviewCardProps {
@@ -100,34 +118,34 @@ interface MetricsOverviewCardProps {
 
 const MetricsOverviewCard: React.FC<MetricsOverviewCardProps> = ({ metrics }) => {
   return (
-    <div className="h-full">
-      <div className="flex items-center mb-4">
-        <Gauge className="w-5 h-5 text-primary" />
-        <h3 className="ml-2 flex-grow text-lg font-medium">
+    <Box sx={{ height: '100%' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <SpeedIcon sx={{ color: 'primary.main' }} />
+        <Typography variant="h6" sx={{ ml: 1, flexGrow: 1 }}>
           Key Performance Indicators
-        </h3>
-        <span className="text-xs text-muted-foreground">
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
           Updated: {metrics.lastUpdated}
-        </span>
-      </div>
+        </Typography>
+      </Box>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 2, mb: 2 }}>
         <MetricItem
-          icon={<BarChart className="w-5 h-5" />}
+          icon={<BarChartIcon />}
           title="Total Requests"
           value={metrics.totalRequests}
           trend={metrics.requestsTrend}
           change={metrics.requestsChange}
         />
         <MetricItem
-          icon={<BarChart className="w-5 h-5" />}
+          icon={<BarChartIcon />}
           title="Requests Today"
           value={metrics.requestsToday}
           trend={metrics.requestsTrend}
           change={metrics.requestsChange}
         />
         <MetricItem
-          icon={<AlertTriangle className="w-5 h-5" />}
+          icon={<WarningIcon />}
           title="Error Rate"
           value={metrics.errorRate}
           trend={metrics.errorTrend}
@@ -136,55 +154,88 @@ const MetricsOverviewCard: React.FC<MetricsOverviewCardProps> = ({ metrics }) =>
           suffix="%"
         />
         <MetricItem
-          icon={<Users className="w-5 h-5" />}
+          icon={<PeopleIcon />}
           title="Active Users"
           value={metrics.activeUsers}
           trend={metrics.usersTrend}
           change={metrics.usersChange}
         />
-      </div>
+      </Box>
 
-      <div className="border-t border-gray-800 my-4"></div>
+      <Divider sx={{ my: 2 }} />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="text-center p-3 bg-card/30 backdrop-blur-sm rounded-lg border border-border/50">
-          <div className="text-xl font-bold text-primary">
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2 }}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2,
+            textAlign: 'center',
+            bgcolor: 'background.paper',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 2
+          }}
+        >
+          <Typography variant="h5" color="primary.main">
             {metrics.avgResponseTime.toFixed(1)}s
-          </div>
-          <div className="text-sm text-muted-foreground">
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
             Avg Response Time
-          </div>
-          <div className={`flex items-center justify-center mt-1 ${getTrendColor(metrics.responseTrend, false)}`}>
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 0.5, color: getTrendColor(metrics.responseTrend, false) }}>
             {getTrendIcon(metrics.responseTrend)}
-            <span className="text-xs ml-1">
+            <Typography variant="caption" sx={{ ml: 0.5 }}>
               {metrics.responseChange > 0 ? '+' : ''}{metrics.responseChange.toFixed(1)}%
-            </span>
-          </div>
-        </div>
-        <div className="text-center p-3 bg-card/30 backdrop-blur-sm rounded-lg border border-border/50">
-          <div className="text-xl font-bold text-green-500">
+            </Typography>
+          </Box>
+        </Paper>
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2,
+            textAlign: 'center',
+            bgcolor: 'background.paper',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 2
+          }}
+        >
+          <Typography variant="h5" color="success.main">
             {metrics.successRate.toFixed(1)}%
-          </div>
-          <div className="text-sm text-muted-foreground">
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
             Success Rate
-          </div>
-          <div className="text-xs text-muted-foreground">
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
             Last 24 hours
-          </div>
-        </div>
-        <div className="text-center p-3 bg-card/30 backdrop-blur-sm rounded-lg border border-border/50">
-          <div className="text-xl font-bold text-blue-500">
+          </Typography>
+        </Paper>
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2,
+            textAlign: 'center',
+            bgcolor: 'background.paper',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 2
+          }}
+        >
+          <Typography variant="h5" color="info.main">
             {metrics.peakHour}
-          </div>
-          <div className="text-sm text-muted-foreground">
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
             Peak Hour
-          </div>
-          <div className="text-xs text-muted-foreground">
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
             Highest activity
-          </div>
-        </div>
-      </div>
-    </div>
+          </Typography>
+        </Paper>
+      </Box>
+    </Box>
   );
 };
 

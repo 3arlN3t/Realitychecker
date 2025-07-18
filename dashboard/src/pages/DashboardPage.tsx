@@ -1,17 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-// Removed unused Alert imports
-import { 
-  Activity, 
-  AlertTriangle, 
-  CheckCircle, 
-  TrendingUp, 
-  TrendingDown, 
-  Users, 
-  Server,
-  Zap
-} from 'lucide-react';
+import {
+  Grid,
+  Card,
+  CardHeader,
+  CardContent,
+  Typography,
+  Box,
+  Chip,
+  Divider,
+  Paper
+} from '@mui/material';
+import {
+  Timeline as TimelineIcon,
+  Warning as WarningIcon,
+  CheckCircle as CheckCircleIcon,
+  TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon,
+  People as PeopleIcon,
+  Storage as StorageIcon,
+  Bolt as BoltIcon
+} from '@mui/icons-material';
+
 import SystemHealthCard, { SystemHealth } from '../components/admin/SystemHealthCard';
 import MetricsOverviewCard, { MetricsOverview } from '../components/admin/MetricsOverviewCard';
 import ActiveAlertsCard, { Alert as AlertType } from '../components/admin/ActiveAlertsCard';
@@ -197,8 +206,6 @@ const generateServiceDetails = (): Record<string, ServiceDetails> => {
 };
 
 const DashboardPage: React.FC = () => {
-  // Remove unused variable to fix ESLint warning
-  // const { user } = useAuth();
   const [systemHealth, setSystemHealth] = useState<SystemHealth>(generateSystemHealth());
   const [metricsOverview, setMetricsOverview] = useState<MetricsOverview>(generateMetricsOverview());
   const [alerts, setAlerts] = useState<AlertType[]>(generateAlerts());
@@ -242,100 +249,116 @@ const DashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
-        <Badge variant="outline" className="text-sm">
-          <Activity className="w-4 h-4 mr-1" />
-          Live Data
-        </Badge>
-      </div>
+    <Box sx={{ p: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Admin Dashboard
+        </Typography>
+        <Chip
+          icon={<TimelineIcon />}
+          label="Live Data"
+          variant="outlined"
+          color="primary"
+        />
+      </Box>
 
       {/* Quick Stats Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr 1fr' }, gap: 3, mb: 3 }}>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Status</CardTitle>
-            <Server className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
           <CardContent>
-            <div className="flex items-center space-x-2">
-              <Badge variant={systemHealth.status === 'healthy' ? 'default' : 'destructive'}>
-                {systemHealth.status === 'healthy' ? (
-                  <CheckCircle className="w-3 h-3 mr-1" />
-                ) : (
-                  <AlertTriangle className="w-3 h-3 mr-1" />
-                )}
-                {systemHealth.status}
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography variant="subtitle2" color="textSecondary">
+                System Status
+              </Typography>
+              <StorageIcon color="action" fontSize="small" />
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Chip
+                icon={systemHealth.status === 'healthy' ? <CheckCircleIcon /> : <WarningIcon />}
+                label={systemHealth.status}
+                color={systemHealth.status === 'healthy' ? 'success' : 'error'}
+                size="small"
+              />
+            </Box>
+            <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
               Uptime: {systemHealth.uptime}
-            </p>
+            </Typography>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metricsOverview.totalRequests.toLocaleString()}</div>
-            <div className="flex items-center text-xs text-muted-foreground">
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography variant="subtitle2" color="textSecondary">
+                Total Requests
+              </Typography>
+              <TimelineIcon color="action" fontSize="small" />
+            </Box>
+            <Typography variant="h5">{metricsOverview.totalRequests.toLocaleString()}</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
               {metricsOverview.requestsTrend === 'up' ? (
-                <TrendingUp className="w-3 h-3 mr-1 text-green-500" />
+                <TrendingUpIcon fontSize="small" color="success" />
               ) : metricsOverview.requestsTrend === 'down' ? (
-                <TrendingDown className="w-3 h-3 mr-1 text-red-500" />
+                <TrendingDownIcon fontSize="small" color="error" />
               ) : null}
-              {metricsOverview.requestsToday} today
-            </div>
+              <Typography variant="caption" color="textSecondary" sx={{ ml: 0.5 }}>
+                {metricsOverview.requestsToday} today
+              </Typography>
+            </Box>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Error Rate</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metricsOverview.errorRate}%</div>
-            <div className="flex items-center text-xs text-muted-foreground">
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography variant="subtitle2" color="textSecondary">
+                Error Rate
+              </Typography>
+              <WarningIcon color="action" fontSize="small" />
+            </Box>
+            <Typography variant="h5">{metricsOverview.errorRate}%</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
               {metricsOverview.errorTrend === 'down' ? (
-                <TrendingDown className="w-3 h-3 mr-1 text-green-500" />
+                <TrendingDownIcon fontSize="small" color="success" />
               ) : metricsOverview.errorTrend === 'up' ? (
-                <TrendingUp className="w-3 h-3 mr-1 text-red-500" />
+                <TrendingUpIcon fontSize="small" color="error" />
               ) : null}
-              Success: {metricsOverview.successRate}%
-            </div>
+              <Typography variant="caption" color="textSecondary" sx={{ ml: 0.5 }}>
+                Success: {metricsOverview.successRate}%
+              </Typography>
+            </Box>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metricsOverview.activeUsers}</div>
-            <p className="text-xs text-muted-foreground">
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography variant="subtitle2" color="textSecondary">
+                Active Users
+              </Typography>
+              <PeopleIcon color="action" fontSize="small" />
+            </Box>
+            <Typography variant="h5">{metricsOverview.activeUsers}</Typography>
+            <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
               Peak: {metricsOverview.peakHour}
-            </p>
+            </Typography>
           </CardContent>
         </Card>
-      </div>
+      </Box>
 
       {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
         {/* System Health Card */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Server className="w-5 h-5 mr-2" />
-              System Health
-            </CardTitle>
-            <CardDescription>Current system performance and resource usage</CardDescription>
-          </CardHeader>
+          <CardHeader
+            title={
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <StorageIcon sx={{ mr: 1 }} />
+                <Typography variant="h6">System Health</Typography>
+              </Box>
+            }
+            subheader="Current system performance and resource usage"
+          />
           <CardContent>
             <SystemHealthCard health={systemHealth} />
           </CardContent>
@@ -343,32 +366,41 @@ const DashboardPage: React.FC = () => {
 
         {/* Metrics Overview Card */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Activity className="w-5 h-5 mr-2" />
-              Performance Metrics
-            </CardTitle>
-            <CardDescription>Key performance indicators and trends</CardDescription>
-          </CardHeader>
+          <CardHeader
+            title={
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <TimelineIcon sx={{ mr: 1 }} />
+                <Typography variant="h6">Performance Metrics</Typography>
+              </Box>
+            }
+            subheader="Key performance indicators and trends"
+          />
           <CardContent>
             <MetricsOverviewCard metrics={metricsOverview} />
           </CardContent>
         </Card>
-      </div>
+      </Box>
 
       {/* Active Alerts */}
       {alerts.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <AlertTriangle className="w-5 h-5 mr-2" />
-              Active Alerts
-              <Badge variant="destructive" className="ml-2">
-                {alerts.length}
-              </Badge>
-            </CardTitle>
-            <CardDescription>System alerts requiring attention</CardDescription>
-          </CardHeader>
+        <Card sx={{ mb: 3 }}>
+          <CardHeader
+            title={
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <WarningIcon sx={{ mr: 1 }} />
+                <Typography variant="h6">
+                  Active Alerts
+                  <Chip
+                    label={alerts.length}
+                    color="error"
+                    size="small"
+                    sx={{ ml: 1 }}
+                  />
+                </Typography>
+              </Box>
+            }
+            subheader="System alerts requiring attention"
+          />
           <CardContent>
             <ActiveAlertsCard
               alerts={alerts}
@@ -382,13 +414,15 @@ const DashboardPage: React.FC = () => {
 
       {/* Service Status Grid */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Zap className="w-5 h-5 mr-2" />
-            Service Status
-          </CardTitle>
-          <CardDescription>Status and performance of all system services</CardDescription>
-        </CardHeader>
+        <CardHeader
+          title={
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <BoltIcon sx={{ mr: 1 }} />
+              <Typography variant="h6">Service Status</Typography>
+            </Box>
+          }
+          subheader="Status and performance of all system services"
+        />
         <CardContent>
           <ServiceStatusGrid
             services={serviceDetails}
@@ -396,7 +430,7 @@ const DashboardPage: React.FC = () => {
           />
         </CardContent>
       </Card>
-    </div>
+    </Box>
   );
 };
 
