@@ -152,12 +152,32 @@ const AnalyticsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
-        <Badge variant="outline">
-          <Users className="w-4 h-4 mr-1" />
-          {user?.role?.toUpperCase()}
-        </Badge>
+      {/* Enhanced Header Section */}
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 p-8 shadow-2xl">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+              <BarChart3 className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-bold text-white tracking-tight">Analytics Dashboard</h1>
+              <p className="text-blue-100 mt-1 text-lg">Real-time insights and performance metrics</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 rounded-full bg-white/20 px-4 py-2 backdrop-blur-sm">
+              <Activity className="h-4 w-4 text-white" />
+              <span className="text-white font-medium">Live Data</span>
+            </div>
+            <Badge variant="secondary" className="bg-white/20 text-white border-white/30 px-4 py-2">
+              <Users className="w-4 h-4 mr-2" />
+              {user?.role?.toUpperCase()}
+            </Badge>
+          </div>
+        </div>
+        <div className="absolute -top-4 -right-4 h-24 w-24 rounded-full bg-white/10"></div>
+        <div className="absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-white/5"></div>
       </div>
 
       {/* Period Selector */}

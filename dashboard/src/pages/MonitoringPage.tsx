@@ -208,14 +208,32 @@ const MonitoringPage: React.FC = () => {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Real-Time Monitoring</h1>
-        <div className="flex items-center space-x-2">
-          <Badge variant={connectionStatus === 'Connected' ? 'default' : 'destructive'}>
-            <Activity className="w-3 h-3 mr-1" />
-            {connectionStatus}
-          </Badge>
+      {/* Enhanced Header Section */}
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-green-600 via-teal-600 to-cyan-600 p-8 shadow-2xl">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+              <Activity className="h-8 w-8 text-white animate-pulse" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-bold text-white tracking-tight">Real-Time Monitoring</h1>
+              <p className="text-green-100 mt-1 text-lg">Live system performance and health metrics</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 rounded-full bg-white/20 px-4 py-2 backdrop-blur-sm">
+              <div className={`h-3 w-3 rounded-full ${connectionStatus === 'Connected' ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
+              <span className="text-white font-medium">WebSocket</span>
+            </div>
+            <Badge variant="secondary" className={`${connectionStatus === 'Connected' ? 'bg-green-500/20 text-green-100 border-green-300/30' : 'bg-red-500/20 text-red-100 border-red-300/30'} px-4 py-2`}>
+              <Activity className="w-4 h-4 mr-2" />
+              {connectionStatus}
+            </Badge>
+          </div>
         </div>
+        <div className="absolute -top-4 -right-4 h-24 w-24 rounded-full bg-white/10"></div>
+        <div className="absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-white/5"></div>
       </div>
       
       {connectionStatus !== 'Connected' && (
