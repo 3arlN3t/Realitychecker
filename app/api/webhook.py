@@ -150,6 +150,18 @@ async def whatsapp_webhook(
         if MediaContentType0:
             form_data["MediaContentType0"] = MediaContentType0
         
+        # Log MessageSid for debugging validation issues
+        log_with_context(
+            logger,
+            logging.DEBUG,
+            "Validating webhook request",
+            message_sid=MessageSid,
+            message_sid_length=len(MessageSid),
+            message_sid_prefix=MessageSid[:5] if len(MessageSid) >= 5 else MessageSid,
+            from_number=sanitize_phone_number(From),
+            correlation_id=correlation_id
+        )
+        
         # Validate webhook request data for security
         is_valid, validation_error = validate_webhook_request(
             MessageSid, From, To, Body, MediaUrl0
@@ -160,6 +172,8 @@ async def whatsapp_webhook(
                 logging.ERROR,
                 "Webhook request validation failed",
                 message_sid=MessageSid,
+                message_sid_length=len(MessageSid),
+                message_sid_prefix=MessageSid[:5] if len(MessageSid) >= 5 else MessageSid,
                 from_number=sanitize_phone_number(From),
                 validation_error=validation_error,
                 correlation_id=correlation_id

@@ -85,19 +85,86 @@ class PDFProcessingService:
         
         correlation_id = get_correlation_id()
         
+        # Parse URL for better debugging
+        url_parts = media_url.split('/')
+        account_id = "unknown"
+        message_id = "unknown"
+        media_id = "unknown"
+        
+        if len(url_parts) >= 8 and "Accounts" in url_parts:
+            try:
+                account_idx = url_parts.index("Accounts")
+                if account_idx + 1 < len(url_parts):
+                    account_id = url_parts[account_idx + 1]
+                if "Messages" in url_parts:
+                    msg_idx = url_parts.index("Messages")
+                    if msg_idx + 1 < len(url_parts):
+                        message_id = url_parts[msg_idx + 1]
+                if "Media" in url_parts:
+                    media_idx = url_parts.index("Media")
+                    if media_idx + 1 < len(url_parts):
+                        media_id = url_parts[media_idx + 1]
+            except (ValueError, IndexError):
+                pass
+
         log_with_context(
             logger,
             logging.INFO,
             "Downloading PDF from URL",
             url_preview=media_url[:50] + "..." if len(media_url) > 50 else media_url,
+            full_url=media_url,  # Log full URL for debugging
             max_size_mb=self.config.max_pdf_size_mb,
+            is_twilio_url=self._is_twilio_media_url(media_url),
+            account_id=account_id,
+            message_id=message_id,
+            media_id=media_id,
             correlation_id=correlation_id
         )
         
         try:
+            # Prepare authentication for Twilio media URLs
+            auth = None
+            headers = {}
+            if self._is_twilio_media_url(media_url):
+                auth = httpx.BasicAuth(self.config.twilio_account_sid, self.config.twilio_auth_token)
+                # Some Twilio media URLs require specific headers
+                headers = {
+                    'Accept': 'application/pdf, application/octet-stream, */*',
+                    'User-Agent': 'Reality-Checker-Bot/1.0'
+                }
+                log_with_context(
+                    logger,
+                    logging.DEBUG,
+                    "Using Twilio authentication for media URL",
+                    account_sid_preview=self.config.twilio_account_sid[:10] + "...",
+                    correlation_id=correlation_id
+                )
+            
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(media_url)
-                response.raise_for_status()
+                # For Twilio CDN URLs, try without auth first, then with auth if it fails
+                if 'twiliocdn.com' in media_url.lower():
+                    try:
+                        # Try without authentication first for CDN URLs
+                        response = await client.get(media_url, headers=headers)
+                        response.raise_for_status()
+                    except httpx.HTTPStatusError as e:
+                        if e.response.status_code == 401 or e.response.status_code == 403:
+                            # If unauthorized, try with authentication
+                            log_with_context(
+                                logger,
+                                logging.DEBUG,
+                                "CDN URL requires authentication, retrying with auth",
+                                status_code=e.response.status_code,
+                                correlation_id=correlation_id
+                            )
+                            response = await client.get(media_url, auth=auth, headers=headers)
+                            response.raise_for_status()
+                        else:
+                            raise
+                else:
+                    # For API URLs, always use authentication
+                    response = await client.get(media_url, auth=auth, headers=headers)
+                    response.raise_for_status()
                 
                 # Check content length header if available
                 content_length = response.headers.get('content-length')
@@ -159,9 +226,54 @@ class PDFProcessingService:
                 "HTTP error downloading PDF",
                 status_code=e.response.status_code,
                 error=str(e),
+                url=media_url,  # Log full URL for debugging
+                response_text=e.response.text[:200] if hasattr(e.response, 'text') else None,
+                is_twilio_url=self._is_twilio_media_url(media_url),
                 correlation_id=correlation_id
             )
-            raise PDFDownloadError(f"Failed to download PDF: HTTP {e.response.status_code}")
+            
+            # Provide more specific error messages for common issues
+            if e.response.status_code == 404:
+                if self._is_twilio_media_url(media_url):
+                    raise PDFDownloadError(
+                        "PDF file not found - the media URL may have expired. "
+                        "Twilio media URLs are only valid for a limited time. "
+                        "Please try sending the PDF again."
+                    )
+                else:
+                    raise PDFDownloadError(f"PDF file not found: HTTP {e.response.status_code}")
+            elif e.response.status_code == 401:
+                if self._is_twilio_media_url(media_url):
+                    raise PDFDownloadError(
+                        "Authentication failed when downloading PDF from Twilio. "
+                        "This may indicate an issue with the Twilio credentials. "
+                        "Please try again or contact support if the issue persists."
+                    )
+                else:
+                    raise PDFDownloadError(
+                        "Authentication failed when downloading PDF. "
+                        "This may be a temporary issue with the media service."
+                    )
+            elif e.response.status_code == 403:
+                if self._is_twilio_media_url(media_url):
+                    raise PDFDownloadError(
+                        "Access denied when downloading PDF from Twilio. "
+                        "The media file may no longer be accessible or "
+                        "your account may not have permission to access it."
+                    )
+                else:
+                    raise PDFDownloadError(
+                        "Access denied when downloading PDF. "
+                        "The media file may no longer be accessible."
+                    )
+            elif e.response.status_code >= 500:
+                raise PDFDownloadError(
+                    "Server error when downloading PDF. "
+                    "The media service is temporarily unavailable. "
+                    "Please try again in a few moments."
+                )
+            else:
+                raise PDFDownloadError(f"Failed to download PDF: HTTP {e.response.status_code}")
         except httpx.TimeoutException:
             log_with_context(
                 logger,
@@ -274,6 +386,46 @@ class PDFProcessingService:
             raise PDFExtractionError("No text content found in PDF")
             
         return full_text.strip()
+    
+    def _is_twilio_media_url(self, url: str) -> bool:
+        """
+        Check if the URL is a Twilio media URL that requires authentication.
+        
+        Args:
+            url: URL to check
+            
+        Returns:
+            bool: True if this is a Twilio media URL
+        """
+        url_lower = url.lower()
+        
+        # Check for Twilio domains
+        twilio_domains = [
+            'api.twilio.com',
+            'media.twilio.com',
+            'media.twiliocdn.com',  # CDN URLs
+            'twiliocdn.com',  # CDN URLs without media subdomain
+            '.twilio.com'  # Subdomains of twilio.com
+        ]
+        
+        has_twilio_domain = any(domain in url_lower for domain in twilio_domains)
+        if not has_twilio_domain:
+            return False
+        
+        # For CDN URLs, they might not require authentication
+        if 'twiliocdn.com' in url_lower:
+            return True
+        
+        # For API URLs, check for additional indicators
+        twilio_media_indicators = [
+            '/media/',
+            '/accounts/',
+            '2010-04-01',
+            '/messages/',
+            '/calls/'
+        ]
+        
+        return any(indicator in url_lower for indicator in twilio_media_indicators)
     
     def validate_pdf_content(self, text: str) -> bool:
         """

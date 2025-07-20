@@ -79,6 +79,21 @@ class ErrorHandler:
                 retry_delay_seconds=30
             ),
             
+            "pdf_url_expired": ErrorInfo(
+                category=ErrorCategory.PDF_PROCESSING,
+                severity=ErrorSeverity.LOW,
+                user_message=(
+                    "❌ *PDF Link Expired*\n\n"
+                    "The PDF file link has expired and is no longer accessible.\n\n"
+                    "Please:\n"
+                    "• Send the PDF file again\n"
+                    "• Or copy and paste the job details as text\n\n"
+                    "Note: Media files are only available for a limited time."
+                ),
+                technical_message="Twilio media URL has expired (HTTP 404)",
+                should_retry=False
+            ),
+            
             "pdf_too_large": ErrorInfo(
                 category=ErrorCategory.PDF_PROCESSING,
                 severity=ErrorSeverity.LOW,
@@ -118,6 +133,36 @@ class ErrorHandler:
                     "Please:\n"
                     "• Send a PDF with text content\n"
                     "• Copy and paste the job details as text\n"
+                    "• Make sure the PDF isn't just images"
+                ),
+                technical_message="PDF contains no extractable text content",
+                should_retry=False
+            ),
+            
+            "pdf_too_short": ErrorInfo(
+                category=ErrorCategory.PDF_PROCESSING,
+                severity=ErrorSeverity.LOW,
+                user_message=(
+                    "❌ *PDF Content Too Short*\n\n"
+                    "Your PDF doesn't contain enough text for job analysis.\n\n"
+                    "Please:\n"
+                    "• Send a complete job posting PDF\n"
+                    "• Copy and paste the full job details as text\n"
+                    "• Make sure the PDF contains the complete job description"
+                ),
+                technical_message="PDF text content is too short for analysis",
+                should_retry=False
+            ),
+            
+            "pdf_invalid_content": ErrorInfo(
+                category=ErrorCategory.PDF_PROCESSING,
+                severity=ErrorSeverity.LOW,
+                user_message=(
+                    "❌ *Invalid PDF Content*\n\n"
+                    "Your PDF doesn't appear to contain job-related information.\n\n"
+                    "Please:\n"
+                    "• Send a job posting or job description PDF\n"
+                    "• Copy and paste the job details as text instead\n"
                     "• Check if the PDF is image-based"
                 ),
                 technical_message="PDF contains no extractable text content",
@@ -363,10 +408,16 @@ class ErrorHandler:
         
         # PDF Processing Errors
         if "pdf" in error_str:
-            if "download" in error_str or "fetch" in error_str:
+            if "expired" in error_str or ("url" in error_str and "expired" in error_str):
+                return "pdf_url_expired"
+            elif "not found" in error_str and ("media url" in error_str or "twilio" in error_str):
+                return "pdf_url_expired"
+            elif "download" in error_str or "fetch" in error_str:
                 return "pdf_download_failed"
             elif "too large" in error_str or "size" in error_str:
                 return "pdf_too_large"
+            elif "too short" in error_str:
+                return "pdf_too_short"
             elif "no content" in error_str or "no extractable" in error_str or "empty" in error_str:
                 return "pdf_no_content"
             elif "extract" in error_str or "text" in error_str:
