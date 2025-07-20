@@ -23,7 +23,8 @@ def test_send_message():
     
     # You need to replace this with your actual WhatsApp number
     # Make sure you've joined the sandbox first!
-    to_number = "whatsapp:+1234567890"  # Replace with your WhatsApp number
+    # Format must be "whatsapp:+1234567890" with country code
+    to_number = input("Enter your WhatsApp number in format 'whatsapp:+1234567890': ")
     
     try:
         client = Client(account_sid, auth_token)
