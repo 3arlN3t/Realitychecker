@@ -1,3 +1,4 @@
+
 """
 Message handling orchestration service for the Reality Checker WhatsApp bot.
 
@@ -9,7 +10,10 @@ import logging
 from typing import Optional
 
 from app.models.data_models import TwilioWebhookRequest, JobAnalysisResult, AppConfig
-from app.services.pdf_processing import PDFProcessingService, PDFProcessingError
+from app.services.pdf_processing import (
+    PDFProcessingService, PDFProcessingError, PDFDownloadError, 
+    PDFExtractionError, PDFValidationError
+)
 from app.services.enhanced_ai_analysis import EnhancedAIAnalysisService
 from app.services.twilio_response import TwilioResponseService
 from app.services.user_management import UserManagementService
@@ -334,7 +338,23 @@ class MessageHandlerService:
                 from_number=sanitize_phone_number(from_number),
                 correlation_id=correlation_id
             )
-            extracted_text = await self.pdf_service.process_pdf_url(media_url)
+            try:
+                extracted_text = await self.pdf_service.process_pdf_url(media_url)
+            except (PDFDownloadError, PDFExtractionError, PDFValidationError, PDFProcessingError) as e:
+                log_with_context(
+                    logger,
+                    logging.ERROR,
+                    "PDF processing failed",
+                    from_number=sanitize_phone_number(from_number),
+                    error=str(e),
+                    error_type=type(e).__name__,
+                    correlation_id=correlation_id
+                )
+                error_message = str(e)
+                # Use enhanced error handling instead of generic error message
+                user_message, error_info = handle_error(e)
+                await self._send_custom_error_message(from_number, user_message)
+                return False
             
             # Analyze extracted text
             log_with_context(
@@ -613,3 +633,4 @@ class MessageHandlerService:
         )
         
         return await self._send_custom_error_message(from_number, error_message)
+

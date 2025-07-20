@@ -389,7 +389,7 @@ class PDFProcessingService:
     
     def _is_twilio_media_url(self, url: str) -> bool:
         """
-        Check if the URL is a Twilio media URL that requires authentication.
+        Check if the URL is a Twilio media URL.
         
         Args:
             url: URL to check
@@ -397,35 +397,7 @@ class PDFProcessingService:
         Returns:
             bool: True if this is a Twilio media URL
         """
-        url_lower = url.lower()
-        
-        # Check for Twilio domains
-        twilio_domains = [
-            'api.twilio.com',
-            'media.twilio.com',
-            'media.twiliocdn.com',  # CDN URLs
-            'twiliocdn.com',  # CDN URLs without media subdomain
-            '.twilio.com'  # Subdomains of twilio.com
-        ]
-        
-        has_twilio_domain = any(domain in url_lower for domain in twilio_domains)
-        if not has_twilio_domain:
-            return False
-        
-        # For CDN URLs, they might not require authentication
-        if 'twiliocdn.com' in url_lower:
-            return True
-        
-        # For API URLs, check for additional indicators
-        twilio_media_indicators = [
-            '/media/',
-            '/accounts/',
-            '2010-04-01',
-            '/messages/',
-            '/calls/'
-        ]
-        
-        return any(indicator in url_lower for indicator in twilio_media_indicators)
+        return 'twilio.com' in url.lower()
     
     def validate_pdf_content(self, text: str) -> bool:
         """
