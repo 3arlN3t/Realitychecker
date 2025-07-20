@@ -1,8 +1,20 @@
 import React, { useState } from 'react';
-import { Card, CardContent } from '../components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Badge } from '../components/ui/badge';
-import { FileText, Layout, Calendar, History, BarChart3 } from 'lucide-react';
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Tabs,
+  Tab,
+  Chip
+} from '@mui/material';
+import {
+  Description as FileTextIcon,
+  ViewModule as LayoutIcon,
+  Event as CalendarIcon,
+  History as HistoryIcon,
+  BarChart as BarChart3Icon
+} from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import ReportGenerator from '../components/reporting/ReportGenerator';
 import ReportTemplates from '../components/reporting/ReportTemplates';
@@ -174,11 +186,35 @@ const sampleReportHistory: ReportHistoryItem[] = [
   }
 ];
 
-// Remove the TabPanel component as we'll use shadcn/ui Tabs
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`reporting-tabpanel-${index}`}
+      aria-labelledby={`reporting-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
 
 const ReportingPage: React.FC = () => {
   const { user } = useAuth();
-  // Removed unused tabValue state as we're using shadcn/ui Tabs
+  const [tabValue, setTabValue] = useState(0);
   const [templates] = useState<ReportTemplate[]>(sampleTemplates);
   const [scheduledReports, setScheduledReports] = useState<ScheduledReport[]>(sampleScheduledReports);
   const [reportHistory, setReportHistory] = useState<ReportHistoryItem[]>(sampleReportHistory);
@@ -191,7 +227,9 @@ const ReportingPage: React.FC = () => {
     export_format: 'pdf'
   });
 
-  // Removed handleTabChange as we're using shadcn/ui Tabs
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
 
   const handleGenerateReport = async (parameters: ReportParameters): Promise<ReportData> => {
     // In a real application, this would make an API call
@@ -243,8 +281,7 @@ const ReportingPage: React.FC = () => {
     };
     
     setReportParameters(parameters);
-    // Note: With shadcn/ui Tabs, we can't programmatically switch tabs
-    // The user will need to manually switch to the Generate tab
+    setTabValue(0); // Switch to Generate tab
   };
 
   const handleScheduleReport = async (report: Omit<ScheduledReport, 'id'>): Promise<void> => {
@@ -313,13 +350,15 @@ const ReportingPage: React.FC = () => {
       nextRun.setHours(hours, minutes, 0, 0);
     } else if (schedule.frequency === 'weekly') {
       // Set day of week and time
-      const dayDiff = (schedule.day! - now.getDay() + 7) % 7;
+      const scheduleDay = schedule.day ?? 1; // Default to Monday if undefined
+      const dayDiff = (scheduleDay - now.getDay() + 7) % 7;
       nextRun.setDate(now.getDate() + (dayDiff === 0 ? 7 : dayDiff));
       const [hours, minutes] = schedule.time.split(':').map(Number);
       nextRun.setHours(hours, minutes, 0, 0);
     } else if (schedule.frequency === 'monthly') {
       // Set day of month and time
-      nextRun = new Date(now.getFullYear(), now.getMonth() + 1, schedule.day!, 0, 0, 0);
+      const scheduleDay = schedule.day ?? 1; // Default to 1st of month if undefined
+      nextRun = new Date(now.getFullYear(), now.getMonth() + 1, scheduleDay, 0, 0, 0);
       const [hours, minutes] = schedule.time.split(':').map(Number);
       nextRun.setHours(hours, minutes, 0, 0);
     }
@@ -340,110 +379,112 @@ const ReportingPage: React.FC = () => {
   const paginatedHistory = filteredHistory.slice((historyPage - 1) * pageSize, historyPage * pageSize);
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight flex items-center">
-          <BarChart3 className="w-8 h-8 mr-2" />
+    <Box sx={{ p: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h3" component="h1" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+          <BarChart3Icon sx={{ mr: 1, fontSize: 32 }} />
           Reporting
-        </h1>
-        <Badge variant="outline">
-          <FileText className="w-4 h-4 mr-1" />
-          {user?.role?.toUpperCase()}
-        </Badge>
-      </div>
+        </Typography>
+        <Chip
+          icon={<FileTextIcon />}
+          label={user?.role?.toUpperCase()}
+          variant="outlined"
+          color="primary"
+        />
+      </Box>
 
       <Card>
-        <CardContent className="p-0">
-          <Tabs defaultValue="generate" className="w-full">
-            <div className="border-b">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="generate" className="flex items-center">
-                  <FileText className="w-4 h-4 mr-2" />
-                  Generate Report
-                </TabsTrigger>
-                <TabsTrigger value="templates" className="flex items-center">
-                  <Layout className="w-4 h-4 mr-2" />
-                  Templates
-                </TabsTrigger>
-                <TabsTrigger value="scheduled" className="flex items-center">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Scheduled Reports
-                </TabsTrigger>
-                <TabsTrigger value="history" className="flex items-center">
-                  <History className="w-4 h-4 mr-2" />
-                  Report History
-                </TabsTrigger>
-              </TabsList>
-            </div>
-
-            <TabsContent value="generate" className="p-6">
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-semibold">Generate Custom Report</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Create custom reports with specific parameters and export in your preferred format.
-                  </p>
-                </div>
-                <ReportGenerator onGenerateReport={handleGenerateReport} />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="templates" className="p-6">
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-semibold">Report Templates</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Use pre-configured templates for common reporting needs.
-                  </p>
-                </div>
-                <ReportTemplates 
-                  templates={templates} 
-                  onUseTemplate={handleUseTemplate} 
-                />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="scheduled" className="p-6">
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-semibold">Scheduled Reports</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Manage automated report generation and delivery schedules.
-                  </p>
-                </div>
-                <ReportScheduler 
-                  scheduledReports={scheduledReports}
-                  onScheduleReport={handleScheduleReport}
-                  onDeleteScheduledReport={handleDeleteScheduledReport}
-                  onEditScheduledReport={handleEditScheduledReport}
-                  reportParameters={reportParameters}
-                />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="history" className="p-6">
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-semibold">Report History</h3>
-                  <p className="text-sm text-muted-foreground">
-                    View and manage previously generated reports.
-                  </p>
-                </div>
-                <ReportHistory 
-                  reports={paginatedHistory}
-                  totalReports={filteredHistory.length}
-                  page={historyPage}
-                  pageSize={pageSize}
-                  onPageChange={setHistoryPage}
-                  onDeleteReport={handleDeleteReport}
-                  onSearchChange={setHistorySearch}
-                />
-              </div>
-            </TabsContent>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs value={tabValue} onChange={handleTabChange} aria-label="reporting tabs">
+            <Tab
+              icon={<FileTextIcon />}
+              label="Generate Report"
+              iconPosition="start"
+              id="reporting-tab-0"
+              aria-controls="reporting-tabpanel-0"
+            />
+            <Tab
+              icon={<LayoutIcon />}
+              label="Templates"
+              iconPosition="start"
+              id="reporting-tab-1"
+              aria-controls="reporting-tabpanel-1"
+            />
+            <Tab
+              icon={<CalendarIcon />}
+              label="Scheduled Reports"
+              iconPosition="start"
+              id="reporting-tab-2"
+              aria-controls="reporting-tabpanel-2"
+            />
+            <Tab
+              icon={<HistoryIcon />}
+              label="Report History"
+              iconPosition="start"
+              id="reporting-tab-3"
+              aria-controls="reporting-tabpanel-3"
+            />
           </Tabs>
-        </CardContent>
+        </Box>
+
+        <TabPanel value={tabValue} index={0}>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>Generate Custom Report</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Create custom reports with specific parameters and export in your preferred format.
+            </Typography>
+          </Box>
+          <ReportGenerator onGenerateReport={handleGenerateReport} />
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={1}>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>Report Templates</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Use pre-configured templates for common reporting needs.
+            </Typography>
+          </Box>
+          <ReportTemplates 
+            templates={templates} 
+            onUseTemplate={handleUseTemplate} 
+          />
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={2}>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>Scheduled Reports</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Manage automated report generation and delivery schedules.
+            </Typography>
+          </Box>
+          <ReportScheduler 
+            scheduledReports={scheduledReports}
+            onScheduleReport={handleScheduleReport}
+            onDeleteScheduledReport={handleDeleteScheduledReport}
+            onEditScheduledReport={handleEditScheduledReport}
+            reportParameters={reportParameters}
+          />
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={3}>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>Report History</Typography>
+            <Typography variant="body2" color="text.secondary">
+              View and manage previously generated reports.
+            </Typography>
+          </Box>
+          <ReportHistory 
+            reports={paginatedHistory}
+            totalReports={filteredHistory.length}
+            page={historyPage}
+            pageSize={pageSize}
+            onPageChange={setHistoryPage}
+            onDeleteReport={handleDeleteReport}
+            onSearchChange={setHistorySearch}
+          />
+        </TabPanel>
       </Card>
-    </div>
+    </Box>
   );
 };
 

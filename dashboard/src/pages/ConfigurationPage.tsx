@@ -1,8 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Alert, AlertDescription } from '../components/ui/alert';
-import { Badge } from '../components/ui/badge';
-import { Settings, Shield, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
+import {
+  Box,
+  Card,
+  CardContent,
+  CardHeader,
+  Typography,
+  Alert,
+  Chip,
+  CircularProgress
+} from '@mui/material';
+import {
+  Settings as SettingsIcon,
+  Shield as ShieldIcon,
+  Warning as AlertTriangleIcon,
+  CheckCircle as CheckCircleIcon
+} from '@mui/icons-material';
 import ConfigurationForm from '../components/configuration/ConfigurationForm';
 import { SystemConfiguration } from '../components/configuration/types';
 import { useAuth } from '../contexts/AuthContext';
@@ -85,66 +97,64 @@ const ConfigurationPage: React.FC = () => {
     }
   };
 
-  // Removed handleCloseSnackbar as we're using shadcn/ui Alert instead of Snackbar
-
   if (!user || user.role !== 'admin') {
     return (
-      <div className="p-6">
-        <Alert variant="destructive">
-          <Shield className="h-4 w-4" />
-          <AlertDescription>
-            You don't have permission to access this page. Admin role required.
-          </AlertDescription>
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" icon={<ShieldIcon />}>
+          <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>Access Denied</Typography>
+          You don't have permission to access this page. Admin role required.
         </Alert>
-      </div>
+      </Box>
     );
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">System Configuration</h1>
-          <p className="text-muted-foreground">
+    <Box sx={{ p: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+        <Box>
+          <Typography variant="h3" component="h1" sx={{ fontWeight: 'bold', mb: 1 }}>
+            System Configuration
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
             Manage system settings, API configurations, and alert thresholds. Changes will take effect immediately.
-          </p>
-        </div>
-        <Badge variant="outline">
-          <Settings className="w-4 h-4 mr-1" />
-          Admin Only
-        </Badge>
-      </div>
+          </Typography>
+        </Box>
+        <Chip
+          icon={<SettingsIcon />}
+          label="Admin Only"
+          variant="outlined"
+          color="primary"
+        />
+      </Box>
       
       {error && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+        <Alert severity="error" icon={<AlertTriangleIcon />} sx={{ mb: 2 }}>
+          {error}
         </Alert>
       )}
 
       {successMessage && (
-        <Alert>
-          <CheckCircle className="h-4 w-4" />
-          <AlertDescription>{successMessage}</AlertDescription>
+        <Alert severity="success" icon={<CheckCircleIcon />} sx={{ mb: 2 }}>
+          {successMessage}
         </Alert>
       )}
       
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Settings className="w-5 h-5 mr-2" />
-            Configuration Settings
-          </CardTitle>
-          <CardDescription>
-            Configure system parameters and operational settings
-          </CardDescription>
-        </CardHeader>
+        <CardHeader
+          title={
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <SettingsIcon sx={{ mr: 1 }} />
+              <Typography variant="h6">Configuration Settings</Typography>
+            </Box>
+          }
+          subheader="Configure system parameters and operational settings"
+        />
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center p-8">
-              <Loader2 className="h-8 w-8 animate-spin mr-2" />
-              <span>Loading configuration...</span>
-            </div>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 4 }}>
+              <CircularProgress size={32} sx={{ mr: 2 }} />
+              <Typography>Loading configuration...</Typography>
+            </Box>
           ) : config ? (
             <ConfigurationForm 
               config={config} 
@@ -152,16 +162,14 @@ const ConfigurationPage: React.FC = () => {
               isLoading={saving}
             />
           ) : (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                Failed to load configuration data. Please refresh the page.
-              </AlertDescription>
+            <Alert severity="error" icon={<AlertTriangleIcon />}>
+              <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>Configuration Error</Typography>
+              Failed to load configuration data. Please refresh the page.
             </Alert>
           )}
         </CardContent>
       </Card>
-    </div>
+    </Box>
   );
 };
 

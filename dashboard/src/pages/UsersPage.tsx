@@ -1,7 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { Users, Search, UserCheck, UserX } from 'lucide-react';
+import {
+  Box,
+  Card,
+  CardContent,
+  CardHeader,
+  Typography,
+  Chip,
+  Paper
+} from '@mui/material';
+import {
+  People as UsersIcon,
+  Search as SearchIcon,
+  PersonAdd as UserCheckIcon,
+  PersonOff as UserXIcon
+} from '@mui/icons-material';
 import UserTable from '../components/users/UserTable';
 import UserSearchBar from '../components/users/UserSearchBar';
 import UserInteractionModal from '../components/users/UserInteractionModal';
@@ -33,8 +45,10 @@ const generateSampleUsers = (count: number): UserDetails[] => {
       );
       
       const messageType = Math.random() > 0.3 ? 'text' : 'pdf';
-      const classification = Math.random() > 0.7 ? 'Legit' : 
-                            Math.random() > 0.5 ? 'Suspicious' : 'Likely Scam';
+      let classification: 'Legit' | 'Suspicious' | 'Likely Scam' = 'Legit';
+      if (Math.random() <= 0.7) {
+        classification = Math.random() > 0.5 ? 'Suspicious' : 'Likely Scam';
+      }
       
       interactions.push({
         id: `int-${i}-${j}`,
@@ -161,99 +175,164 @@ const UsersPage: React.FC = () => {
   const avgEngagement = users.reduce((sum, user) => sum + user.engagementScore, 0) / users.length || 0;
 
   return (
-    <div className="space-y-6 p-6">
+    <Box sx={{ p: 3 }}>
       {/* Enhanced Header Section */}
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 p-8 shadow-2xl">
-        <div className="absolute inset-0 bg-black/10"></div>
-        <div className="relative z-10 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-              <Users className="h-8 w-8 text-white" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-bold text-white tracking-tight">User Management</h1>
-              <p className="text-purple-100 mt-1 text-lg">Manage users and track interactions</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2 rounded-full bg-white/20 px-4 py-2 backdrop-blur-sm">
-              <UserCheck className="h-4 w-4 text-white" />
-              <span className="text-white font-medium">{activeUsers} Active</span>
-            </div>
-            <Badge variant="secondary" className="bg-white/20 text-white border-white/30 px-4 py-2">
-              <Users className="w-4 h-4 mr-2" />
-              {totalUsers} Total Users
-            </Badge>
-          </div>
-        </div>
-        <div className="absolute -top-4 -right-4 h-24 w-24 rounded-full bg-white/10"></div>
-        <div className="absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-white/5"></div>
-      </div>
+      <Paper
+        elevation={3}
+        sx={{
+          position: 'relative',
+          overflow: 'hidden',
+          borderRadius: 3,
+          background: 'linear-gradient(135deg, #7b1fa2 0%, #e91e63 50%, #f44336 100%)',
+          p: 4,
+          mb: 3,
+          color: 'white'
+        }}
+      >
+        <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.1)' }} />
+        <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 64,
+                height: 64,
+                borderRadius: '50%',
+                bgcolor: 'rgba(255,255,255,0.2)',
+                backdropFilter: 'blur(4px)',
+                mr: 2
+              }}
+            >
+              <UsersIcon sx={{ fontSize: 32 }} />
+            </Box>
+            <Box>
+              <Typography variant="h3" component="h1" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                User Management
+              </Typography>
+              <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                Manage users and track interactions
+              </Typography>
+            </Box>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Chip
+              icon={<UserCheckIcon />}
+              label={`${activeUsers} Active`}
+              sx={{
+                bgcolor: 'rgba(255,255,255,0.2)',
+                color: 'white',
+                backdropFilter: 'blur(4px)'
+              }}
+            />
+            <Chip
+              icon={<UsersIcon />}
+              label={`${totalUsers} Total Users`}
+              sx={{
+                bgcolor: 'rgba(255,255,255,0.2)',
+                color: 'white',
+                border: '1px solid rgba(255,255,255,0.3)'
+              }}
+            />
+          </Box>
+        </Box>
+      </Paper>
 
       {/* User Stats Overview */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalUsers}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardHeader
+            title={
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle2">Total Users</Typography>
+                <UsersIcon color="action" fontSize="small" />
+              </Box>
+            }
+            sx={{ pb: 1 }}
+          />
+          <CardContent sx={{ pt: 0 }}>
+            <Typography variant="h4" sx={{ mb: 0.5 }}>
+              {totalUsers}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
               Registered users
-            </p>
+            </Typography>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{activeUsers}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardHeader
+            title={
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle2">Active Users</Typography>
+                <UserCheckIcon color="action" fontSize="small" />
+              </Box>
+            }
+            sx={{ pb: 1 }}
+          />
+          <CardContent sx={{ pt: 0 }}>
+            <Typography variant="h4" sx={{ color: 'success.main', mb: 0.5 }}>
+              {activeUsers}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
               Not blocked
-            </p>
+            </Typography>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Blocked Users</CardTitle>
-            <UserX className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{blockedUsers}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardHeader
+            title={
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle2">Blocked Users</Typography>
+                <UserXIcon color="action" fontSize="small" />
+              </Box>
+            }
+            sx={{ pb: 1 }}
+          />
+          <CardContent sx={{ pt: 0 }}>
+            <Typography variant="h4" sx={{ color: 'error.main', mb: 0.5 }}>
+              {blockedUsers}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
               Restricted access
-            </p>
+            </Typography>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Engagement</CardTitle>
-            <Search className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{avgEngagement.toFixed(0)}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardHeader
+            title={
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle2">Avg Engagement</Typography>
+                <SearchIcon color="action" fontSize="small" />
+              </Box>
+            }
+            sx={{ pb: 1 }}
+          />
+          <CardContent sx={{ pt: 0 }}>
+            <Typography variant="h4" sx={{ mb: 0.5 }}>
+              {avgEngagement.toFixed(0)}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
               Engagement score
-            </p>
+            </Typography>
           </CardContent>
         </Card>
-      </div>
+      </Box>
       
       {/* Search Bar */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Search className="w-5 h-5 mr-2" />
-            Search Users
-          </CardTitle>
-          <CardDescription>Find users by phone number, date, or request count</CardDescription>
-        </CardHeader>
+      <Card sx={{ mb: 3 }}>
+        <CardHeader
+          title={
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <SearchIcon sx={{ mr: 1 }} />
+              <Typography variant="h6">Search Users</Typography>
+            </Box>
+          }
+          subheader="Find users by phone number, date, or request count"
+        />
         <CardContent>
           <UserSearchBar 
             onSearch={handleSearch} 
@@ -264,20 +343,22 @@ const UsersPage: React.FC = () => {
       
       {/* User Table */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Users className="w-5 h-5 mr-2" />
-            User Directory
-            {searchQuery && (
-              <Badge variant="secondary" className="ml-2">
-                {filteredUsers.length} results
-              </Badge>
-            )}
-          </CardTitle>
-          <CardDescription>
-            Manage WhatsApp users and view their interaction history
-          </CardDescription>
-        </CardHeader>
+        <CardHeader
+          title={
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <UsersIcon sx={{ mr: 1 }} />
+              <Typography variant="h6">User Directory</Typography>
+              {searchQuery && (
+                <Chip
+                  label={`${filteredUsers.length} results`}
+                  color="secondary"
+                  size="small"
+                />
+              )}
+            </Box>
+          }
+          subheader="Manage WhatsApp users and view their interaction history"
+        />
         <CardContent>
           <UserTable 
             users={filteredUsers}
@@ -297,7 +378,7 @@ const UsersPage: React.FC = () => {
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       />
-    </div>
+    </Box>
   );
 };
 

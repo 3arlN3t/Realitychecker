@@ -1,6 +1,19 @@
 import React, { useState } from 'react';
-import { Alert, AlertDescription } from '../components/ui/alert';
-import { Shield, Loader2, AlertCircle } from 'lucide-react';
+import {
+  Box,
+  Card,
+  CardContent,
+  TextField,
+  Button,
+  Typography,
+  Alert,
+  CircularProgress,
+  Paper
+} from '@mui/material';
+import {
+  Shield as ShieldIcon,
+  Error as AlertCircleIcon
+} from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -37,93 +50,230 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        py: 6,
+        px: 2,
+        position: 'relative',
+        overflow: 'hidden',
+        background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.1) 0%, rgba(123, 31, 162, 0.1) 50%, rgba(0, 0, 0, 1) 100%)'
+      }}
+    >
       {/* Background effects */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-black"></div>
-      <div className="absolute top-20 left-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl"></div>
-      <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 80,
+          left: 80,
+          width: 288,
+          height: 288,
+          bgcolor: 'rgba(25, 118, 210, 0.1)',
+          borderRadius: '50%',
+          filter: 'blur(48px)'
+        }}
+      />
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: 80,
+          right: 80,
+          width: 384,
+          height: 384,
+          bgcolor: 'rgba(123, 31, 162, 0.1)',
+          borderRadius: '50%',
+          filter: 'blur(48px)'
+        }}
+      />
       
-      <div className="max-w-md w-full space-y-8 relative z-10">
-        <div className="text-center mb-8">
-          <div className="relative inline-block">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full blur-lg opacity-30"></div>
-            <Shield className="h-16 w-16 text-blue-400 mx-auto mb-4 relative z-10" />
-          </div>
-          <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Reality Checker</h1>
-          <p className="text-gray-400">Admin Dashboard - Sign in to your account</p>
-        </div>
+      <Box sx={{ maxWidth: 400, width: '100%', position: 'relative', zIndex: 1 }}>
+        <Box sx={{ textAlign: 'center', mb: 4 }}>
+          <Box sx={{ position: 'relative', display: 'inline-block', mb: 2 }}>
+            <Box
+              sx={{
+                position: 'absolute',
+                inset: 0,
+                background: 'linear-gradient(45deg, #1976d2, #7b1fa2)',
+                borderRadius: '50%',
+                filter: 'blur(8px)',
+                opacity: 0.3
+              }}
+            />
+            <ShieldIcon sx={{ fontSize: 64, color: 'primary.main', position: 'relative', zIndex: 1 }} />
+          </Box>
+          <Typography
+            variant="h3"
+            component="h1"
+            sx={{
+              fontWeight: 'bold',
+              mb: 1,
+              background: 'linear-gradient(45deg, #1976d2, #7b1fa2)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              color: 'transparent'
+            }}
+          >
+            Reality Checker
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Admin Dashboard - Sign in to your account
+          </Typography>
+        </Box>
         
-        <div className="bg-white/5 backdrop-blur-xl p-6 rounded-lg border border-white/10 shadow-2xl">
+        <Paper
+          elevation={3}
+          sx={{
+            bgcolor: 'rgba(255, 255, 255, 0.05)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: 2,
+            p: 3
+          }}
+        >
           {error && (
-            <Alert className="bg-red-500/10 border border-red-500/50 text-red-400 mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+            <Alert
+              severity="error"
+              icon={<AlertCircleIcon />}
+              sx={{
+                mb: 2,
+                bgcolor: 'rgba(244, 67, 54, 0.1)',
+                border: '1px solid rgba(244, 67, 54, 0.5)',
+                color: 'error.main'
+              }}
+            >
+              {error}
             </Alert>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="username" className="block text-sm font-medium">
-                Username
-              </label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                autoComplete="username"
-                required
-                autoFocus
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                disabled={isLoading}
-                className="w-full rounded-md border border-white/20 bg-white/5 backdrop-blur-sm px-3 py-2 text-sm text-white placeholder-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
-                placeholder="Enter your username"
-              />
-            </div>
+          <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              id="username"
+              name="username"
+              label="Username"
+              type="text"
+              autoComplete="username"
+              required
+              autoFocus
+              fullWidth
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              disabled={isLoading}
+              placeholder="Enter your username"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  bgcolor: 'rgba(255, 255, 255, 0.05)',
+                  backdropFilter: 'blur(4px)',
+                  '& fieldset': {
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'primary.main',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: 'primary.main',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: 'text.primary',
+                },
+                '& .MuiOutlinedInput-input': {
+                  color: 'text.primary',
+                },
+              }}
+            />
             
-            <div className="space-y-2">
-              <label htmlFor="password" className="block text-sm font-medium">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-                className="w-full rounded-md border border-white/20 bg-white/5 backdrop-blur-sm px-3 py-2 text-sm text-white placeholder-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
-                placeholder="Enter your password"
-              />
-            </div>
+            <TextField
+              id="password"
+              name="password"
+              label="Password"
+              type="password"
+              autoComplete="current-password"
+              required
+              fullWidth
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoading}
+              placeholder="Enter your password"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  bgcolor: 'rgba(255, 255, 255, 0.05)',
+                  backdropFilter: 'blur(4px)',
+                  '& fieldset': {
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'primary.main',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: 'primary.main',
+                  },
+                },
+                '& .MuiInputLabel-root': {
+                  color: 'text.primary',
+                },
+                '& .MuiOutlinedInput-input': {
+                  color: 'text.primary',
+                },
+              }}
+            />
 
-            <button
+            <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 py-2 px-4 rounded-md font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              fullWidth
+              variant="contained"
+              size="large"
               disabled={isLoading || !username || !password}
+              sx={{
+                background: 'linear-gradient(45deg, #1976d2, #7b1fa2)',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #1565c0, #6a1b9a)',
+                  transform: 'scale(1.02)',
+                },
+                '&:disabled': {
+                  opacity: 0.5,
+                  transform: 'none',
+                },
+                transition: 'all 0.3s ease',
+                py: 1.5,
+                fontWeight: 'medium'
+              }}
             >
               {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CircularProgress size={16} color="inherit" />
                   Signing in...
-                </>
+                </Box>
               ) : (
                 'Sign In'
               )}
-            </button>
-          </form>
+            </Button>
+          </Box>
 
-          <div className="mt-6 text-center text-sm text-gray-400">
-            <p>Default credentials for testing:</p>
-            <p className="font-mono text-xs mt-1 bg-white/5 rounded px-2 py-1 inline-block border border-white/10">
-              admin / admin123
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+          <Box sx={{ mt: 3, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Default credentials for testing:
+            </Typography>
+            <Paper
+              sx={{
+                display: 'inline-block',
+                px: 2,
+                py: 0.5,
+                bgcolor: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: 1
+              }}
+            >
+              <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
+                admin / admin123
+              </Typography>
+            </Paper>
+          </Box>
+        </Paper>
+      </Box>
+    </Box>
   );
 };
 

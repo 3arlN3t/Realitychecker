@@ -1,8 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
-import { Badge } from '../components/ui/badge';
-import { AlertTriangle, Activity, Users, Clock, TrendingDown } from 'lucide-react';
+import {
+  Box,
+  Card,
+  CardContent,
+  CardHeader,
+  Typography,
+  Alert,
+  Chip,
+  Paper
+} from '@mui/material';
+import {
+  Warning as AlertTriangleIcon,
+  Timeline as ActivityIcon,
+  People as UsersIcon,
+  Schedule as ClockIcon,
+  TrendingDown as TrendingDownIcon
+} from '@mui/icons-material';
 import LiveMetricsCard from '../components/monitoring/LiveMetricsCard';
 import ActiveRequestsTable from '../components/monitoring/ActiveRequestsTable';
 import ErrorRateChart from '../components/monitoring/ErrorRateChart';
@@ -121,11 +134,17 @@ const MonitoringPage: React.FC = () => {
           setAlerts(prev => [newAlert, ...prev]);
           
           // Show notification
+          let severity: 'error' | 'warning' | 'info' = 'info';
+          if (newAlert.severity === 'critical') {
+            severity = 'error';
+          } else if (newAlert.severity === 'high') {
+            severity = 'warning';
+          }
+          
           setNotification({
             open: true,
             message: `${newAlert.title}: ${newAlert.message}`,
-            severity: newAlert.severity === 'critical' ? 'error' : 
-                     newAlert.severity === 'high' ? 'warning' : 'info'
+            severity
           });
         } else if (data.type === 'active_alerts') {
           // Set initial alerts
@@ -204,115 +223,182 @@ const MonitoringPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [fetchActiveRequests, fetchInitialData]);
 
-  // Handle notification close - removed as it's not used
-
   return (
-    <div className="space-y-6 p-6">
+    <Box sx={{ p: 3 }}>
       {/* Enhanced Header Section */}
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-green-600 via-teal-600 to-cyan-600 p-8 shadow-2xl">
-        <div className="absolute inset-0 bg-black/10"></div>
-        <div className="relative z-10 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-              <Activity className="h-8 w-8 text-white animate-pulse" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-bold text-white tracking-tight">Real-Time Monitoring</h1>
-              <p className="text-green-100 mt-1 text-lg">Live system performance and health metrics</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2 rounded-full bg-white/20 px-4 py-2 backdrop-blur-sm">
-              <div className={`h-3 w-3 rounded-full ${connectionStatus === 'Connected' ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
-              <span className="text-white font-medium">WebSocket</span>
-            </div>
-            <Badge variant="secondary" className={`${connectionStatus === 'Connected' ? 'bg-green-500/20 text-green-100 border-green-300/30' : 'bg-red-500/20 text-red-100 border-red-300/30'} px-4 py-2`}>
-              <Activity className="w-4 h-4 mr-2" />
-              {connectionStatus}
-            </Badge>
-          </div>
-        </div>
-        <div className="absolute -top-4 -right-4 h-24 w-24 rounded-full bg-white/10"></div>
-        <div className="absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-white/5"></div>
-      </div>
+      <Paper
+        elevation={3}
+        sx={{
+          position: 'relative',
+          overflow: 'hidden',
+          borderRadius: 3,
+          background: 'linear-gradient(135deg, #2e7d32 0%, #00695c 50%, #0277bd 100%)',
+          p: 4,
+          mb: 3,
+          color: 'white'
+        }}
+      >
+        <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.1)' }} />
+        <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 64,
+                height: 64,
+                borderRadius: '50%',
+                bgcolor: 'rgba(255,255,255,0.2)',
+                backdropFilter: 'blur(4px)',
+                mr: 2
+              }}
+            >
+              <ActivityIcon sx={{ fontSize: 32, animation: 'pulse 2s infinite' }} />
+            </Box>
+            <Box>
+              <Typography variant="h3" component="h1" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                Real-Time Monitoring
+              </Typography>
+              <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                Live system performance and health metrics
+              </Typography>
+            </Box>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Chip
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box
+                    sx={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: '50%',
+                      bgcolor: connectionStatus === 'Connected' ? 'success.main' : 'error.main',
+                      animation: connectionStatus === 'Connected' ? 'pulse 2s infinite' : 'none'
+                    }}
+                  />
+                  WebSocket
+                </Box>
+              }
+              sx={{
+                bgcolor: 'rgba(255,255,255,0.2)',
+                color: 'white',
+                backdropFilter: 'blur(4px)'
+              }}
+            />
+            <Chip
+              icon={<ActivityIcon />}
+              label={connectionStatus}
+              color={connectionStatus === 'Connected' ? 'success' : 'error'}
+              sx={{
+                bgcolor: connectionStatus === 'Connected' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)',
+                color: 'white',
+                border: connectionStatus === 'Connected' ? '1px solid rgba(76, 175, 80, 0.3)' : '1px solid rgba(244, 67, 54, 0.3)'
+              }}
+            />
+          </Box>
+        </Box>
+      </Paper>
       
       {connectionStatus !== 'Connected' && (
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Connection Warning</AlertTitle>
-          <AlertDescription>
-            WebSocket {connectionStatus}. Real-time updates may be delayed.
-          </AlertDescription>
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>Connection Warning</Typography>
+          WebSocket {connectionStatus}. Real-time updates may be delayed.
         </Alert>
       )}
       
       {/* Overview Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics?.requests.total || 0}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardHeader
+            title={
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle2">Total Requests</Typography>
+                <ActivityIcon color="action" fontSize="small" />
+              </Box>
+            }
+            sx={{ pb: 1 }}
+          />
+          <CardContent sx={{ pt: 0 }}>
+            <Typography variant="h4" sx={{ mb: 0.5 }}>
+              {metrics?.requests.total || 0}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
               {metrics?.requests.errors || 0} errors
-            </p>
+            </Typography>
           </CardContent>
         </Card>
         
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Error Rate</CardTitle>
-            <TrendingDown className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardHeader
+            title={
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle2">Error Rate</Typography>
+                <TrendingDownIcon color="action" fontSize="small" />
+              </Box>
+            }
+            sx={{ pb: 1 }}
+          />
+          <CardContent sx={{ pt: 0 }}>
+            <Typography variant="h4" sx={{ mb: 0.5 }}>
               {metrics?.requests.error_rate_percent?.toFixed(1) || 0}%
-            </div>
-            <p className="text-xs text-muted-foreground">
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
               Last 24 hours
-            </p>
+            </Typography>
           </CardContent>
         </Card>
         
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Response Time</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardHeader
+            title={
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle2">Avg Response Time</Typography>
+                <ClockIcon color="action" fontSize="small" />
+              </Box>
+            }
+            sx={{ pb: 1 }}
+          />
+          <CardContent sx={{ pt: 0 }}>
+            <Typography variant="h4" sx={{ mb: 0.5 }}>
               {metrics?.requests.avg_response_time_seconds?.toFixed(2) || 0}s
-            </div>
-            <p className="text-xs text-muted-foreground">
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
               Current average
-            </p>
+            </Typography>
           </CardContent>
         </Card>
         
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Requests</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeRequests.length}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardHeader
+            title={
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle2">Active Requests</Typography>
+                <UsersIcon color="action" fontSize="small" />
+              </Box>
+            }
+            sx={{ pb: 1 }}
+          />
+          <CardContent sx={{ pt: 0 }}>
+            <Typography variant="h4" sx={{ mb: 0.5 }}>
+              {activeRequests.length}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
               Currently processing
-            </p>
+            </Typography>
           </CardContent>
         </Card>
-      </div>
+      </Box>
       
       {/* Main Content Grid */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
         {/* Live Metrics Card */}
         <Card>
-          <CardHeader>
-            <CardTitle>Live Metrics</CardTitle>
-            <CardDescription>Real-time system performance metrics</CardDescription>
-          </CardHeader>
+          <CardHeader
+            title="Live Metrics"
+            subheader="Real-time system performance metrics"
+          />
           <CardContent>
             <LiveMetricsCard metrics={metrics} />
           </CardContent>
@@ -320,10 +406,10 @@ const MonitoringPage: React.FC = () => {
         
         {/* Active Requests Table */}
         <Card>
-          <CardHeader>
-            <CardTitle>Active Requests</CardTitle>
-            <CardDescription>Currently processing requests</CardDescription>
-          </CardHeader>
+          <CardHeader
+            title="Active Requests"
+            subheader="Currently processing requests"
+          />
           <CardContent>
             <ActiveRequestsTable requests={activeRequests} />
           </CardContent>
@@ -331,10 +417,10 @@ const MonitoringPage: React.FC = () => {
         
         {/* Error Rate Chart */}
         <Card>
-          <CardHeader>
-            <CardTitle>Error Rate Trends</CardTitle>
-            <CardDescription>Error rate over time</CardDescription>
-          </CardHeader>
+          <CardHeader
+            title="Error Rate Trends"
+            subheader="Error rate over time"
+          />
           <CardContent>
             <ErrorRateChart data={errorRates} />
           </CardContent>
@@ -342,57 +428,58 @@ const MonitoringPage: React.FC = () => {
         
         {/* Response Time Chart */}
         <Card>
-          <CardHeader>
-            <CardTitle>Response Time Trends</CardTitle>
-            <CardDescription>Response time percentiles</CardDescription>
-          </CardHeader>
+          <CardHeader
+            title="Response Time Trends"
+            subheader="Response time percentiles"
+          />
           <CardContent>
             <ResponseTimeChart data={responseTimes} />
           </CardContent>
         </Card>
-      </div>
+      </Box>
       
       {/* Recent Alerts */}
       <Card>
-        <CardHeader>
-          <CardTitle>Recent Alerts</CardTitle>
-          <CardDescription>Latest system alerts and notifications</CardDescription>
-        </CardHeader>
+        <CardHeader
+          title="Recent Alerts"
+          subheader="Latest system alerts and notifications"
+        />
         <CardContent>
           {alerts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No recent alerts</p>
+            <Typography variant="body2" color="text.secondary">
+              No recent alerts
+            </Typography>
           ) : (
-            <div className="space-y-3">
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {alerts.slice(0, 5).map(alert => (
                 <Alert 
                   key={alert.id}
-                  variant={alert.severity === 'critical' ? 'destructive' : 'default'}
+                  severity={alert.severity === 'critical' ? 'error' : 'warning'}
+                  icon={<AlertTriangleIcon />}
                 >
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>{alert.title}</AlertTitle>
-                  <AlertDescription>
-                    {alert.message}
-                    <div className="text-xs text-muted-foreground mt-1">
+                  <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>{alert.title}</Typography>
+                  {alert.message}
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="caption" color="text.secondary">
                       {new Date(alert.timestamp).toLocaleString()}
-                    </div>
-                  </AlertDescription>
+                    </Typography>
+                  </Box>
                 </Alert>
               ))}
-            </div>
+            </Box>
           )}
         </CardContent>
       </Card>
       
       {/* Notification Toast - Simple implementation */}
       {notification.open && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <Alert variant={notification.severity === 'error' ? 'destructive' : 'default'}>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{notification.message}</AlertDescription>
+        <Box sx={{ position: 'fixed', bottom: 16, right: 16, zIndex: 50 }}>
+          <Alert severity={notification.severity} icon={<AlertTriangleIcon />}>
+            {notification.message}
           </Alert>
-        </div>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 };
 
