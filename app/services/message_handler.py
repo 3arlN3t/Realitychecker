@@ -564,6 +564,11 @@ class MessageHandlerService:
             bool: True if message sent successfully
         """
         try:
+            # Ensure the from_number has the whatsapp: prefix
+            if not from_number.startswith("whatsapp:"):
+                from_number = f"whatsapp:{from_number}"
+                logger.info(f"Added whatsapp: prefix to number: {sanitize_phone_number(from_number)}")
+                
             twilio_message = self.twilio_service.client.messages.create(
                 body=message,
                 from_=f"whatsapp:{self.config.twilio_phone_number}",

@@ -38,7 +38,7 @@ def get_openai_service(config: AppConfig = Depends(get_app_config)) -> EnhancedA
 
 
 @router.get("/test")
-async def direct_test_page(request):
+async def direct_test_page(request: Request):
     """
     Serve the direct test page.
     

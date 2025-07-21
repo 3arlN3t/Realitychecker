@@ -239,6 +239,16 @@ class TwilioResponseService:
         try:
             message_body = self._get_welcome_message()
             
+            # Debug logging
+            logger.info(f"Sending welcome message to {sanitize_phone_number(to_number)}")
+            logger.info(f"Using Twilio phone number: {self.config.twilio_phone_number}")
+            logger.info(f"Using Twilio account SID: {self.config.twilio_account_sid[:5]}...")
+            
+            # Check if to_number already has whatsapp: prefix
+            if not to_number.startswith("whatsapp:"):
+                to_number = f"whatsapp:{to_number}"
+                logger.info(f"Added whatsapp: prefix to number: {sanitize_phone_number(to_number)}")
+            
             message = self.client.messages.create(
                 body=message_body,
                 from_=f"whatsapp:{self.config.twilio_phone_number}",
@@ -273,12 +283,39 @@ class TwilioResponseService:
                 severity=AlertSeverity.MEDIUM
             )
             
+            # Get more detailed error information
+            error_code = getattr(e, 'code', 'unknown')
+            error_status = getattr(e, 'status', 'unknown')
+            error_msg = str(e)
+            error_details = {}
+            
+            # Try to extract more details from the exception
+            if hasattr(e, 'msg'):
+                error_details['msg'] = e.msg
+            if hasattr(e, 'uri'):
+                error_details['uri'] = e.uri
+            if hasattr(e, 'details'):
+                error_details['details'] = e.details
+            if hasattr(e, 'more_info'):
+                error_details['more_info'] = e.more_info
+            
+            # Print the full exception for debugging
+            import traceback
+            logger.error(f"Twilio Exception: {error_msg}")
+            logger.error(f"Twilio Exception Code: {error_code}")
+            logger.error(f"Twilio Exception Status: {error_status}")
+            logger.error(f"Twilio Exception Details: {error_details}")
+            logger.error(f"Twilio Exception Traceback: {traceback.format_exc()}")
+            
             log_with_context(
                 logger,
                 logging.ERROR,
                 "Failed to send welcome message",
                 to_number=sanitize_phone_number(to_number),
-                error=str(e),
+                error=error_msg,
+                error_code=error_code,
+                error_status=error_status,
+                error_details=error_details,
                 error_type="TwilioException",
                 duration_seconds=duration,
                 correlation_id=correlation_id
