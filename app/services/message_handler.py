@@ -33,18 +33,22 @@ class MessageHandlerService:
     response services to handle both text and media messages from WhatsApp users.
     """
     
-    def __init__(self, config: AppConfig):
+    def __init__(self, config: AppConfig, twilio_service=None, pdf_service=None, openai_service=None, user_service=None):
         """
         Initialize the message handler service.
         
         Args:
             config: Application configuration containing API keys and settings
+            twilio_service: Optional Twilio service instance (for dependency injection)
+            pdf_service: Optional PDF service instance (for dependency injection)
+            openai_service: Optional OpenAI service instance (for dependency injection)
+            user_service: Optional user management service instance (for dependency injection)
         """
         self.config = config
-        self.pdf_service = PDFProcessingService(config)
-        self.openai_service = EnhancedAIAnalysisService(config)
-        self.twilio_service = TwilioResponseService(config)
-        self.user_service = UserManagementService(config)
+        self.pdf_service = pdf_service or PDFProcessingService(config)
+        self.openai_service = openai_service or EnhancedAIAnalysisService(config)
+        self.twilio_service = twilio_service or TwilioResponseService(config)
+        self.user_service = user_service or UserManagementService(config)
         
     async def process_message(self, twilio_request: TwilioWebhookRequest) -> bool:
         """

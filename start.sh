@@ -90,6 +90,18 @@ wait_for_port 4040 "ngrok"
 API_URL=$(curl -s http://localhost:4040/api/tunnels | grep -o 'https://[^"]*\.ngrok-free\.app')
 echo "🔗 API URL: $API_URL"
 
+# Configure webhook automatically
+if [ -n "$API_URL" ]; then
+    WEBHOOK_URL="$API_URL/webhook/whatsapp"
+    echo "🔗 Webhook URL: $WEBHOOK_URL"
+    
+    # Run webhook configuration script
+    if [ -f "auto_webhook_config.py" ]; then
+        echo "⚙️ Configuring webhook..."
+        python3 auto_webhook_config.py
+    fi
+fi
+
 # Start FastAPI Server
 echo "🐍 Starting FastAPI Server..."
 

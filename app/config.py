@@ -27,6 +27,10 @@ class AppConfig:
     log_level: str = "INFO"
     webhook_validation: bool = True
     
+    # Development mode settings
+    development_mode: bool = False
+    use_mock_twilio: bool = False
+    
     # Authentication configuration
     jwt_secret_key: str = "your-secret-key-change-in-production"
     jwt_expiry_hours: int = 24
@@ -73,7 +77,9 @@ class AppConfig:
             admin_username=os.getenv("ADMIN_USERNAME", "admin"),
             admin_password=os.getenv("ADMIN_PASSWORD", "admin123"),
             analyst_username=os.getenv("ANALYST_USERNAME", ""),
-            analyst_password=os.getenv("ANALYST_PASSWORD", "")
+            analyst_password=os.getenv("ANALYST_PASSWORD", ""),
+            development_mode=os.getenv("DEVELOPMENT_MODE", "false").lower() == "true",
+            use_mock_twilio=os.getenv("USE_MOCK_TWILIO", "false").lower() == "true"
         )
 
 

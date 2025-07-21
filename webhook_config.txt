@@ -1,0 +1,11 @@
+# WhatsApp Bot Development Configuration
+# Generated: Tue Jul 22 01:18:57 SAST 2025
+
+NGROK_URL=https://e0c94589d715.ngrok-free.app
+WEBHOOK_URL=https://e0c94589d715.ngrok-free.app/webhook/whatsapp
+TWILIO_CONSOLE=https://console.twilio.com/us1/develop/sms/try-it-out/whatsapp-learn
+
+# Quick Commands:
+# Test health: curl https://e0c94589d715.ngrok-free.app/health
+# View logs: tail -f server.log
+# View ngrok logs: tail -f ngrok.log

@@ -72,14 +72,31 @@ class ServiceContainer:
         """Get Twilio response service."""
         if self._twilio_service is None:
             config = self.get_config()
-            self._twilio_service = TwilioResponseService(config)
+            # Use mock service in development mode
+            if config.development_mode or config.use_mock_twilio:
+                from app.services.mock_twilio_response import MockTwilioResponseService
+                self._twilio_service = MockTwilioResponseService(config)
+            else:
+                self._twilio_service = TwilioResponseService(config)
         return self._twilio_service
     
     def get_message_handler(self) -> MessageHandlerService:
         """Get message handler service."""
         if self._message_handler is None:
             config = self.get_config()
-            self._message_handler = MessageHandlerService(config)
+            # Pass services for proper dependency injection
+            twilio_service = self.get_twilio_service()
+            pdf_service = self.get_pdf_service()
+            openai_service = self.get_openai_service()
+            user_service = self.get_user_management_service()
+            
+            self._message_handler = MessageHandlerService(
+                config, 
+                twilio_service=twilio_service,
+                pdf_service=pdf_service,
+                openai_service=openai_service,
+                user_service=user_service
+            )
         return self._message_handler
     
     def get_user_management_service(self) -> UserManagementService:
