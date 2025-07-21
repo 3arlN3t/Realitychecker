@@ -15,6 +15,7 @@ An AI-powered WhatsApp bot that analyzes job advertisements to detect potential 
 ## 🚀 Features
 
 - **WhatsApp Integration**: Seamless interaction through Twilio WhatsApp Business API
+- **Web Interface**: Simple web-based upload form for text and PDF analysis
 - **AI-Powered Analysis**: Uses OpenAI GPT-4 for intelligent scam detection
 - **PDF Processing**: Extracts and analyzes text from uploaded PDF job postings
 - **Trust Scoring**: Provides 0-100 trust scores with detailed reasoning
@@ -75,7 +76,8 @@ docker-compose up -d --build
 
 ### 4. Access the Application
 
-- **API**: http://localhost:8000
+- **API Test Page**: http://localhost:8000
+- **API Endpoints**: http://localhost:8000/api/analyze
 - **Dashboard**: http://localhost:8000/admin
 - **API Documentation**: http://localhost:8000/docs
 - **Health Check**: http://localhost:8000/health
@@ -182,13 +184,26 @@ python -c "from app.config import get_config; print('✅ Configuration valid')"
 
 ## 🎯 Usage
 
-### WhatsApp Bot Usage
+### Usage Options
+
+#### WhatsApp Bot Usage
 
 1. **Add the Bot**: Add your Twilio WhatsApp number to your contacts
 2. **Send Job Ad**: Send either:
    - Plain text job advertisement
    - PDF file containing job posting
 3. **Get Analysis**: Receive trust score, classification, and detailed reasoning
+
+#### Web API Usage
+
+1. **Visit the API Test Page**: Go to http://localhost:8000 (or your deployed URL)
+2. **Submit Job Ad**: Paste the job advertisement text in the form
+3. **Get Analysis**: View trust score, classification, and detailed reasoning immediately on the page
+
+#### API Endpoints
+
+- **Text Analysis**: `POST /api/analyze/text` with form field `job_text`
+- **API Status**: `GET /api/analyze/status`
 
 #### Example Interaction
 

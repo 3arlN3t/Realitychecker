@@ -474,3 +474,70 @@ class PDFProcessingService:
         except Exception as e:
             logger.error(f"Unexpected error in PDF processing: {e}")
             raise PDFProcessingError(f"PDF processing failed: {e}")
+    
+    async def process_pdf_bytes(self, pdf_content: bytes, filename: str = "upload.pdf") -> str:
+        """
+        Process PDF content from bytes (for web uploads).
+        
+        Args:
+            pdf_content: Raw PDF content as bytes
+            filename: Optional filename for logging purposes
+            
+        Returns:
+            str: Validated text content ready for analysis
+            
+        Raises:
+            PDFProcessingError: If any step of the processing fails
+        """
+        correlation_id = get_correlation_id()
+        
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Starting PDF processing for uploaded bytes",
+            filename=filename,
+            pdf_size=len(pdf_content),
+            correlation_id=correlation_id
+        )
+        
+        try:
+            # Validate PDF size
+            if len(pdf_content) > self.max_size_bytes:
+                raise PDFValidationError(
+                    f"PDF file too large: {len(pdf_content)} bytes "
+                    f"(max: {self.max_size_bytes} bytes)"
+                )
+            
+            # Basic PDF header validation
+            if not pdf_content.startswith(b'%PDF-'):
+                raise PDFValidationError("Uploaded file is not a valid PDF")
+            
+            # Extract text from PDF
+            text_content = await self.extract_text(pdf_content)
+            
+            # Validate extracted content
+            self.validate_pdf_content(text_content)
+            
+            log_with_context(
+                logger,
+                logging.INFO,
+                "PDF bytes processing completed successfully",
+                filename=filename,
+                text_length=len(text_content),
+                correlation_id=correlation_id
+            )
+            return text_content
+            
+        except PDFProcessingError:
+            # Re-raise PDF processing errors as-is
+            raise
+        except Exception as e:
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Unexpected error in PDF bytes processing",
+                filename=filename,
+                error=str(e),
+                correlation_id=correlation_id
+            )
+            raise PDFProcessingError(f"PDF processing failed: {e}")

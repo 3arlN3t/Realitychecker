@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
 
 from app.config import get_config
 from app.dependencies import get_service_container, reset_service_container, initialize_service_container
@@ -202,6 +203,30 @@ app.include_router(analytics_router)
 from app.api.mfa import router as mfa_router
 app.include_router(mfa_router)
 
+# Include web upload router
+from app.api.web_upload import router as web_upload_router
+app.include_router(web_upload_router)
+
+# Include API upload router
+try:
+    from app.api.api_upload import router as api_upload_router
+    app.include_router(api_upload_router)
+    logger.info("API upload router included")
+except Exception as e:
+    logger.warning(f"Failed to include API upload router: {e}")
+
+# Mount static files directory
+try:
+    import os
+    static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
+    if not os.path.exists(static_dir):
+        os.makedirs(static_dir, exist_ok=True)
+        logger.warning(f"Created static files directory at {static_dir}")
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    logger.info(f"Static files directory mounted at {static_dir}")
+except Exception as e:
+    logger.warning(f"Failed to mount static files directory: {e}")
+
 # Add security middleware
 app.add_middleware(
     TrustedHostMiddleware, 
@@ -387,6 +412,18 @@ async def method_not_allowed_handler(request: Request, exc: HTTPException):
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
     )
+
+
+@app.get("/")
+async def root():
+    """
+    Root endpoint that redirects to the API test page.
+    
+    Returns:
+        RedirectResponse to the API test page
+    """
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/api/analyze/test")
 
 
 @app.get("/health")

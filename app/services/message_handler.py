@@ -9,7 +9,7 @@ analysis workflow for both text and media messages from WhatsApp users.
 import logging
 from typing import Optional
 
-from app.models.data_models import TwilioWebhookRequest, JobAnalysisResult, AppConfig
+from app.models.data_models import TwilioWebhookRequest, JobAnalysisResult, AppConfig, AnalysisResult, MessageType
 from app.services.pdf_processing import (
     PDFProcessingService, PDFProcessingError, PDFDownloadError, 
     PDFExtractionError, PDFValidationError
@@ -633,4 +633,136 @@ class MessageHandlerService:
         )
         
         return await self._send_custom_error_message(from_number, error_message)
+    
+    async def process_web_message(self, message_data: dict) -> AnalysisResult:
+        """
+        Process web-based message for job ad analysis.
+        
+        Args:
+            message_data: Dictionary containing message information with keys:
+                - message_type: MessageType (TEXT or PDF)
+                - content: Text content or PDF bytes
+                - user_id: Web user identifier
+                - source: 'web'
+                - analysis_id: Unique analysis identifier
+                - correlation_id: Request correlation ID
+                - filename: (optional) PDF filename
+                
+        Returns:
+            AnalysisResult: Analysis results with trust score and reasoning
+        """
+        correlation_id = message_data.get('correlation_id')
+        start_time = time.time()
+        
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Processing web message",
+            user_id=message_data['user_id'],
+            message_type=message_data['message_type'].value,
+            analysis_id=message_data['analysis_id'],
+            correlation_id=correlation_id
+        )
+        
+        try:
+            # Extract content based on message type
+            if message_data['message_type'] == MessageType.PDF:
+                # Process PDF content
+                log_with_context(
+                    logger,
+                    logging.INFO,
+                    "Processing PDF content for web analysis",
+                    analysis_id=message_data['analysis_id'],
+                    filename=message_data.get('filename'),
+                    correlation_id=correlation_id
+                )
+                
+                # Extract text from PDF bytes
+                extracted_text = await self.pdf_service.process_pdf_bytes(
+                    message_data['content'],
+                    filename=message_data.get('filename', 'upload.pdf')
+                )
+                
+                content_to_analyze = extracted_text
+                
+            else:
+                # Use text content directly
+                content_to_analyze = message_data['content']
+                
+                # Validate text content
+                if not self._validate_text_content(content_to_analyze):
+                    raise ValueError("Text content is too short or invalid for analysis")
+            
+            # Analyze the content using OpenAI
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Starting OpenAI analysis for web content",
+                analysis_id=message_data['analysis_id'],
+                content_length=len(content_to_analyze),
+                correlation_id=correlation_id
+            )
+            
+            analysis_result = await self.openai_service.analyze_job_ad(content_to_analyze)
+            
+            # Record the interaction in the database
+            response_time = time.time() - start_time
+            await self.user_service.record_interaction(
+                phone_number=message_data['user_id'],  # Use user_id as identifier
+                message_type=message_data['message_type'].value.lower(),
+                message_content=content_to_analyze[:100] if content_to_analyze else None,
+                analysis_result=analysis_result,
+                response_time=response_time,
+                source='web'  # Mark as web source
+            )
+            
+            # Convert JobAnalysisResult to AnalysisResult for web response
+            web_result = AnalysisResult(
+                trust_score=analysis_result.trust_score,
+                classification=analysis_result.classification_text,
+                reasoning=analysis_result.reasoning,
+                timestamp=analysis_result.timestamp
+            )
+            
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Web analysis completed successfully",
+                analysis_id=message_data['analysis_id'],
+                trust_score=web_result.trust_score,
+                classification=web_result.classification,
+                processing_time=response_time,
+                correlation_id=correlation_id
+            )
+            
+            return web_result
+            
+        except Exception as e:
+            # Handle errors and record failed interaction
+            response_time = time.time() - start_time
+            error_message = str(e)
+            
+            # Record error interaction
+            await self.user_service.record_interaction(
+                phone_number=message_data['user_id'],
+                message_type=message_data['message_type'].value.lower(),
+                message_content=str(message_data['content'])[:100] if message_data.get('content') else None,
+                response_time=response_time,
+                error=error_message,
+                source='web'
+            )
+            
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Web analysis failed",
+                analysis_id=message_data['analysis_id'],
+                error=error_message,
+                error_type=type(e).__name__,
+                processing_time=response_time,
+                correlation_id=correlation_id
+            )
+            
+            # Re-raise the exception to be handled by the API endpoint
+            raise
 

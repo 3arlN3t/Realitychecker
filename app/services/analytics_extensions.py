@@ -1,449 +1,153 @@
 """
-Extensions to the AnalyticsService class for advanced analytics features.
+Extensions for the analytics service to support web uploads.
 
-This module provides additional methods for the AnalyticsService class to support:
-- Time series data retrieval
-- Report storage and retrieval
-- Integration with advanced analytics engines
+This module provides additional analytics functionality for web uploads.
 """
 
-import logging
-import os
-import tempfile
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta
-import uuid
-import json
+from collections import defaultdict
 
-from app.models.data_models import (
-    ReportData, ReportParameters, UserDetails, UserInteraction
-)
-from app.utils.logging import get_logger, log_with_context
-from app.utils.advanced_analytics import AdvancedAnalyticsEngine
-from app.utils.pattern_recognition import PatternRecognitionEngine
-from app.utils.reporting_engine import ReportingEngine
-
-logger = get_logger(__name__)
+from app.models.data_models import UserDetails, UserInteraction
 
 
-class AnalyticsServiceExtensions:
+async def get_source_breakdown(users: List[UserDetails], date_range: Optional[tuple] = None) -> Dict[str, int]:
     """
-    Extensions to the AnalyticsService class for advanced analytics.
+    Calculate breakdown of interactions by source (WhatsApp vs Web).
     
-    This class is designed to be mixed into the AnalyticsService class.
+    Args:
+        users: List of user details
+        date_range: Optional tuple of (start_date, end_date)
+        
+    Returns:
+        Dict with counts by source
     """
+    source_counts = {"whatsapp": 0, "web": 0}
     
-    def __init__(self):
-        """Initialize analytics service extensions."""
-        self.reports_dir = os.path.join(tempfile.gettempdir(), "reality_checker_reports")
-        os.makedirs(self.reports_dir, exist_ok=True)
-        
-        self.stored_reports: Dict[str, ReportData] = {}
-        self.advanced_analytics_engine = AdvancedAnalyticsEngine()
-        self.pattern_engine = PatternRecognitionEngine()
-        self.reporting_engine = ReportingEngine(self.reports_dir)
-        
-        logger.info("AnalyticsServiceExtensions initialized")
+    for user in users:
+        for interaction in user.interaction_history:
+            # Apply date filter if provided
+            if date_range:
+                start_date, end_date = date_range
+                if not (start_date <= interaction.timestamp <= end_date):
+                    continue
+            
+            source = interaction.source if hasattr(interaction, 'source') else "whatsapp"
+            source_counts[source] = source_counts.get(source, 0) + 1
     
-    async def get_metric_time_series(self, 
-                                   metric_name: str,
-                                   start_date: datetime,
-                                   end_date: datetime,
-                                   dimensions: Dict[str, str] = None) -> List[Tuple[datetime, float]]:
-        """
-        Get time series data for a specific metric.
-        
-        Args:
-            metric_name: Name of the metric
-            start_date: Start date for the time series
-            end_date: End date for the time series
-            dimensions: Optional dimensions for filtering
-            
-        Returns:
-            List of (timestamp, value) tuples
-        """
-        try:
-            # This is a simplified implementation that generates mock data
-            # In a real implementation, you would retrieve actual time series data
-            
-            # Get all users and their interactions
-            user_list = await self.user_service.get_users(page=1, limit=10000)
-            
-            # Generate time series based on metric name
-            time_series = []
-            
-            if metric_name == "requests_count":
-                # Count requests per hour
-                current_time = start_date
-                while current_time <= end_date:
-                    next_time = current_time + timedelta(hours=1)
-                    count = 0
-                    
-                    for user in user_list.users:
-                        for interaction in user.interaction_history:
-                            if current_time <= interaction.timestamp < next_time:
-                                count += 1
-                    
-                    time_series.append((current_time, float(count)))
-                    current_time = next_time
-            
-            elif metric_name == "response_time":
-                # Average response time per hour
-                current_time = start_date
-                while current_time <= end_date:
-                    next_time = current_time + timedelta(hours=1)
-                    response_times = []
-                    
-                    for user in user_list.users:
-                        for interaction in user.interaction_history:
-                            if current_time <= interaction.timestamp < next_time and interaction.response_time > 0:
-                                response_times.append(interaction.response_time)
-                    
-                    avg_time = sum(response_times) / len(response_times) if response_times else 0.0
-                    time_series.append((current_time, avg_time))
-                    current_time = next_time
-            
-            elif metric_name == "error_rate":
-                # Error rate per hour
-                current_time = start_date
-                while current_time <= end_date:
-                    next_time = current_time + timedelta(hours=1)
-                    total = 0
-                    errors = 0
-                    
-                    for user in user_list.users:
-                        for interaction in user.interaction_history:
-                            if current_time <= interaction.timestamp < next_time:
-                                total += 1
-                                if not interaction.was_successful:
-                                    errors += 1
-                    
-                    error_rate = (errors / total * 100) if total > 0 else 0.0
-                    time_series.append((current_time, error_rate))
-                    current_time = next_time
-            
-            elif metric_name == "active_users":
-                # Active users per day
-                current_time = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
-                while current_time <= end_date:
-                    next_time = current_time + timedelta(days=1)
-                    active_users = set()
-                    
-                    for user in user_list.users:
-                        for interaction in user.interaction_history:
-                            if current_time <= interaction.timestamp < next_time:
-                                active_users.add(user.phone_number)
-                                break
-                    
-                    time_series.append((current_time, float(len(active_users))))
-                    current_time = next_time
-            
-            elif metric_name == "classification_distribution":
-                # Classification distribution per day
-                current_time = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
-                while current_time <= end_date:
-                    next_time = current_time + timedelta(days=1)
-                    classifications = {"Legit": 0, "Suspicious": 0, "Likely Scam": 0}
-                    
-                    for user in user_list.users:
-                        for interaction in user.interaction_history:
-                            if (current_time <= interaction.timestamp < next_time and 
-                                interaction.analysis_result):
-                                classification = interaction.analysis_result.classification_text
-                                classifications[classification] += 1
-                    
-                    # Use "Likely Scam" percentage as the metric
-                    total = sum(classifications.values())
-                    scam_percentage = (classifications["Likely Scam"] / total * 100) if total > 0 else 0.0
-                    time_series.append((current_time, scam_percentage))
-                    current_time = next_time
-            
-            else:
-                # Default to random data
-                import random
-                current_time = start_date
-                while current_time <= end_date:
-                    time_series.append((current_time, random.uniform(0, 100)))
-                    current_time += timedelta(hours=1)
-            
-            return time_series
-            
-        except Exception as e:
-            log_with_context(
-                logger,
-                logging.ERROR,
-                "Failed to get metric time series",
-                metric_name=metric_name,
-                error=str(e)
-            )
-            raise
+    return source_counts
+
+
+async def get_source_success_rates(users: List[UserDetails], date_range: Optional[tuple] = None) -> Dict[str, float]:
+    """
+    Calculate success rates by source (WhatsApp vs Web).
     
-    async def store_report(self, report: ReportData) -> str:
-        """
-        Store a generated report.
+    Args:
+        users: List of user details
+        date_range: Optional tuple of (start_date, end_date)
         
-        Args:
-            report: Report data to store
-            
-        Returns:
-            Report ID
-        """
-        try:
-            # Generate report ID
-            report_id = str(uuid.uuid4())
-            
-            # Export report to file
-            export_result = await self.reporting_engine.export_report(report)
-            
-            # Update report with export details
-            report.download_url = export_result.get("file_path")
-            report.file_size = export_result.get("file_size")
-            
-            # Store report
-            self.stored_reports[report_id] = report
-            
-            # Also save report metadata to file for persistence
-            metadata = {
-                "id": report_id,
-                "report_type": report.report_type,
-                "generated_at": report.generated_at.isoformat(),
-                "period": report.period,
-                "export_format": report.export_format,
-                "download_url": report.download_url,
-                "file_size": report.file_size
-            }
-            
-            metadata_path = os.path.join(self.reports_dir, f"{report_id}_metadata.json")
-            with open(metadata_path, 'w') as f:
-                json.dump(metadata, f)
-            
-            return report_id
-            
-        except Exception as e:
-            log_with_context(
-                logger,
-                logging.ERROR,
-                "Failed to store report",
-                report_type=report.report_type,
-                error=str(e)
-            )
-            raise
+    Returns:
+        Dict with success rates by source
+    """
+    source_totals = {"whatsapp": 0, "web": 0}
+    source_successes = {"whatsapp": 0, "web": 0}
     
-    async def get_report(self, report_id: str) -> Optional[ReportData]:
-        """
-        Get a stored report by ID.
-        
-        Args:
-            report_id: ID of the report
+    for user in users:
+        for interaction in user.interaction_history:
+            # Apply date filter if provided
+            if date_range:
+                start_date, end_date = date_range
+                if not (start_date <= interaction.timestamp <= end_date):
+                    continue
             
-        Returns:
-            ReportData if found, None otherwise
-        """
-        try:
-            # Check in-memory cache first
-            if report_id in self.stored_reports:
-                return self.stored_reports[report_id]
+            source = interaction.source if hasattr(interaction, 'source') else "whatsapp"
+            source_totals[source] = source_totals.get(source, 0) + 1
             
-            # Try to load from file
-            metadata_path = os.path.join(self.reports_dir, f"{report_id}_metadata.json")
-            if os.path.exists(metadata_path):
-                with open(metadata_path, 'r') as f:
-                    metadata = json.load(f)
-                
-                # Create report object
-                report = ReportData(
-                    report_type=metadata["report_type"],
-                    generated_at=datetime.fromisoformat(metadata["generated_at"]),
-                    period=metadata["period"],
-                    data={},  # Data is not stored in metadata
-                    export_format=metadata["export_format"],
-                    download_url=metadata["download_url"],
-                    file_size=metadata["file_size"]
-                )
-                
-                # Cache report
-                self.stored_reports[report_id] = report
-                
-                return report
-            
-            return None
-            
-        except Exception as e:
-            log_with_context(
-                logger,
-                logging.ERROR,
-                "Failed to get report",
-                report_id=report_id,
-                error=str(e)
-            )
-            return None
+            if interaction.was_successful:
+                source_successes[source] = source_successes.get(source, 0) + 1
     
-    async def list_reports(self, 
-                         report_type: Optional[str] = None,
-                         limit: int = 20) -> List[Dict[str, Any]]:
-        """
-        List stored reports.
-        
-        Args:
-            report_type: Optional filter by report type
-            limit: Maximum number of reports to return
-            
-        Returns:
-            List of report metadata
-        """
-        try:
-            reports = []
-            
-            # List report metadata files
-            for filename in os.listdir(self.reports_dir):
-                if filename.endswith("_metadata.json"):
-                    metadata_path = os.path.join(self.reports_dir, filename)
-                    
-                    with open(metadata_path, 'r') as f:
-                        metadata = json.load(f)
-                    
-                    # Apply filter
-                    if report_type and metadata["report_type"] != report_type:
-                        continue
-                    
-                    reports.append(metadata)
-            
-            # Sort by generation time (newest first)
-            reports.sort(key=lambda r: r["generated_at"], reverse=True)
-            
-            # Apply limit
-            return reports[:limit]
-            
-        except Exception as e:
-            log_with_context(
-                logger,
-                logging.ERROR,
-                "Failed to list reports",
-                error=str(e)
-            )
-            return []
+    # Calculate success rates
+    success_rates = {}
+    for source, total in source_totals.items():
+        if total > 0:
+            success_rates[source] = round((source_successes[source] / total) * 100, 2)
+        else:
+            success_rates[source] = 0.0
     
-    async def record_analytics_event(self, 
-                                   event_type: str,
-                                   event_data: Dict[str, Any]) -> None:
-        """
-        Record an analytics event for advanced analysis.
-        
-        Args:
-            event_type: Type of event
-            event_data: Event data
-        """
-        try:
-            # Record event in advanced analytics engine
-            if event_type == "request":
-                # Record request event
-                await self.advanced_analytics_engine.record_data_point(
-                    "request_count", 
-                    1.0,
-                    dimensions={
-                        "user_type": event_data.get("user_type", "standard"),
-                        "request_type": event_data.get("request_type", "unknown"),
-                        "classification": event_data.get("classification", "unknown")
-                    }
-                )
-                
-                # Record response time if available
-                if "response_time" in event_data:
-                    await self.advanced_analytics_engine.record_data_point(
-                        "response_time", 
-                        event_data["response_time"],
-                        dimensions={
-                            "endpoint": event_data.get("endpoint", "unknown"),
-                            "classification_type": event_data.get("classification", "unknown")
-                        }
-                    )
-            
-            elif event_type == "error":
-                # Record error event
-                await self.advanced_analytics_engine.record_data_point(
-                    "error_rate", 
-                    1.0,
-                    dimensions={
-                        "error_type": event_data.get("error_type", "unknown"),
-                        "component": event_data.get("component", "unknown")
-                    }
-                )
-            
-            elif event_type == "classification":
-                # Record classification event
-                await self.advanced_analytics_engine.record_data_point(
-                    "classification_accuracy", 
-                    event_data.get("confidence", 0.0),
-                    dimensions={
-                        "classification_type": event_data.get("classification", "unknown"),
-                        "confidence_level": "high" if event_data.get("confidence", 0.0) > 0.8 else "medium"
-                    }
-                )
-            
-            elif event_type == "user_engagement":
-                # Record user engagement event
-                await self.advanced_analytics_engine.record_data_point(
-                    "user_engagement", 
-                    event_data.get("engagement_score", 1.0),
-                    dimensions={
-                        "user_segment": event_data.get("user_segment", "standard"),
-                        "interaction_type": event_data.get("interaction_type", "message")
-                    }
-                )
-            
-        except Exception as e:
-            log_with_context(
-                logger,
-                logging.ERROR,
-                "Failed to record analytics event",
-                event_type=event_type,
-                error=str(e)
-            )
+    return success_rates
+
+
+async def get_source_response_times(users: List[UserDetails], date_range: Optional[tuple] = None) -> Dict[str, float]:
+    """
+    Calculate average response times by source (WhatsApp vs Web).
     
-    async def get_analytics_insights(self, 
-                                   metrics: Optional[List[str]] = None,
-                                   days: int = 7) -> List[Dict[str, Any]]:
-        """
-        Get business intelligence insights from analytics data.
+    Args:
+        users: List of user details
+        date_range: Optional tuple of (start_date, end_date)
         
-        Args:
-            metrics: Optional list of metrics to analyze
-            days: Number of days to analyze
+    Returns:
+        Dict with average response times by source
+    """
+    source_times = {"whatsapp": [], "web": []}
+    
+    for user in users:
+        for interaction in user.interaction_history:
+            # Apply date filter if provided
+            if date_range:
+                start_date, end_date = date_range
+                if not (start_date <= interaction.timestamp <= end_date):
+                    continue
             
-        Returns:
-            List of insights
-        """
-        try:
-            # Set time period
-            end_time = datetime.utcnow()
-            start_time = end_time - timedelta(days=days)
-            
-            # Get insights from advanced analytics engine
-            insights = await self.advanced_analytics_engine.generate_insights(
-                metric_names=metrics,
-                time_period=(start_time, end_time)
-            )
-            
-            # Convert to serializable format
-            serializable_insights = []
-            for insight in insights:
-                serializable_insights.append({
-                    "title": insight.title,
-                    "description": insight.description,
-                    "insight_type": insight.insight_type,
-                    "confidence": insight.confidence,
-                    "impact": insight.impact,
-                    "recommendation": insight.recommendation,
-                    "timestamp": insight.timestamp.isoformat()
-                })
-            
-            return serializable_insights
-            
-        except Exception as e:
-            log_with_context(
-                logger,
-                logging.ERROR,
-                "Failed to get analytics insights",
-                error=str(e)
-            )
-            return []
+            if interaction.response_time > 0:
+                source = interaction.source if hasattr(interaction, 'source') else "whatsapp"
+                source_times[source].append(interaction.response_time)
+    
+    # Calculate average response times
+    avg_times = {}
+    for source, times in source_times.items():
+        if times:
+            avg_times[source] = round(sum(times) / len(times), 2)
+        else:
+            avg_times[source] = 0.0
+    
+    return avg_times
+
+
+async def get_source_daily_trends(users: List[UserDetails], date_range: tuple) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Calculate daily trends by source (WhatsApp vs Web).
+    
+    Args:
+        users: List of user details
+        date_range: Tuple of (start_date, end_date)
+        
+    Returns:
+        Dict with daily trends by source
+    """
+    start_date, end_date = date_range
+    daily_counts = {"whatsapp": defaultdict(int), "web": defaultdict(int)}
+    
+    for user in users:
+        for interaction in user.interaction_history:
+            if start_date <= interaction.timestamp <= end_date:
+                date_str = interaction.timestamp.date().isoformat()
+                source = interaction.source if hasattr(interaction, 'source') else "whatsapp"
+                daily_counts[source][date_str] += 1
+    
+    # Convert to list format
+    result = {"whatsapp": [], "web": []}
+    current_date = start_date.date()
+    end_date = end_date.date()
+    
+    while current_date <= end_date:
+        date_str = current_date.isoformat()
+        
+        for source in ["whatsapp", "web"]:
+            result[source].append({
+                "date": date_str,
+                "count": daily_counts[source].get(date_str, 0)
+            })
+        
+        current_date += timedelta(days=1)
+    
+    return result

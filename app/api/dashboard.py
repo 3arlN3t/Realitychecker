@@ -146,6 +146,150 @@ async def get_dashboard_overview(
         )
 
 
+@router.get("/analytics/source-breakdown")
+async def get_source_breakdown(
+    period: str = Query("week", pattern="^(day|week|month|year)$"),
+    start_date: Optional[str] = Query(None, description="Start date in ISO format (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date in ISO format (YYYY-MM-DD)"),
+    user_service: UserManagementService = Depends(get_user_management_service),
+    current_user: User = Depends(require_analyst_or_admin)
+) -> Dict[str, Any]:
+    """
+    Get breakdown of interactions by source (WhatsApp vs Web).
+    
+    Args:
+        period: Time period ("day", "week", "month", "year")
+        start_date: Optional start date for custom range
+        end_date: Optional end date for custom range
+        
+    Returns:
+        Dict containing source breakdown statistics
+        
+    Raises:
+        HTTPException: If parameters are invalid or data retrieval fails
+    """
+    try:
+        # Parse custom date range if provided
+        parsed_start_date = None
+        parsed_end_date = None
+        
+        if start_date:
+            try:
+                parsed_start_date = datetime.fromisoformat(start_date)
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid start_date format. Use YYYY-MM-DD"
+                )
+        
+        if end_date:
+            try:
+                parsed_end_date = datetime.fromisoformat(end_date)
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid end_date format. Use YYYY-MM-DD"
+                )
+        
+        # Determine date range
+        if parsed_start_date and parsed_end_date:
+            if parsed_start_date >= parsed_end_date:
+                raise HTTPException(
+                    status_code=400,
+                    detail="start_date must be before end_date"
+                )
+            date_range = (parsed_start_date, parsed_end_date)
+        else:
+            # Use period to determine date range
+            end_date = datetime.utcnow()
+            if period == "day":
+                start_date = end_date - timedelta(days=1)
+            elif period == "week":
+                start_date = end_date - timedelta(weeks=1)
+            elif period == "month":
+                start_date = end_date - timedelta(days=30)
+            elif period == "year":
+                start_date = end_date - timedelta(days=365)
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid period. Must be 'day', 'week', 'month', or 'year'"
+                )
+            date_range = (start_date, end_date)
+        
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Source breakdown requested",
+            user=current_user.username,
+            period=period,
+            custom_range=bool(parsed_start_date and parsed_end_date)
+        )
+        
+        # Get all users
+        user_list = await user_service.get_users(page=1, limit=10000)
+        
+        # Import analytics extensions
+        from app.services.analytics_extensions import (
+            get_source_breakdown, get_source_success_rates,
+            get_source_response_times, get_source_daily_trends
+        )
+        
+        # Get source statistics
+        source_counts = await get_source_breakdown(user_list.users, date_range)
+        success_rates = await get_source_success_rates(user_list.users, date_range)
+        response_times = await get_source_response_times(user_list.users, date_range)
+        daily_trends = await get_source_daily_trends(user_list.users, date_range)
+        
+        # Calculate percentages
+        total_interactions = sum(source_counts.values())
+        source_percentages = {}
+        for source, count in source_counts.items():
+            percentage = (count / total_interactions * 100) if total_interactions > 0 else 0
+            source_percentages[source] = round(percentage, 2)
+        
+        result = {
+            "period": period,
+            "date_range": {
+                "start": date_range[0].isoformat(),
+                "end": date_range[1].isoformat()
+            },
+            "source_counts": source_counts,
+            "source_percentages": source_percentages,
+            "success_rates": success_rates,
+            "response_times": response_times,
+            "daily_trends": daily_trends
+        }
+        
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Source breakdown generated successfully",
+            user=current_user.username,
+            total_interactions=total_interactions,
+            whatsapp_count=source_counts.get("whatsapp", 0),
+            web_count=source_counts.get("web", 0)
+        )
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_with_context(
+            logger,
+            logging.ERROR,
+            "Failed to get source breakdown",
+            user=current_user.username,
+            period=period,
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve source breakdown"
+        )
+
+
 @router.get("/analytics/trends")
 async def get_analytics_trends(
     period: str = Query("week", pattern="^(day|week|month|year)$"),

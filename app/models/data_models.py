@@ -25,6 +25,12 @@ class UserRole(Enum):
     ANALYST = "analyst"
 
 
+class MessageType(Enum):
+    """Enumeration for message types."""
+    TEXT = "text"
+    PDF = "pdf"
+
+
 @dataclass
 class TwilioWebhookRequest:
     """
@@ -77,6 +83,7 @@ class JobAnalysisResult:
     classification: JobClassification
     reasons: List[str]
     confidence: float = 0.0
+    timestamp: datetime = field(default_factory=lambda: datetime.now())
     
     def __post_init__(self):
         """Validate the analysis result data after initialization."""
@@ -95,6 +102,35 @@ class JobAnalysisResult:
     def classification_text(self) -> str:
         """Get the classification as a string."""
         return self.classification.value
+        
+    @property
+    def reasoning(self) -> List[str]:
+        """Get the reasoning as a list of strings."""
+        return self.reasons
+
+
+@dataclass
+class AnalysisResult:
+    """
+    Dataclass representing the result of job ad analysis for web responses.
+    
+    Contains trust score, classification, and reasoning for web interface.
+    """
+    trust_score: int
+    classification: str
+    reasoning: List[str]
+    timestamp: datetime = field(default_factory=lambda: datetime.now())
+    
+    def __post_init__(self):
+        """Validate the analysis result data after initialization."""
+        if not (0 <= self.trust_score <= 100):
+            raise ValueError("Trust score must be between 0 and 100")
+        if not self.classification:
+            raise ValueError("Classification must be provided")
+        if not self.reasoning or len(self.reasoning) == 0:
+            raise ValueError("Reasoning must be provided")
+        if not all(isinstance(reason, str) and reason.strip() for reason in self.reasoning):
+            raise ValueError("All reasoning items must be non-empty strings")
 
 
 @dataclass
@@ -199,6 +235,7 @@ class UserInteraction:
     response_time: float = 0.0  # Response time in seconds
     error: Optional[str] = None
     message_sid: Optional[str] = None
+    source: str = "whatsapp"  # "whatsapp" or "web"
     
     def __post_init__(self):
         """Validate interaction data after initialization."""
@@ -209,6 +246,8 @@ class UserInteraction:
         if self.message_content and len(self.message_content) > 200:
             # Truncate content for privacy and storage efficiency
             self.message_content = self.message_content[:200] + "..."
+        if self.source not in ["whatsapp", "web"]:
+            raise ValueError("Source must be 'whatsapp' or 'web'")
     
     @property
     def was_successful(self) -> bool:
@@ -219,6 +258,11 @@ class UserInteraction:
     def classification_text(self) -> Optional[str]:
         """Get the classification result as text."""
         return self.analysis_result.classification_text if self.analysis_result else None
+        
+    @property
+    def is_web_source(self) -> bool:
+        """Check if the interaction came from the web interface."""
+        return self.source == "web"
 
 
 @dataclass
