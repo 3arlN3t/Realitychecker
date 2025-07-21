@@ -705,16 +705,27 @@ class MessageHandlerService:
             
             analysis_result = await self.openai_service.analyze_job_ad(content_to_analyze)
             
-            # Record the interaction in the database
-            response_time = time.time() - start_time
-            await self.user_service.record_interaction(
-                phone_number=message_data['user_id'],  # Use user_id as identifier
-                message_type=message_data['message_type'].value.lower(),
-                message_content=content_to_analyze[:100] if content_to_analyze else None,
-                analysis_result=analysis_result,
-                response_time=response_time,
-                source='web'  # Mark as web source
-            )
+            try:
+                # Record the interaction in the database
+                response_time = time.time() - start_time
+                await self.user_service.record_interaction(
+                    phone_number=message_data['user_id'],  # Use user_id as identifier
+                    message_type=message_data['message_type'].value.lower(),
+                    message_content=content_to_analyze[:100] if content_to_analyze else None,
+                    analysis_result=analysis_result,
+                    response_time=response_time,
+                    source='web'  # Mark as web source
+                )
+            except Exception as record_error:
+                # Log the error but continue processing
+                log_with_context(
+                    logger,
+                    logging.ERROR,
+                    "Failed to record web interaction",
+                    error=str(record_error),
+                    user_id=message_data['user_id'],
+                    correlation_id=correlation_id
+                )
             
             # Convert JobAnalysisResult to AnalysisResult for web response
             web_result = AnalysisResult(
@@ -738,19 +749,31 @@ class MessageHandlerService:
             return web_result
             
         except Exception as e:
-            # Handle errors and record failed interaction
+            # Handle errors
             response_time = time.time() - start_time
             error_message = str(e)
             
-            # Record error interaction
-            await self.user_service.record_interaction(
-                phone_number=message_data['user_id'],
-                message_type=message_data['message_type'].value.lower(),
-                message_content=str(message_data['content'])[:100] if message_data.get('content') else None,
-                response_time=response_time,
-                error=error_message,
-                source='web'
-            )
+            try:
+                # Record error interaction
+                await self.user_service.record_interaction(
+                    phone_number=message_data['user_id'],
+                    message_type=message_data['message_type'].value.lower(),
+                    message_content=str(message_data['content'])[:100] if message_data.get('content') else None,
+                    response_time=response_time,
+                    error=error_message,
+                    source='web'
+                )
+            except Exception as record_error:
+                # Log the error but continue processing
+                log_with_context(
+                    logger,
+                    logging.ERROR,
+                    "Failed to record web error interaction",
+                    error=str(record_error),
+                    original_error=error_message,
+                    user_id=message_data['user_id'],
+                    correlation_id=correlation_id
+                )
             
             log_with_context(
                 logger,

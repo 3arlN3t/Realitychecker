@@ -54,7 +54,8 @@ class UserManagementService:
                                analysis_result: Optional[JobAnalysisResult] = None,
                                response_time: float = 0.0,
                                error: Optional[str] = None,
-                               message_sid: Optional[str] = None) -> None:
+                               message_sid: Optional[str] = None,
+                               source: str = "whatsapp") -> None:
         """
         Record a user interaction with the bot.
         
@@ -66,6 +67,7 @@ class UserManagementService:
             response_time: Time taken to process the request in seconds
             error: Error message if processing failed
             message_sid: Twilio message SID for tracking
+            source: Source of the interaction ("whatsapp" or "web")
         """
         with self._lock:
             try:
@@ -77,7 +79,8 @@ class UserManagementService:
                     analysis_result=analysis_result,
                     response_time=response_time,
                     error=error,
-                    message_sid=message_sid
+                    message_sid=message_sid,
+                    source=source
                 )
                 
                 # Get or create user
@@ -92,6 +95,7 @@ class UserManagementService:
                     "User interaction recorded",
                     phone_number=sanitize_phone_number(phone_number),
                     message_type=message_type,
+                    source=interaction.source,
                     success=interaction.was_successful,
                     response_time=response_time,
                     total_requests=user.total_requests
@@ -424,7 +428,7 @@ class UserManagementService:
         Get existing user or create a new one.
         
         Args:
-            phone_number: User's WhatsApp phone number
+            phone_number: User's WhatsApp phone number or web user ID
             
         Returns:
             UserDetails object for the user
@@ -432,6 +436,14 @@ class UserManagementService:
         user = self._users.get(phone_number)
         if not user:
             now = datetime.utcnow()
+            
+            # Handle web users differently
+            if phone_number.startswith("web-"):
+                # For web users, we need to add the whatsapp: prefix to satisfy the validation
+                # This is a workaround until we refactor the UserDetails class to handle different user types
+                if not phone_number.startswith("whatsapp:"):
+                    phone_number = f"whatsapp:{phone_number}"
+            
             user = UserDetails(
                 phone_number=phone_number,
                 first_interaction=now,

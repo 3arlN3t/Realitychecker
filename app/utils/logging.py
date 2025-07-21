@@ -188,16 +188,21 @@ def log_with_context(
 
 def sanitize_phone_number(phone_number: str) -> str:
     """
-    Sanitize phone number for logging (mask middle digits).
+    Sanitize phone number or user ID for logging (mask middle digits).
     
     Args:
-        phone_number: Phone number to sanitize
+        phone_number: Phone number or user ID to sanitize
         
     Returns:
-        str: Sanitized phone number
+        str: Sanitized phone number or user ID
     """
     if not phone_number:
         return "[empty]"
+    
+    # Handle web user IDs
+    if phone_number.startswith("web-"):
+        # For web users, just return the prefix and mask the IP
+        return "web-***"
     
     # Remove whatsapp: prefix if present
     clean_number = phone_number.replace("whatsapp:", "")

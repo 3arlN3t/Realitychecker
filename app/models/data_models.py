@@ -285,8 +285,9 @@ class UserDetails:
         """Validate user details after initialization."""
         if not self.phone_number:
             raise ValueError("Phone number is required")
-        if not self.phone_number.startswith("whatsapp:"):
-            raise ValueError("Phone number must be in WhatsApp format (whatsapp:+1234567890)")
+        # Allow both WhatsApp format and web user format
+        if not (self.phone_number.startswith("whatsapp:") or self.phone_number.startswith("web-")):
+            raise ValueError("Phone number must be in WhatsApp format (whatsapp:+1234567890) or web format (web-*)")
         if self.total_requests < 0:
             raise ValueError("Total requests cannot be negative")
         if self.first_interaction > self.last_interaction:

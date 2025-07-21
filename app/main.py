@@ -215,6 +215,22 @@ try:
 except Exception as e:
     logger.warning(f"Failed to include API upload router: {e}")
 
+# Include simple API router
+try:
+    from app.api.simple_api import router as simple_api_router
+    app.include_router(simple_api_router)
+    logger.info("Simple API router included")
+except Exception as e:
+    logger.warning(f"Failed to include simple API router: {e}")
+
+# Include direct API router
+try:
+    from app.api.direct_api import router as direct_api_router
+    app.include_router(direct_api_router)
+    logger.info("Direct API router included")
+except Exception as e:
+    logger.warning(f"Failed to include direct API router: {e}")
+
 # Mount static files directory
 try:
     import os
@@ -417,13 +433,13 @@ async def method_not_allowed_handler(request: Request, exc: HTTPException):
 @app.get("/")
 async def root():
     """
-    Root endpoint that redirects to the API test page.
+    Root endpoint that redirects to the direct test page.
     
     Returns:
-        RedirectResponse to the API test page
+        RedirectResponse to the direct test page
     """
     from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/api/analyze/test")
+    return RedirectResponse(url="/api/direct/test")
 
 
 @app.get("/health")
