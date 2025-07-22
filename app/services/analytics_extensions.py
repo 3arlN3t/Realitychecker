@@ -4,11 +4,109 @@ Extensions for the analytics service to support web uploads.
 This module provides additional analytics functionality for web uploads.
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime, timedelta
 from collections import defaultdict
 
 from app.models.data_models import UserDetails, UserInteraction
+
+
+class AnalyticsServiceExtensions:
+    """
+    Extensions class for analytics service functionality.
+    
+    This class provides additional analytics methods that can be used
+    by the main AnalyticsService class.
+    """
+    
+    def __init__(self):
+        """Initialize the analytics extensions."""
+        pass
+    
+    async def get_metric_time_series(self, 
+                                   metric_name: str,
+                                   start_date: datetime,
+                                   end_date: datetime,
+                                   dimensions: Dict[str, str] = None) -> List[Tuple[datetime, float]]:
+        """
+        Get time series data for a specific metric.
+        
+        Args:
+            metric_name: Name of the metric
+            start_date: Start date for the time series
+            end_date: End date for the time series
+            dimensions: Optional dimensions for filtering
+            
+        Returns:
+            List of (timestamp, value) tuples
+        """
+        # Placeholder implementation - return empty list for now
+        return []
+    
+    async def get_report(self, report_id: str):
+        """
+        Get a stored report by ID.
+        
+        Args:
+            report_id: ID of the report
+            
+        Returns:
+            ReportData if found, None otherwise
+        """
+        # Placeholder implementation
+        return None
+    
+    async def store_report(self, report):
+        """
+        Store a generated report.
+        
+        Args:
+            report: Report data to store
+            
+        Returns:
+            Report ID
+        """
+        # Placeholder implementation
+        return f"report_{datetime.utcnow().timestamp()}"
+    
+    async def list_reports(self, report_type=None, limit=20):
+        """
+        List stored reports.
+        
+        Args:
+            report_type: Optional filter by report type
+            limit: Maximum number of reports to return
+            
+        Returns:
+            List of report metadata
+        """
+        # Placeholder implementation
+        return []
+    
+    async def record_analytics_event(self, event_type, event_data):
+        """
+        Record an analytics event for advanced analysis.
+        
+        Args:
+            event_type: Type of event
+            event_data: Event data
+        """
+        # Placeholder implementation
+        pass
+    
+    async def get_analytics_insights(self, metrics=None, days=7):
+        """
+        Get business intelligence insights from analytics data.
+        
+        Args:
+            metrics: Optional list of metrics to analyze
+            days: Number of days to analyze
+            
+        Returns:
+            List of insights
+        """
+        # Placeholder implementation
+        return []
 
 
 async def get_source_breakdown(users: List[UserDetails], date_range: Optional[tuple] = None) -> Dict[str, int]:
