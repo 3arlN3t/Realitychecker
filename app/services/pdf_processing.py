@@ -140,7 +140,7 @@ class PDFProcessingService:
                     correlation_id=correlation_id
                 )
             
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
                 # For Twilio CDN URLs, try without auth first, then with auth if it fails
                 if 'twiliocdn.com' in media_url.lower():
                     try:
@@ -397,7 +397,23 @@ class PDFProcessingService:
         Returns:
             bool: True if this is a Twilio media URL
         """
-        return 'twilio.com' in url.lower()
+        url_lower = url.lower()
+        
+        # Direct Twilio domains
+        if 'twilio.com' in url_lower or 'twiliocdn.com' in url_lower:
+            return True
+            
+        # Twilio S3 URLs - must contain specific Twilio path components
+        if 's3.amazonaws.com' in url_lower:
+            # Check for specific Twilio S3 paths
+            twilio_s3_patterns = [
+                'com.twilio.prod',
+                'twilio-api',
+                'twilio/media'
+            ]
+            return any(pattern in url_lower for pattern in twilio_s3_patterns)
+            
+        return False
     
     def validate_pdf_content(self, text: str) -> bool:
         """
@@ -495,7 +511,7 @@ class PDFProcessingService:
             logger,
             logging.INFO,
             "Starting PDF processing for uploaded bytes",
-            filename=filename,
+            uploaded_filename=filename,
             pdf_size=len(pdf_content),
             correlation_id=correlation_id
         )
@@ -522,7 +538,7 @@ class PDFProcessingService:
                 logger,
                 logging.INFO,
                 "PDF bytes processing completed successfully",
-                filename=filename,
+                uploaded_filename=filename,
                 text_length=len(text_content),
                 correlation_id=correlation_id
             )
@@ -536,7 +552,7 @@ class PDFProcessingService:
                 logger,
                 logging.ERROR,
                 "Unexpected error in PDF bytes processing",
-                filename=filename,
+                uploaded_filename=filename,
                 error=str(e),
                 correlation_id=correlation_id
             )

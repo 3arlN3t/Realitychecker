@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reality Checker - AI-Powered Job Scam Detection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'inter': ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary-blue': '#1e40af',
+                        'accent-cyan': '#06b6d4',
+                        'dark-bg': '#0f172a',
+                        'card-bg': '#1e293b',
+                        'text-gray': '#94a3b8',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0f172a;
+            color: #ffffff;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Professional gradient background like the inspiration */
+        .pro-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(ellipse at top left, rgba(30, 64, 175, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom right, rgba(6, 182, 212, 0.1) 0%, transparent 50%),
+                linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            z-index: -2;
+        }
+
+        /* Geometric pattern overlay */
+        .geometric-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(30, 64, 175, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(30, 64, 175, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: -1;
+            opacity: 0.5;
+        }
+
+        /* Professional navigation */
+        .nav-pro {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(30, 64, 175, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .nav-pro.scrolled {
+            background: rgba(15, 23, 42, 0.98);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Hero section styling */
+        .hero-section {
+            background: linear-gradient(135deg, 
+                rgba(30, 64, 175, 0.1) 0%, 
+                rgba(6, 182, 212, 0.05) 100%);
+            border: 1px solid rgba(30, 64, 175, 0.2);
+            border-radius: 24px;
+            backdrop-filter: blur(20px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(30, 64, 175, 0.8) 50%, 
+                transparent 100%);
+        }
+
+        /* Feature cards matching inspiration */
+        .feature-card {
+            background: linear-gradient(135deg, 
+                rgba(30, 41, 59, 0.8) 0%, 
+                rgba(51, 65, 85, 0.6) 100%);
+            border: 1px solid rgba(30, 64, 175, 0.3);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(30, 64, 175, 0.2) 50%, 
+                transparent 100%);
+            transition: left 0.6s ease;
+        }
+
+        .feature-card:hover::before {
+            left: 100%;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            border-color: rgba(30, 64, 175, 0.6);
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(30, 64, 175, 0.2);
+        }
+
+        /* Professional buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            border: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            transform: translate(-50%, -50%);
+        }
+
+        .btn-primary:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(30, 64, 175, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #06b6d4;
+            border: 2px solid #06b6d4;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #06b6d4;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(6, 182, 212, 0.3);
+        }
+
+        /* Icon containers with geometric design */
+        .icon-container {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, 
+                rgba(30, 64, 175, 0.2) 0%, 
+                rgba(6, 182, 212, 0.1) 100%);
+            border: 2px solid rgba(30, 64, 175, 0.3);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .icon-container::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            background: linear-gradient(135deg, #1e40af, #06b6d4);
+            border-radius: 22px;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .feature-card:hover .icon-container::before {
+            opacity: 1;
+        }
+
+        .feature-card:hover .icon-container {
+            background: rgba(30, 64, 175, 0.3);
+            border-color: rgba(6, 182, 212, 0.5);
+        }
+
+        /* Stats section like the inspiration */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .stat-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(30, 64, 175, 0.3);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(30, 64, 175, 0.5);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #1e40af, #06b6d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Timeline section */
+        .timeline {
+            position: relative;
+            padding: 2rem 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, #1e40af, #06b6d4);
+            transform: translateX(-50%);
+        }
+
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            margin: 2rem 0;
+            position: relative;
+        }
+
+        .timeline-number {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #1e40af, #06b6d4);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            margin: 0 2rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Team section like the inspiration */
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1.5rem;
+            margin: 3rem 0;
+        }
+
+        .team-member {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(30, 64, 175, 0.2);
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .team-member:hover {
+            transform: translateY(-5px);
+            border-color: rgba(30, 64, 175, 0.4);
+        }
+
+        /* Modal styling */
+        .modal-pro {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(30, 64, 175, 0.3);
+            border-radius: 24px;
+        }
+
+        .input-pro {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(30, 64, 175, 0.3);
+            border-radius: 12px;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .input-pro:focus {
+            outline: none;
+            border-color: #1e40af;
+            box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+        }
+
+        .input-pro::placeholder {
+            color: rgba(148, 163, 184, 0.7);
+        }
+
+        /* Status indicators */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .status-online { background: #10B981; }
+        .status-warning { background: #F59E0B; }
+        .status-error { background: #EF4444; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .timeline::before {
+                left: 30px;
+            }
+            
+            .timeline-item {
+                flex-direction: column;
+                align-items: flex-start;
+                padding-left: 60px;
+            }
+            
+            .timeline-number {
+                position: absolute;
+                left: 5px;
+                margin: 0;
+            }
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #1e40af, #06b6d4);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #3b82f6, #0891b2);
+        }
+    </style>
+</head>
+<body class="min-h-screen font-inter">
+    <!-- Professional Background -->
+    <div class="pro-bg"></div>
+    
+    <!-- Geometric Pattern -->
+    <div class="geometric-pattern"></div>
+
+    <!-- Navigation -->
+    <nav class="nav-pro fixed w-full top-0 z-50" id="navbar">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-shield-alt text-2xl text-primary-blue mr-3"></i>
+                        <h1 class="text-xl font-bold text-white">Reality Checker</h1>
+                    </div>
+                    <div class="hidden md:flex items-center space-x-2 text-xs">
+                        <span class="status-dot status-online"></span>
+                        <span class="text-text-gray">AI Systems Online</span>
+                    </div>
+                </div>
+                <div class="flex space-x-3">
+                    <button onclick="showPublicAnalysis()" class="btn-primary px-6 py-2 rounded-full text-sm font-semibold">
+                        <span class="relative z-10">
+                            <i class="fas fa-search mr-2"></i>Analyze Job
+                        </span>
+                    </button>
+                    <button onclick="showAdminLogin()" class="btn-secondary px-6 py-2 rounded-full text-sm font-semibold">
+                        <i class="fas fa-user-shield mr-2"></i>Admin Access
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 relative">
+        <!-- Team Experience Banner -->
+        <div class="hero-section p-8 mb-16">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center space-x-3 mb-6">
+                    <div class="w-16 h-16 bg-gradient-to-br from-primary-blue to-accent-cyan rounded-full flex items-center justify-center">
+                        <i class="fas fa-shield-alt text-2xl text-white"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-white text-left">THE REALITY CHECKER TEAM AS A</h2>
+                        <h3 class="text-xl font-bold text-accent-cyan text-left">COLLECTIVE HAS 15+ YEARS OF EXPERIENCE</h3>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Team Icons -->
+            <div class="team-grid mb-8">
+                <div class="team-member">
+                    <i class="fas fa-user-tie text-2xl text-primary-blue mb-2"></i>
+                    <div class="text-xs text-text-gray">AI PIONEERS</div>
+                </div>
+                <div class="team-member">
+                    <i class="fas fa-chart-line text-2xl text-accent-cyan mb-2"></i>
+                    <div class="text-xs text-text-gray">FINANCE EXPERTS</div>
+                </div>
+                <div class="team-member">
+                    <i class="fas fa-users text-2xl text-primary-blue mb-2"></i>
+                    <div class="text-xs text-text-gray">ADVISOR TEAM</div>
+                </div>
+            </div>
+            
+            <!-- Core Mission -->
+            <div class="text-center">
+                <h1 class="text-4xl md:text-6xl font-black text-white mb-6 leading-tight">
+                    AI-Powered Job Scam Detection
+                    <span class="block bg-gradient-to-r from-primary-blue to-accent-cyan bg-clip-text text-transparent">
+                        Protecting Your Career
+                    </span>
+                </h1>
+                <p class="text-xl text-text-gray leading-relaxed mb-8 max-w-3xl mx-auto">
+                    An AI-powered WhatsApp bot that analyzes job advertisements to detect potential scams, 
+                    helping users identify legitimate job opportunities versus fraudulent postings.
+                </p>
+            </div>
+        </div>
+
+        <!-- Key Features -->
+        <div class="grid md:grid-cols-3 gap-6 mb-12">
+            <div class="feature-card p-6">
+                <div class="icon-container">
+                    <i class="fas fa-search text-2xl text-white"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2 text-center">ANALYZE</h3>
+                <p class="text-sm text-text-gray text-center">Upload job posts and receive comprehensive AI analysis</p>
+            </div>
+            <div class="feature-card p-6">
+                <div class="icon-container">
+                    <i class="fas fa-shield-check text-2xl text-white"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2 text-center">INTERVENE</h3>
+                <p class="text-sm text-text-gray text-center">Real-time fraud detection and prevention alerts</p>
+            </div>
+            <div class="feature-card p-6">
+                <div class="icon-container">
+                    <i class="fas fa-chart-bar text-2xl text-white"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2 text-center">REPORT</h3>
+                <p class="text-sm text-text-gray text-center">Detailed risk assessment and trust scoring</p>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6">
+            <button onclick="showPublicAnalysis()" class="btn-primary px-8 py-4 rounded-full text-lg font-semibold">
+                <span class="relative z-10">
+                    <i class="fas fa-play mr-3"></i>Try Analysis Tool
+                </span>
+            </button>
+            <a href="#features" class="btn-secondary px-8 py-4 rounded-full text-lg font-semibold">
+                <i class="fas fa-info-circle mr-3"></i>Learn More
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Section -->
+    <div id="features" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <!-- Statistics Grid -->
+        <div class="stats-grid mb-16">
+            <div class="stat-card">
+                <div class="stat-number">97.3%</div>
+                <h3 class="text-lg font-semibold text-white mb-2">Detection Accuracy</h3>
+                <p class="text-text-gray text-sm">Advanced AI algorithms achieve industry-leading fraud detection rates</p>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">2.4M+</div>
+                <h3 class="text-lg font-semibold text-white mb-2">Jobs Analyzed</h3>
+                <p class="text-text-gray text-sm">Comprehensive database of analyzed job postings and patterns</p>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">24/7</div>
+                <h3 class="text-lg font-semibold text-white mb-2">Real-time Protection</h3>
+                <p class="text-text-gray text-sm">Continuous monitoring and instant fraud detection alerts</p>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">15+</div>
+                <h3 class="text-lg font-semibold text-white mb-2">Years Experience</h3>
+                <p class="text-text-gray text-sm">Combined expertise in AI, fintech, and cybersecurity</p>
+            </div>
+        </div>
+
+        <!-- Evolution Timeline -->
+        <div class="hero-section p-8 mb-16">
+            <h2 class="text-3xl font-bold text-white text-center mb-12">EVOLUTION OF JOB SCAM DETECTION</h2>
+            
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="flex-1 text-right pr-8">
+                        <div class="feature-card p-4">
+                            <h4 class="font-bold text-white mb-2">Manual Review</h4>
+                            <p class="text-text-gray text-sm">Traditional manual verification of job postings with limited coverage</p>
+                        </div>
+                    </div>
+                    <div class="timeline-number">1</div>
+                    <div class="flex-1 pl-8"></div>
+                </div>
+                
+                <div class="timeline-item">
+                    <div class="flex-1 pr-8"></div>
+                    <div class="timeline-number">2</div>
+                    <div class="flex-1 text-left pl-8">
+                        <div class="feature-card p-4">
+                            <h4 class="font-bold text-white mb-2">Pattern Recognition</h4>
+                            <p class="text-text-gray text-sm">AI-powered pattern detection for common fraud indicators</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="timeline-item">
+                    <div class="flex-1 text-right pr-8">
+                        <div class="feature-card p-4">
+                            <h4 class="font-bold text-white mb-2">Neural Analysis</h4>
+                            <p class="text-text-gray text-sm">Advanced neural networks for comprehensive fraud detection</p>
+                        </div>
+                    </div>
+                    <div class="timeline-number">3</div>
+                    <div class="flex-1 pl-8"></div>
+                </div>
+                
+                <div class="timeline-item">
+                    <div class="flex-1 pr-8"></div>
+                    <div class="timeline-number">4</div>
+                    <div class="flex-1 text-left pl-8">
+                        <div class="feature-card p-4">
+                            <h4 class="font-bold text-white mb-2">Reality Checker</h4>
+                            <p class="text-text-gray text-sm">Next-generation AI platform with real-time protection</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Drivers Section -->
+        <div class="hero-section p-8">
+            <div class="grid md:grid-cols-2 gap-12">
+                <!-- Left Side - Drivers -->
+                <div>
+                    <h3 class="text-2xl font-bold text-white mb-6">KEY DRIVERS OF CHANGE</h3>
+                    <p class="text-text-gray mb-8">
+                        The rapid growth of job scams has created an urgent need for AI-powered solutions to protect job seekers from financial loss and identity theft.
+                    </p>
+                    
+                    <div class="space-y-6">
+                        <div class="flex items-start space-x-4">
+                            <div class="w-8 h-8 bg-primary-blue rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-exclamation-triangle text-white text-sm"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-white mb-1">Rising Fraud Rates</h4>
+                                <p class="text-text-gray text-sm">Job scam incidents increased by 150% in the past two years</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start space-x-4">
+                            <div class="w-8 h-8 bg-accent-cyan rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-mobile-alt text-white text-sm"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-white mb-1">Mobile-First Approach</h4>
+                                <p class="text-text-gray text-sm">WhatsApp integration for instant analysis and protection</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start space-x-4">
+                            <div class="w-8 h-8 bg-primary-blue rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-brain text-white text-sm"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-white mb-1">AI Advancement</h4>
+                                <p class="text-text-gray text-sm">Latest GPT-4 models enable sophisticated fraud detection</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right Side - Technologies -->
+                <div>
+                    <h3 class="text-2xl font-bold text-white mb-6">CORE TECHNOLOGIES</h3>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="feature-card p-4 text-center">
+                            <i class="fas fa-robot text-2xl text-primary-blue mb-3"></i>
+                            <h4 class="font-semibold text-white text-sm mb-2">AI/ML</h4>
+                            <p class="text-text-gray text-xs">Machine Learning</p>
+                        </div>
+                        
+                        <div class="feature-card p-4 text-center">
+                            <i class="fas fa-language text-2xl text-accent-cyan mb-3"></i>
+                            <h4 class="font-semibold text-white text-sm mb-2">NLP</h4>
+                            <p class="text-text-gray text-xs">Natural Language Processing</p>
+                        </div>
+                        
+                        <div class="feature-card p-4 text-center">
+                            <i class="fas fa-eye text-2xl text-primary-blue mb-3"></i>
+                            <h4 class="font-semibold text-white text-sm mb-2">OCR</h4>
+                            <p class="text-text-gray text-xs">Optical Character Recognition</p>
+                        </div>
+                        
+                        <div class="feature-card p-4 text-center">
+                            <i class="fas fa-database text-2xl text-accent-cyan mb-3"></i>
+                            <h4 class="font-semibold text-white text-sm mb-2">Big Data</h4>
+                            <p class="text-text-gray text-xs">Pattern Analysis</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Public Analysis -->
+    <div id="publicModal" class="fixed inset-0 bg-black bg-opacity-90 hidden items-center justify-center z-50">
+        <div class="modal-pro p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-white">Job Scam Analysis</h3>
+                <button onclick="closeModal('publicModal')" class="text-text-gray hover:text-white transition-colors">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+            <div class="hero-section p-4 mb-6">
+                <div class="flex items-center space-x-3">
+                    <span class="status-dot status-online"></span>
+                    <span class="text-sm text-text-gray">AI Analysis System Ready</span>
+                </div>
+            </div>
+            <iframe src="/api/direct/test" class="w-full h-96 border border-primary-blue rounded-lg bg-card-bg"></iframe>
+        </div>
+    </div>
+
+    <!-- Modal for Admin Login -->
+    <div id="adminModal" class="fixed inset-0 bg-black bg-opacity-90 hidden items-center justify-center z-50">
+        <div class="modal-pro p-8 max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-white">Admin Access</h3>
+                <button onclick="closeModal('adminModal')" class="text-text-gray hover:text-white transition-colors">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+            <div class="hero-section p-4 mb-6">
+                <div class="flex items-center space-x-3">
+                    <span class="status-dot status-warning"></span>
+                    <span class="text-sm text-text-gray">Secure Authentication Required</span>
+                </div>
+            </div>
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium mb-2 text-text-gray">Username</label>
+                    <input type="text" id="adminUsername" class="input-pro w-full px-4 py-3" placeholder="Enter your username">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2 text-text-gray">Password</label>
+                    <input type="password" id="adminPassword" class="input-pro w-full px-4 py-3" placeholder="Enter your password">
+                </div>
+                <button onclick="adminLogin()" class="btn-primary w-full py-3 rounded-full font-semibold">
+                    <span class="relative z-10">
+                        <i class="fas fa-sign-in-alt mr-2"></i>Access Dashboard
+                    </span>
+                </button>
+                <div class="hero-section p-4 text-center">
+                    <div class="text-xs text-text-gray">
+                        <div class="mb-2 text-white font-semibold">Demo Credentials:</div>
+                        <div>Admin: admin / admin123</div>
+                        <div>Analyst: analyst / analyst123</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-20">
+        <div class="hero-section p-8">
+            <div class="text-center">
+                <div class="flex items-center justify-center space-x-3 mb-6">
+                    <div class="w-12 h-12 bg-gradient-to-br from-primary-blue to-accent-cyan rounded-full flex items-center justify-center">
+                        <i class="fas fa-shield-alt text-xl text-white"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white">Reality Checker</h3>
+                </div>
+                <p class="text-text-gray mb-8 max-w-2xl mx-auto">
+                    Next-generation AI platform protecting job seekers from fraudulent opportunities with real-time analysis and comprehensive threat detection.
+                </p>
+                
+                <div class="grid md:grid-cols-4 gap-6 mb-8">
+                    <div class="text-center">
+                        <div class="flex items-center justify-center space-x-2 mb-2">
+                            <span class="status-dot status-online"></span>
+                            <span class="text-white font-semibold">AI-Enhanced</span>
+                        </div>
+                        <p class="text-sm text-text-gray">GPT-4 powered analysis</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="flex items-center justify-center space-x-2 mb-2">
+                            <span class="status-dot status-online"></span>
+                            <span class="text-white font-semibold">Enterprise-Secure</span>
+                        </div>
+                        <p class="text-sm text-text-gray">Bank-grade encryption</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="flex items-center justify-center space-x-2 mb-2">
+                            <span class="status-dot status-online"></span>
+                            <span class="text-white font-semibold">Real-time</span>
+                        </div>
+                        <p class="text-sm text-text-gray">Instant threat detection</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="flex items-center justify-center space-x-2 mb-2">
+                            <span class="status-dot status-online"></span>
+                            <span class="text-white font-semibold">Global-Scale</span>
+                        </div>
+                        <p class="text-sm text-text-gray">Worldwide protection</p>
+                    </div>
+                </div>
+                
+                <div class="border-t border-primary-blue border-opacity-30 pt-6">
+                    <div class="text-sm text-text-gray">
+                        © 2025 Reality Checker • Advanced AI Job Scam Detection • Protecting Careers Worldwide
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Professional navbar scroll effect
+        function handleNavbarScroll() {
+            const navbar = document.getElementById('navbar');
+            if (window.scrollY > 100) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', function() {
+            window.addEventListener('scroll', handleNavbarScroll);
+        });
+
+        function showPublicAnalysis() {
+            document.getElementById('publicModal').classList.remove('hidden');
+            document.getElementById('publicModal').classList.add('flex');
+        }
+
+        function showAdminLogin() {
+            document.getElementById('adminModal').classList.remove('hidden');
+            document.getElementById('adminModal').classList.add('flex');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+            document.getElementById(modalId).classList.remove('flex');
+        }
+
+        async function adminLogin() {
+            const username = document.getElementById('adminUsername').value;
+            const password = document.getElementById('adminPassword').value;
+            
+            if (!username || !password) {
+                showNotification('Please enter both username and password', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    localStorage.setItem('auth_token', result.token);
+                    localStorage.setItem('user_role', result.user.role);
+                    showNotification('Authentication successful! Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 1500);
+                } else {
+                    showNotification('Invalid credentials. Please try again.', 'error');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showNotification('Connection failed. Please try again.', 'error');
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            const colors = {
+                success: 'border-green-500 bg-green-500/10 text-green-400',
+                error: 'border-red-500 bg-red-500/10 text-red-400',
+                info: 'border-primary-blue bg-primary-blue/10 text-primary-blue'
+            };
+            
+            notification.className = `fixed top-20 right-4 p-4 rounded-lg border backdrop-blur-lg z-50 text-sm ${colors[type]}`;
+            notification.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <span class="status-dot ${type === 'success' ? 'status-online' : type === 'error' ? 'status-error' : 'status-warning'}"></span>
+                    <span>${message}</span>
+                </div>
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 4000);
+        }
+
+        // Modal interactions
+        document.getElementById('publicModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal('publicModal');
+        });
+        
+        document.getElementById('adminModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal('adminModal');
+        });
+
+        document.getElementById('adminPassword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') adminLogin();
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal('publicModal');
+                closeModal('adminModal');
+            }
+        });
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Professional hover effects for cards
+        document.querySelectorAll('.feature-card, .stat-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-8px)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+
+        // Button ripple effect
+        document.querySelectorAll('.btn-primary, .btn-secondary').forEach(button => {
+            button.addEventListener('click', function(e) {
+                const rect = this.getBoundingClientRect();
+                const ripple = document.createElement('div');
+                const size = Math.max(rect.width, rect.height);
+                const x = e.clientX - rect.left - size / 2;
+                const y = e.clientY - rect.top - size / 2;
+                
+                ripple.style.width = ripple.style.height = size + 'px';
+                ripple.style.left = x + 'px';
+                ripple.style.top = y + 'px';
+                ripple.className = 'absolute rounded-full bg-white opacity-30 pointer-events-none';
+                ripple.style.animation = 'ripple 0.6s linear';
+                
+                this.appendChild(ripple);
+                
+                setTimeout(() => {
+                    ripple.remove();
+                }, 600);
+            });
+        });
+
+        // Add ripple animation to CSS
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes ripple {
+                0% { transform: scale(0); opacity: 0.3; }
+                100% { transform: scale(2); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

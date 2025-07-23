@@ -38,6 +38,7 @@ templates = Jinja2Templates(directory=templates_dir)
 
 
 @router.get("/")
+@router.get("/upload")
 async def web_upload_form(request: Request):
     """
     Render the web upload form for job advertisement analysis.

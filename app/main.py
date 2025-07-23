@@ -9,9 +9,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 from app.config import get_config
 from app.dependencies import get_service_container, reset_service_container, initialize_service_container
@@ -243,6 +244,26 @@ try:
 except Exception as e:
     logger.warning(f"Failed to mount static files directory: {e}")
 
+# Mount dashboard build directory
+try:
+    dashboard_build_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dashboard", "build")
+    if os.path.exists(dashboard_build_dir):
+        app.mount("/dashboard", StaticFiles(directory=dashboard_build_dir, html=True), name="dashboard")
+        logger.info(f"Dashboard static files mounted at {dashboard_build_dir}")
+    else:
+        logger.warning(f"Dashboard build directory not found at {dashboard_build_dir}")
+except Exception as e:
+    logger.warning(f"Failed to mount dashboard static files: {e}")
+
+# Setup templates
+templates = Jinja2Templates(directory="templates")
+
+# Add unified home page route (alternative)
+@app.get("/unified", response_class=HTMLResponse)
+async def unified_home(request: Request):
+    """Unified home page with role-based access."""
+    return templates.TemplateResponse("unified_home.html", {"request": request})
+
 # Add security middleware
 app.add_middleware(
     TrustedHostMiddleware, 
@@ -430,16 +451,23 @@ async def method_not_allowed_handler(request: Request, exc: HTTPException):
     )
 
 
-@app.get("/")
-async def root():
+@app.get("/", response_class=HTMLResponse)
+async def root(request: Request):
     """
-    Root endpoint that redirects to the direct test page.
+    Root endpoint that serves the professional home page.
     
     Returns:
-        RedirectResponse to the direct test page
+        HTMLResponse: Professional home page
     """
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/api/direct/test")
+    try:
+        return templates.TemplateResponse(
+            "professional_home.html",
+            {"request": request, "title": "Reality Checker - AI-Powered Job Scam Detection"}
+        )
+    except Exception as e:
+        logger.error(f"Error serving home page: {e}")
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/api/direct/test")
 
 
 @app.get("/health")

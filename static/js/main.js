@@ -1,45 +1,79 @@
-/**
- * Main JavaScript for Reality Checker web interface
- */
+// Main JavaScript for Reality Checker web interface
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize tooltips
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-
-    // Handle form submissions
-    const textForm = document.getElementById('textForm');
-    const pdfForm = document.getElementById('pdfForm');
-    
-    if (textForm) {
-        textForm.addEventListener('submit', handleTextFormSubmit);
-    }
-    
-    if (pdfForm) {
-        pdfForm.addEventListener('submit', handlePdfFormSubmit);
-    }
-    
-    // Handle new analysis button
-    const newAnalysisBtn = document.getElementById('newAnalysisBtn');
-    if (newAnalysisBtn) {
-        newAnalysisBtn.addEventListener('click', resetForms);
-    }
+    // Initialize form handlers
+    initializeTextForm();
+    initializePDFForm();
+    initializeNewAnalysisButton();
 });
 
-/**
- * Handle text form submission
- * @param {Event} e - Form submit event
- */
-async function handleTextFormSubmit(e) {
-    e.preventDefault();
-    const jobText = document.getElementById('jobText').value;
-    if (!jobText.trim()) {
-        alert('Please enter job advertisement text');
-        return;
+function initializeTextForm() {
+    const textForm = document.getElementById('textForm');
+    if (textForm) {
+        textForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const jobText = document.getElementById('jobText').value;
+            
+            if (!jobText.trim()) {
+                showAlert('Please enter job advertisement text', 'warning');
+                return;
+            }
+            
+            if (jobText.trim().length < 20) {
+                showAlert('Job advertisement text is too short. Please provide more details.', 'warning');
+                return;
+            }
+            
+            await analyzeText(jobText);
+        });
     }
-    
+}
+
+function initializePDFForm() {
+    const pdfForm = document.getElementById('pdfForm');
+    if (pdfForm) {
+        pdfForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const pdfFile = document.getElementById('pdfFile').files[0];
+            
+            if (!pdfFile) {
+                showAlert('Please select a PDF file', 'warning');
+                return;
+            }
+            
+            if (pdfFile.type !== 'application/pdf') {
+                showAlert('Please select a valid PDF file', 'warning');
+                return;
+            }
+            
+            if (pdfFile.size > 10 * 1024 * 1024) { // 10MB limit
+                showAlert('File size must be less than 10MB', 'warning');
+                return;
+            }
+            
+            await analyzePDF(pdfFile);
+        });
+    }
+}
+
+function initializeNewAnalysisButton() {
+    const newAnalysisBtn = document.getElementById('newAnalysisBtn');
+    if (newAnalysisBtn) {
+        newAnalysisBtn.addEventListener('click', function() {
+            // Reset forms
+            document.getElementById('textForm').reset();
+            document.getElementById('pdfForm').reset();
+            
+            // Hide results
+            document.getElementById('resultCard').style.display = 'none';
+            
+            // Show the input card
+            document.querySelector('.card').style.display = 'block';
+        });
+    }
+}
+
+async function analyzeText(jobText) {
     showLoading();
     
     try {
@@ -54,35 +88,18 @@ async function handleTextFormSubmit(e) {
         const result = await response.json();
         
         if (response.ok && result.success) {
-            displayResults(result.result);
+            displayResults(result);
         } else {
             throw new Error(result.message || 'Analysis failed');
         }
     } catch (error) {
-        alert('Error: ' + error.message);
+        showAlert('Error: ' + error.message, 'danger');
+    } finally {
         hideLoading();
     }
 }
 
-/**
- * Handle PDF form submission
- * @param {Event} e - Form submit event
- */
-async function handlePdfFormSubmit(e) {
-    e.preventDefault();
-    const pdfFile = document.getElementById('pdfFile').files[0];
-    if (!pdfFile) {
-        alert('Please select a PDF file');
-        return;
-    }
-    
-    // Check file size (max 10MB)
-    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
-    if (pdfFile.size > maxSize) {
-        alert('File is too large. Maximum size is 10MB.');
-        return;
-    }
-    
+async function analyzePDF(pdfFile) {
     showLoading();
     
     try {
@@ -97,33 +114,27 @@ async function handlePdfFormSubmit(e) {
         const result = await response.json();
         
         if (response.ok && result.success) {
-            displayResults(result.result);
+            displayResults(result);
         } else {
             throw new Error(result.message || 'Analysis failed');
         }
     } catch (error) {
-        alert('Error: ' + error.message);
+        showAlert('Error: ' + error.message, 'danger');
+    } finally {
         hideLoading();
     }
 }
 
-/**
- * Display analysis results
- * @param {Object} result - Analysis result object
- */
-function displayResults(result) {
-    hideLoading();
+function displayResults(response) {
+    const result = response.result;
     
-    const trustScore = document.getElementById('trustScore');
+    // Update trust score
+    const trustScoreElement = document.getElementById('trustScore');
     const scoreCircle = document.getElementById('scoreCircle');
-    const classification = document.getElementById('classification');
-    const reasoning = document.getElementById('reasoning');
-    const resultCard = document.getElementById('resultCard');
     
-    // Set trust score
-    trustScore.textContent = result.trust_score;
+    trustScoreElement.textContent = result.trust_score;
     
-    // Set score circle color based on trust score
+    // Set score color
     scoreCircle.className = 'score-circle';
     if (result.trust_score >= 70) {
         scoreCircle.classList.add('score-high');
@@ -133,65 +144,74 @@ function displayResults(result) {
         scoreCircle.classList.add('score-low');
     }
     
-    // Set classification
-    classification.textContent = result.classification;
+    // Update classification
+    document.getElementById('classification').textContent = result.classification;
     
-    // Set reasoning
-    let reasoningHtml = '<ul>';
+    // Update reasoning
+    const reasoningElement = document.getElementById('reasoning');
+    let reasoningHtml = '<h6>Analysis Details:</h6><ul class="list-unstyled">';
+    
     result.reasoning.forEach(reason => {
-        reasoningHtml += `<li>${reason}</li>`;
+        reasoningHtml += `<li class="mb-2"><i class="fas fa-check-circle text-primary me-2"></i>${reason}</li>`;
     });
+    
     reasoningHtml += '</ul>';
-    reasoning.innerHTML = reasoningHtml;
+    reasoningElement.innerHTML = reasoningHtml;
     
-    // Show result card
-    resultCard.style.display = 'block';
+    // Show results and hide input form
+    document.querySelector('.card').style.display = 'none';
+    document.getElementById('resultCard').style.display = 'block';
+    
+    // Scroll to results
+    document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
 }
 
-/**
- * Show loading indicator
- */
 function showLoading() {
-    const loadingIndicator = document.getElementById('loadingIndicator');
-    const resultCard = document.getElementById('resultCard');
+    document.getElementById('loadingIndicator').style.display = 'block';
     
-    if (loadingIndicator) {
-        loadingIndicator.style.display = 'block';
-    }
-    
-    if (resultCard) {
-        resultCard.style.display = 'none';
-    }
+    // Disable form buttons
+    const buttons = document.querySelectorAll('button[type="submit"]');
+    buttons.forEach(btn => {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Analyzing...';
+    });
 }
 
-/**
- * Hide loading indicator
- */
 function hideLoading() {
-    const loadingIndicator = document.getElementById('loadingIndicator');
+    document.getElementById('loadingIndicator').style.display = 'none';
     
-    if (loadingIndicator) {
-        loadingIndicator.style.display = 'none';
+    // Re-enable form buttons
+    const textBtn = document.querySelector('#textForm button[type="submit"]');
+    const pdfBtn = document.querySelector('#pdfForm button[type="submit"]');
+    
+    if (textBtn) {
+        textBtn.disabled = false;
+        textBtn.innerHTML = 'Analyze Text';
+    }
+    
+    if (pdfBtn) {
+        pdfBtn.disabled = false;
+        pdfBtn.innerHTML = 'Analyze PDF';
     }
 }
 
-/**
- * Reset forms
- */
-function resetForms() {
-    const textForm = document.getElementById('textForm');
-    const pdfForm = document.getElementById('pdfForm');
-    const resultCard = document.getElementById('resultCard');
+function showAlert(message, type = 'info') {
+    // Create alert element
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
     
-    if (textForm) {
-        textForm.reset();
-    }
+    // Insert at the top of the container
+    const container = document.querySelector('.container');
+    container.insertBefore(alertDiv, container.firstChild);
     
-    if (pdfForm) {
-        pdfForm.reset();
-    }
-    
-    if (resultCard) {
-        resultCard.style.display = 'none';
-    }
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
 }
