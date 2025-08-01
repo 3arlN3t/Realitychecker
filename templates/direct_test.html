@@ -15,20 +15,22 @@
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f9fafb;
             min-height: 100vh;
-            color: #333;
+            color: #374151;
             line-height: 1.6;
+            display: flex;
+            flex-direction: column;
         }
 
         .header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
+            background: white;
             padding: 1rem 0;
-            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             position: sticky;
             top: 0;
             z-index: 100;
+            border-bottom: 1px solid #e5e7eb;
         }
 
         .header-content {
@@ -46,15 +48,12 @@
             gap: 0.75rem;
             font-size: 1.5rem;
             font-weight: 700;
-            color: #4f46e5;
+            color: #111827;
         }
 
         .logo i {
             font-size: 2rem;
-            background: linear-gradient(135deg, #4f46e5, #7c3aed);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #6b7280;
         }
 
         .nav-links {
@@ -71,208 +70,166 @@
         }
 
         .nav-link:hover {
-            color: #4f46e5;
+            color: #111827;
         }
 
         .container {
-            max-width: 1000px;
-            margin: 0 auto;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             padding: 2rem;
         }
 
-        .hero-section {
-            text-align: center;
-            margin-bottom: 3rem;
-            padding: 3rem 2rem;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-        }
-
-        .hero-title {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, #4f46e5, #7c3aed);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .hero-subtitle {
-            font-size: 1.2rem;
-            color: #64748b;
-            margin-bottom: 2rem;
+        .main-content {
+            width: 100%;
             max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
 
-        .stat-card {
-            text-align: center;
-            padding: 1.5rem;
-            background: rgba(255, 255, 255, 0.8);
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-        }
-
-        .stat-number {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #4f46e5;
-            display: block;
-        }
-
-        .stat-label {
-            font-size: 0.9rem;
-            color: #64748b;
-            margin-top: 0.5rem;
-        }
 
         .analysis-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 2.5rem;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            margin-bottom: 2rem;
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
         }
 
         .card-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
+            text-align: center;
             margin-bottom: 2rem;
         }
 
-        .card-icon {
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, #4f46e5, #7c3aed);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.5rem;
-        }
-
         .card-title {
-            font-size: 1.5rem;
+            font-size: 1.75rem;
             font-weight: 600;
-            color: #1e293b;
+            color: #111827;
+            margin-bottom: 0.5rem;
         }
 
-        .form-group {
+        .chat-input-container {
             margin-bottom: 1.5rem;
         }
 
-        .form-label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
+        .chat-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 24px;
+            padding: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .chat-input-wrapper:focus-within {
+            border-color: #6b7280;
+            box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.1);
+        }
+
+        .attachment-btn {
+            background: none;
+            border: none;
+            color: #6b7280;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            margin-right: 8px;
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+        }
+
+        .attachment-btn:hover {
+            background: #f3f4f6;
             color: #374151;
         }
 
-        .form-select {
-            width: 100%;
-            padding: 0.875rem 1rem;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 1rem;
-            background: white;
-            transition: all 0.3s ease;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-            background-position: right 0.5rem center;
-            background-repeat: no-repeat;
-            background-size: 1.5em 1.5em;
-            padding-right: 2.5rem;
-        }
-
-        .form-select:focus {
-            outline: none;
-            border-color: #4f46e5;
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-
-        .form-textarea {
-            width: 100%;
-            min-height: 200px;
-            padding: 1rem;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-family: inherit;
-            resize: vertical;
-            transition: all 0.3s ease;
-        }
-
-        .form-textarea:focus {
-            outline: none;
-            border-color: #4f46e5;
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-
-        .form-file {
-            width: 100%;
-            padding: 1rem;
-            border: 2px dashed #d1d5db;
-            border-radius: 12px;
-            background: #f9fafb;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .form-file:hover {
-            border-color: #4f46e5;
-            background: #f0f4ff;
-        }
-
-        .form-file input {
-            display: none;
-        }
-
-        .file-info {
-            font-size: 0.875rem;
-            color: #6b7280;
-            margin-top: 0.5rem;
-        }
-
-        .analyze-btn {
-            width: 100%;
-            padding: 1rem 2rem;
-            background: linear-gradient(135deg, #4f46e5, #7c3aed);
-            color: white;
+        .chat-input {
+            flex: 1;
             border: none;
-            border-radius: 12px;
-            font-size: 1.1rem;
-            font-weight: 600;
+            outline: none;
+            resize: none;
+            font-family: inherit;
+            font-size: 1rem;
+            line-height: 1.5;
+            padding: 8px 12px;
+            background: transparent;
+            color: #374151;
+            min-height: 24px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .chat-input::placeholder {
+            color: #9ca3af;
+        }
+
+        .send-btn {
+            background: #111827;
+            border: none;
+            color: white;
             cursor: pointer;
-            transition: all 0.3s ease;
+            padding: 8px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.5rem;
+            transition: all 0.2s ease;
+            margin-left: 8px;
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
         }
 
-        .analyze-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(79, 70, 229, 0.3);
+        .send-btn:hover:not(:disabled) {
+            background: #1f2937;
         }
 
-        .analyze-btn:disabled {
+        .send-btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
+        }
+
+        .file-preview {
+            margin-top: 12px;
+            padding: 12px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+        }
+
+        .file-info-display {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #374151;
+            font-size: 0.875rem;
+        }
+
+        .file-info-display i {
+            color: #dc2626;
+        }
+
+        .remove-file-btn {
+            background: none;
+            border: none;
+            color: #6b7280;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            margin-left: auto;
+            transition: all 0.2s ease;
+        }
+
+        .remove-file-btn:hover {
+            background: #e5e7eb;
+            color: #374151;
         }
 
         .loading {
@@ -285,7 +242,7 @@
             width: 40px;
             height: 40px;
             border: 3px solid #e5e7eb;
-            border-top: 3px solid #4f46e5;
+            border-top: 3px solid #6b7280;
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 0 auto 1rem;
@@ -298,12 +255,12 @@
 
         .result-card {
             display: none;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
+            background: white;
+            border-radius: 12px;
             padding: 2rem;
             margin-top: 2rem;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
         }
 
         .result-header {
@@ -370,45 +327,17 @@
             border-radius: 0 8px 8px 0;
         }
 
-        .footer {
-            text-align: center;
-            padding: 2rem;
-            color: rgba(255, 255, 255, 0.8);
-            margin-top: 3rem;
-        }
 
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin-bottom: 1rem;
-        }
-
-        .footer-link {
-            color: rgba(255, 255, 255, 0.8);
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }
-
-        .footer-link:hover {
-            color: white;
-        }
 
         @media (max-width: 768px) {
-            .hero-title {
-                font-size: 2rem;
-            }
-            
             .container {
                 padding: 1rem;
+                align-items: flex-start;
+                padding-top: 2rem;
             }
             
             .analysis-card {
                 padding: 1.5rem;
-            }
-            
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
             }
         }
     </style>
@@ -421,74 +350,54 @@
                 <span>Reality Checker</span>
             </div>
             <nav class="nav-links">
-                <a href="#features" class="nav-link">Features</a>
-                <a href="#how-it-works" class="nav-link">How It Works</a>
-                <a href="#about" class="nav-link">About</a>
-                <a href="/dashboard" class="nav-link">Admin</a>
+                <a href="#" class="nav-link" onclick="handleAdminAccess()">Admin</a>
             </nav>
         </div>
     </header>
 
     <div class="container">
-        <div class="analysis-card">
+        <div class="main-content">
+            <div class="analysis-card">
             <div class="card-header">
-                <div class="card-icon">
-                    <i class="fas fa-search"></i>
-                </div>
-                <div>
-                    <h2 class="card-title">Analyze Job Advertisement</h2>
-                    <p style="color: #64748b; margin: 0;">Upload text or PDF to get instant scam detection results</p>
-                </div>
+                <h2 class="card-title">Analyze Job Advertisement</h2>
+                <p style="color: #6b7280; margin: 0;">Upload text or PDF to get instant scam detection results</p>
             </div>
             
-            <div class="form-group">
-                <label class="form-label" for="analysisType">
-                    <i class="fas fa-cog" style="margin-right: 0.5rem;"></i>
-                    Analysis Type
-                </label>
-                <select id="analysisType" class="form-select" onchange="toggleInputType()">
-                    <option value="text">Text Input - Paste job description</option>
-                    <option value="pdf">PDF Upload - Upload job posting file</option>
-                </select>
-            </div>
-
-            <div id="textInput" class="form-group">
-                <label class="form-label" for="jobText">
-                    <i class="fas fa-file-text" style="margin-right: 0.5rem;"></i>
-                    Job Advertisement Text
-                </label>
-                <textarea 
-                    id="jobText" 
-                    class="form-textarea"
-                    placeholder="Paste the complete job advertisement text here. Include details like company name, job requirements, salary, contact information, and any other relevant details..."
-                ></textarea>
-            </div>
-
-            <div id="pdfInput" class="form-group" style="display: none;">
-                <label class="form-label">
-                    <i class="fas fa-file-pdf" style="margin-right: 0.5rem;"></i>
-                    Upload PDF Job Advertisement
-                </label>
-                <div class="form-file" onclick="document.getElementById('pdfFile').click()">
-                    <input type="file" id="pdfFile" accept=".pdf" onchange="updateFileName()" />
-                    <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: #4f46e5; margin-bottom: 0.5rem;"></i>
-                    <div id="fileLabel">Click to select PDF file or drag and drop</div>
-                    <div class="file-info">Maximum file size: 10MB • Only PDF files supported</div>
+            <div class="chat-input-container">
+                <div class="chat-input-wrapper">
+                    <button class="attachment-btn" id="attachmentBtn" onclick="handleAttachment()">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <textarea 
+                        id="chatInput" 
+                        class="chat-input"
+                        placeholder="Paste job description or click + to upload PDF"
+                        rows="1"
+                        oninput="handleInputChange()"
+                        onkeydown="handleKeyDown(event)"
+                    ></textarea>
+                    <button class="send-btn" id="sendBtn" onclick="handleSend()" style="display: none;">
+                        <i class="fas fa-arrow-up"></i>
+                    </button>
+                </div>
+                <input type="file" id="hiddenFileInput" accept=".pdf" style="display: none;" onchange="handleFileSelect()" />
+                <div class="file-preview" id="filePreview" style="display: none;">
+                    <div class="file-info-display">
+                        <i class="fas fa-file-pdf"></i>
+                        <span id="fileName"></span>
+                        <button class="remove-file-btn" onclick="removeFile()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
-            
-            <button type="button" id="analyzeBtn" class="analyze-btn">
-                <i class="fas fa-search"></i>
-                <span>Analyze Job Advertisement</span>
-            </button>
             
             <div class="loading" id="loading">
                 <div class="spinner"></div>
-                <p style="color: #4f46e5; font-weight: 500;">Analyzing with AI... This may take a few moments</p>
+                <p style="color: #6b7280; font-weight: 500;">Analyzing with AI... This may take a few moments</p>
             </div>
-        </div>
-        
-        <div id="result" class="result-card">
+            
+            <div id="result" class="result-card">
             <div class="result-header">
                 <div id="scoreCircle" class="score-circle">
                     <span id="scoreValue"></span>
@@ -505,69 +414,88 @@
             </div>
         </div>
 
-        <section class="hero-section">
-            <h1 class="hero-title">AI-Powered Job Scam Detection</h1>
-            <p class="hero-subtitle">
-                Protect yourself from fraudulent job postings with our advanced AI analysis. 
-                Get instant trust scores and detailed risk assessments for any job advertisement.
-            </p>
-            
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <span class="stat-number">97.3%</span>
-                    <div class="stat-label">Detection Accuracy</div>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number">2.4M+</span>
-                    <div class="stat-label">Jobs Analyzed</div>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number">24/7</span>
-                    <div class="stat-label">Real-time Protection</div>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number">15+</span>
-                    <div class="stat-label">Years Experience</div>
-                </div>
-            </div>
-        </section>
+
     </div>
 
-    <footer class="footer">
-        <div class="footer-links">
-            <a href="#" class="footer-link">Privacy Policy</a>
-            <a href="#" class="footer-link">Terms of Service</a>
-            <a href="#" class="footer-link">Contact Support</a>
-            <a href="/docs" class="footer-link">API Documentation</a>
-            <a href="/dashboard" class="footer-link">Admin Dashboard</a>
-        </div>
-        <p>&copy; 2025 Reality Checker. Protecting job seekers from fraudulent opportunities.</p>
-    </footer>
+
     
     <script>
-        function toggleInputType() {
-            const analysisType = document.getElementById('analysisType').value;
-            const textInput = document.getElementById('textInput');
-            const pdfInput = document.getElementById('pdfInput');
+        let selectedFile = null;
+
+        function handleInputChange() {
+            const input = document.getElementById('chatInput');
+            const sendBtn = document.getElementById('sendBtn');
             
-            if (analysisType === 'text') {
-                textInput.style.display = 'block';
-                pdfInput.style.display = 'none';
+            // Auto-resize textarea
+            input.style.height = 'auto';
+            input.style.height = Math.min(input.scrollHeight, 200) + 'px';
+            
+            // Show/hide send button based on content
+            const hasContent = input.value.trim().length > 0 || selectedFile;
+            if (hasContent) {
+                sendBtn.style.display = 'flex';
             } else {
-                textInput.style.display = 'none';
-                pdfInput.style.display = 'block';
+                sendBtn.style.display = 'none';
             }
         }
 
-        function updateFileName() {
-            const fileInput = document.getElementById('pdfFile');
-            const fileLabel = document.getElementById('fileLabel');
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                handleSend();
+            }
+        }
+
+        function handleAttachment() {
+            document.getElementById('hiddenFileInput').click();
+        }
+
+        function handleFileSelect() {
+            const fileInput = document.getElementById('hiddenFileInput');
+            const file = fileInput.files[0];
             
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                fileLabel.innerHTML = `<i class="fas fa-file-pdf" style="margin-right: 0.5rem;"></i>${file.name}`;
+            if (file) {
+                if (file.type !== 'application/pdf') {
+                    showNotification('Please select a valid PDF file', 'error');
+                    return;
+                }
+                
+                if (file.size > 10 * 1024 * 1024) {
+                    showNotification('File size must be less than 10MB', 'error');
+                    return;
+                }
+                
+                selectedFile = file;
+                showFilePreview(file);
+                handleInputChange(); // Update send button visibility
+            }
+        }
+
+        function showFilePreview(file) {
+            const preview = document.getElementById('filePreview');
+            const fileName = document.getElementById('fileName');
+            
+            fileName.textContent = file.name;
+            preview.style.display = 'block';
+        }
+
+        function removeFile() {
+            selectedFile = null;
+            document.getElementById('filePreview').style.display = 'none';
+            document.getElementById('hiddenFileInput').value = '';
+            handleInputChange(); // Update send button visibility
+        }
+
+        function handleSend() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            
+            if (selectedFile) {
+                analyzePDF();
+            } else if (text) {
+                analyzeText();
             } else {
-                fileLabel.innerHTML = 'Click to select PDF file or drag and drop';
+                showNotification('Please enter text or select a PDF file', 'error');
             }
         }
 
@@ -622,24 +550,37 @@
         `;
         document.head.appendChild(style);
 
-        document.getElementById('analyzeBtn').addEventListener('click', async function() {
-            const analysisType = document.getElementById('analysisType').value;
+        // Initialize input change handler
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatInput = document.getElementById('chatInput');
+            const attachmentBtn = document.getElementById('attachmentBtn');
+            const sendBtn = document.getElementById('sendBtn');
             
-            if (analysisType === 'text') {
-                await analyzeText();
-            } else {
-                await analyzePDF();
+            // Ensure elements are visible
+            if (attachmentBtn) {
+                attachmentBtn.style.display = 'flex';
+            }
+            
+            // Add input listener
+            if (chatInput) {
+                chatInput.addEventListener('input', handleInputChange);
+                // Initial call to set up button states
+                handleInputChange();
             }
         });
 
+        function handleAdminAccess() {
+            window.location.href = '/dashboard';
+        }
+
         async function analyzeText() {
-            const jobText = document.getElementById('jobText').value;
-            if (!jobText.trim()) {
+            const jobText = document.getElementById('chatInput').value.trim();
+            if (!jobText) {
                 showNotification('Please enter job advertisement text to analyze', 'error');
                 return;
             }
             
-            if (jobText.trim().length < 20) {
+            if (jobText.length < 20) {
                 showNotification('Job advertisement text is too short. Please provide more details.', 'error');
                 return;
             }
@@ -655,25 +596,14 @@
         }
 
         async function analyzePDF() {
-            const pdfFile = document.getElementById('pdfFile').files[0];
-            if (!pdfFile) {
+            if (!selectedFile) {
                 showNotification('Please select a PDF file to analyze', 'error');
-                return;
-            }
-
-            if (pdfFile.type !== 'application/pdf') {
-                showNotification('Please select a valid PDF file', 'error');
-                return;
-            }
-
-            if (pdfFile.size > 10 * 1024 * 1024) { // 10MB limit
-                showNotification('File size must be less than 10MB', 'error');
                 return;
             }
             
             await performAnalysis(() => {
                 const formData = new FormData();
-                formData.append('pdf_file', pdfFile);
+                formData.append('pdf_file', selectedFile);
                 return fetch('/api/direct/analyze-pdf', {
                     method: 'POST',
                     body: formData
@@ -682,39 +612,44 @@
         }
 
         async function performAnalysis(requestFunction) {
-            const analyzeBtn = document.getElementById('analyzeBtn');
-            const btnText = analyzeBtn.querySelector('span');
-            const btnIcon = analyzeBtn.querySelector('i');
+            const sendBtn = document.getElementById('sendBtn');
+            const sendIcon = sendBtn.querySelector('i');
+            const chatInput = document.getElementById('chatInput');
             
             // Show loading state
             document.getElementById('loading').style.display = 'block';
             document.getElementById('result').style.display = 'none';
-            analyzeBtn.disabled = true;
-            btnText.textContent = 'Analyzing...';
-            btnIcon.className = 'fas fa-spinner fa-spin';
+            sendBtn.disabled = true;
+            sendIcon.className = 'fas fa-spinner fa-spin';
+            chatInput.disabled = true;
             
             try {
                 const response = await requestFunction();
                 const result = await response.json();
                 
-                // Hide loading
+                // Hide loading and reset state
                 document.getElementById('loading').style.display = 'none';
-                analyzeBtn.disabled = false;
-                btnText.textContent = 'Analyze Job Advertisement';
-                btnIcon.className = 'fas fa-search';
+                sendBtn.disabled = false;
+                sendIcon.className = 'fas fa-arrow-up';
+                chatInput.disabled = false;
                 
                 if (response.ok && result.success) {
                     displayResults(result);
                     showNotification('Analysis completed successfully!', 'success');
+                    
+                    // Clear input after successful analysis
+                    chatInput.value = '';
+                    removeFile();
+                    handleInputChange();
                 } else {
                     throw new Error(result.message || result.detail || 'Analysis failed');
                 }
             } catch (error) {
                 showNotification('Analysis failed: ' + error.message, 'error');
                 document.getElementById('loading').style.display = 'none';
-                analyzeBtn.disabled = false;
-                btnText.textContent = 'Analyze Job Advertisement';
-                btnIcon.className = 'fas fa-search';
+                sendBtn.disabled = false;
+                sendIcon.className = 'fas fa-arrow-up';
+                chatInput.disabled = false;
             }
         }
         
@@ -783,12 +718,11 @@
             resultDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
-        // Add drag and drop functionality for PDF
-        const pdfInput = document.getElementById('pdfInput');
-        const fileArea = pdfInput.querySelector('.form-file');
+        // Add drag and drop functionality for the chat input
+        const chatInputWrapper = document.querySelector('.chat-input-wrapper');
         
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            fileArea.addEventListener(eventName, preventDefaults, false);
+            chatInputWrapper.addEventListener(eventName, preventDefaults, false);
         });
         
         function preventDefaults(e) {
@@ -797,32 +731,33 @@
         }
         
         ['dragenter', 'dragover'].forEach(eventName => {
-            fileArea.addEventListener(eventName, highlight, false);
+            chatInputWrapper.addEventListener(eventName, highlight, false);
         });
         
         ['dragleave', 'drop'].forEach(eventName => {
-            fileArea.addEventListener(eventName, unhighlight, false);
+            chatInputWrapper.addEventListener(eventName, unhighlight, false);
         });
         
         function highlight(e) {
-            fileArea.style.borderColor = '#4f46e5';
-            fileArea.style.background = '#f0f4ff';
+            chatInputWrapper.style.borderColor = '#6b7280';
+            chatInputWrapper.style.backgroundColor = '#f9fafb';
         }
         
         function unhighlight(e) {
-            fileArea.style.borderColor = '#d1d5db';
-            fileArea.style.background = '#f9fafb';
+            chatInputWrapper.style.borderColor = '#d1d5db';
+            chatInputWrapper.style.backgroundColor = 'white';
         }
         
-        fileArea.addEventListener('drop', handleDrop, false);
+        chatInputWrapper.addEventListener('drop', handleDrop, false);
         
         function handleDrop(e) {
             const dt = e.dataTransfer;
             const files = dt.files;
             
-            if (files.length > 0) {
-                document.getElementById('pdfFile').files = files;
-                updateFileName();
+            if (files.length > 0 && files[0].type === 'application/pdf') {
+                const hiddenInput = document.getElementById('hiddenFileInput');
+                hiddenInput.files = files;
+                handleFileSelect();
             }
         }
     </script>

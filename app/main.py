@@ -454,14 +454,14 @@ async def method_not_allowed_handler(request: Request, exc: HTTPException):
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     """
-    Root endpoint that serves the professional home page.
+    Root endpoint that serves the unified direct test page.
     
     Returns:
-        HTMLResponse: Professional home page
+        HTMLResponse: Direct test page with all functionality
     """
     try:
         return templates.TemplateResponse(
-            "professional_home.html",
+            "direct_test.html",
             {"request": request, "title": "Reality Checker - AI-Powered Job Scam Detection"}
         )
     except Exception as e:
