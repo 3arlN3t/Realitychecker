@@ -1,58 +1,102 @@
 // Main JavaScript for Reality Checker web interface
 
+let selectedFile = null;
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize form handlers
-    initializeTextForm();
-    initializePDFForm();
+    // Initialize unified form handler
+    initializeUnifiedForm();
     initializeNewAnalysisButton();
 });
 
-function initializeTextForm() {
-    const textForm = document.getElementById('textForm');
-    if (textForm) {
-        textForm.addEventListener('submit', async function(e) {
+function initializeUnifiedForm() {
+    const unifiedForm = document.getElementById('unifiedForm');
+    const fileUploadBtn = document.getElementById('fileUploadBtn');
+    const hiddenFileInput = document.getElementById('hiddenFileInput');
+    const jobInput = document.getElementById('jobInput');
+    const removeFileBtn = document.getElementById('removeFile');
+    
+    if (unifiedForm) {
+        // Handle form submission
+        unifiedForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            const jobText = document.getElementById('jobText').value;
             
-            if (!jobText.trim()) {
-                showAlert('Please enter job advertisement text', 'warning');
-                return;
+            const jobText = jobInput.value.trim();
+            
+            if (selectedFile) {
+                // Analyze PDF file
+                await analyzePDF(selectedFile);
+            } else if (jobText) {
+                // Analyze text
+                if (jobText.length < 20) {
+                    showAlert('Job advertisement text is too short. Please provide more details.', 'warning');
+                    return;
+                }
+                await analyzeText(jobText);
+            } else {
+                showAlert('Please enter job advertisement text or upload a PDF file', 'warning');
             }
-            
-            if (jobText.trim().length < 20) {
-                showAlert('Job advertisement text is too short. Please provide more details.', 'warning');
-                return;
+        });
+        
+        // Handle file upload button click
+        fileUploadBtn.addEventListener('click', function() {
+            hiddenFileInput.click();
+        });
+        
+        // Handle file selection
+        hiddenFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                if (file.type !== 'application/pdf') {
+                    showAlert('Please select a valid PDF file', 'warning');
+                    hiddenFileInput.value = '';
+                    return;
+                }
+                
+                if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                    showAlert('File size must be less than 10MB', 'warning');
+                    hiddenFileInput.value = '';
+                    return;
+                }
+                
+                selectedFile = file;
+                showFileInfo(file.name);
+                jobInput.value = ''; // Clear text input when file is selected
+                toggleSubmitButton();
             }
-            
-            await analyzeText(jobText);
+        });
+        
+        // Handle file removal
+        removeFileBtn.addEventListener('click', function() {
+            selectedFile = null;
+            hiddenFileInput.value = '';
+            hideFileInfo();
+            toggleSubmitButton();
         });
     }
 }
 
-function initializePDFForm() {
-    const pdfForm = document.getElementById('pdfForm');
-    if (pdfForm) {
-        pdfForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const pdfFile = document.getElementById('pdfFile').files[0];
-            
-            if (!pdfFile) {
-                showAlert('Please select a PDF file', 'warning');
-                return;
-            }
-            
-            if (pdfFile.type !== 'application/pdf') {
-                showAlert('Please select a valid PDF file', 'warning');
-                return;
-            }
-            
-            if (pdfFile.size > 10 * 1024 * 1024) { // 10MB limit
-                showAlert('File size must be less than 10MB', 'warning');
-                return;
-            }
-            
-            await analyzePDF(pdfFile);
-        });
+function showFileInfo(fileName) {
+    document.getElementById('fileName').textContent = `Selected: ${fileName}`;
+    document.getElementById('fileInfo').style.display = 'block';
+}
+
+function hideFileInfo() {
+    document.getElementById('fileInfo').style.display = 'none';
+}
+
+function adjustTextareaHeight(textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+}
+
+function toggleSubmitButton() {
+    const submitBtn = document.getElementById('submitBtn');
+    const jobInput = document.getElementById('jobInput');
+    
+    if (selectedFile || jobInput.value.trim()) {
+        submitBtn.disabled = false;
+    } else {
+        submitBtn.disabled = true;
     }
 }
 
@@ -60,9 +104,16 @@ function initializeNewAnalysisButton() {
     const newAnalysisBtn = document.getElementById('newAnalysisBtn');
     if (newAnalysisBtn) {
         newAnalysisBtn.addEventListener('click', function() {
-            // Reset forms
-            document.getElementById('textForm').reset();
-            document.getElementById('pdfForm').reset();
+            // Reset unified form
+            document.getElementById('unifiedForm').reset();
+            document.getElementById('jobInput').value = '';
+            selectedFile = null;
+            hideFileInfo();
+            toggleSubmitButton();
+            
+            // Reset textarea height
+            const jobInput = document.getElementById('jobInput');
+            jobInput.style.height = 'auto';
             
             // Hide results
             document.getElementById('resultCard').style.display = 'none';
@@ -169,29 +220,44 @@ function displayResults(response) {
 function showLoading() {
     document.getElementById('loadingIndicator').style.display = 'block';
     
-    // Disable form buttons
-    const buttons = document.querySelectorAll('button[type="submit"]');
-    buttons.forEach(btn => {
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Analyzing...';
-    });
+    // Disable buttons and input
+    const submitBtn = document.getElementById('submitBtn');
+    const fileUploadBtn = document.getElementById('fileUploadBtn');
+    const jobInput = document.getElementById('jobInput');
+    
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<div class="spinner-border spinner-border-sm me-2" role="status"></div>Analyzing...';
+    }
+    
+    if (fileUploadBtn) {
+        fileUploadBtn.disabled = true;
+    }
+    
+    if (jobInput) {
+        jobInput.disabled = true;
+    }
 }
 
 function hideLoading() {
     document.getElementById('loadingIndicator').style.display = 'none';
     
-    // Re-enable form buttons
-    const textBtn = document.querySelector('#textForm button[type="submit"]');
-    const pdfBtn = document.querySelector('#pdfForm button[type="submit"]');
+    // Re-enable buttons and input
+    const submitBtn = document.getElementById('submitBtn');
+    const fileUploadBtn = document.getElementById('fileUploadBtn');
+    const jobInput = document.getElementById('jobInput');
     
-    if (textBtn) {
-        textBtn.disabled = false;
-        textBtn.innerHTML = 'Analyze Text';
+    if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-search me-2"></i>Analyze';
+        toggleSubmitButton(); // Re-check if button should be enabled
     }
     
-    if (pdfBtn) {
-        pdfBtn.disabled = false;
-        pdfBtn.innerHTML = 'Analyze PDF';
+    if (fileUploadBtn) {
+        fileUploadBtn.disabled = false;
+    }
+    
+    if (jobInput) {
+        jobInput.disabled = false;
     }
 }
 

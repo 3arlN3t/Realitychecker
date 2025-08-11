@@ -79,11 +79,13 @@
             align-items: center;
             justify-content: center;
             padding: 2rem;
+            min-height: calc(100vh - 120px);
         }
 
         .main-content {
             width: 100%;
             max-width: 600px;
+            margin-top: -2rem;
         }
 
 
@@ -129,25 +131,32 @@
         }
 
         .attachment-btn {
-            background: none;
+            background: #e0f2fe;
             border: none;
-            color: #6b7280;
+            color: #0f172a;
             cursor: pointer;
-            padding: 8px;
-            border-radius: 50%;
+            padding: 8px 12px;
+            border-radius: 8px;
             display: flex !important;
             align-items: center;
             justify-content: center;
+            gap: 6px;
             transition: all 0.2s ease;
             margin-right: 8px;
             flex-shrink: 0;
-            width: 32px;
-            height: 32px;
+            white-space: nowrap;
+            font-size: 14px;
+            font-weight: 500;
         }
 
         .attachment-btn:hover {
-            background: #f3f4f6;
-            color: #374151;
+            background: #bae6fd;
+            color: #0c4a6e;
+        }
+
+        .attachment-btn i {
+            font-size: 14px;
+            font-weight: 600;
         }
 
         .chat-input {
@@ -171,29 +180,37 @@
         }
 
         .send-btn {
-            background: #111827;
+            background: #1e40af;
             border: none;
             color: white;
             cursor: pointer;
-            padding: 8px;
-            border-radius: 50%;
+            padding: 8px 12px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 6px;
             transition: all 0.2s ease;
             margin-left: 8px;
             flex-shrink: 0;
-            width: 32px;
-            height: 32px;
+            white-space: nowrap;
+            font-size: 14px;
+            font-weight: 500;
         }
 
         .send-btn:hover:not(:disabled) {
-            background: #1f2937;
+            background: #2563eb;
         }
 
         .send-btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
+            background: #a5b4fc;
+        }
+
+        .send-btn i {
+            font-size: 14px;
+            font-weight: 600;
         }
 
         .file-preview {
@@ -367,17 +384,19 @@
                 <div class="chat-input-wrapper">
                     <button class="attachment-btn" id="attachmentBtn" onclick="handleAttachment()">
                         <i class="fas fa-plus"></i>
+                        <span>Upload</span>
                     </button>
                     <textarea 
                         id="chatInput" 
                         class="chat-input"
-                        placeholder="Paste job description or click + to upload PDF"
+                        placeholder="Paste job description or click Upload to add PDF"
                         rows="1"
                         oninput="handleInputChange()"
                         onkeydown="handleKeyDown(event)"
                     ></textarea>
                     <button class="send-btn" id="sendBtn" onclick="handleSend()" style="display: none;">
                         <i class="fas fa-arrow-up"></i>
+                        <span>Submit</span>
                     </button>
                 </div>
                 <input type="file" id="hiddenFileInput" accept=".pdf" style="display: none;" onchange="handleFileSelect()" />
@@ -409,7 +428,7 @@
             </div>
             
             <div id="reasoning" class="reasoning">
-                <h3><i class="fas fa-list-ul" style="margin-right: 0.5rem;"></i>Analysis Details</h3>
+                <h3>📋 Analysis Details</h3>
                 <ul id="reasoningList"></ul>
             </div>
         </div>
@@ -686,11 +705,40 @@
             const now = new Date();
             timestampDiv.textContent = `Analysis completed at ${now.toLocaleString()}`;
             
-            // Set reasoning
+            // Set reasoning with emojis
             reasoningList.innerHTML = '';
-            result.reasoning.forEach(reason => {
+            result.reasoning.forEach((reason, index) => {
                 const li = document.createElement('li');
-                li.textContent = reason;
+                
+                // Add relevant emojis based on content
+                let emoji = '✅'; // default
+                const lowerReason = reason.toLowerCase();
+                
+                if (lowerReason.includes('warning') || lowerReason.includes('suspicious') || lowerReason.includes('red flag')) {
+                    emoji = '⚠️';
+                } else if (lowerReason.includes('legitimate') || lowerReason.includes('professional') || lowerReason.includes('verified')) {
+                    emoji = '✅';
+                } else if (lowerReason.includes('contact') || lowerReason.includes('email') || lowerReason.includes('phone')) {
+                    emoji = '📞';
+                } else if (lowerReason.includes('company') || lowerReason.includes('business') || lowerReason.includes('organization')) {
+                    emoji = '🏢';
+                } else if (lowerReason.includes('salary') || lowerReason.includes('pay') || lowerReason.includes('money') || lowerReason.includes('compensation')) {
+                    emoji = '💰';
+                } else if (lowerReason.includes('location') || lowerReason.includes('address') || lowerReason.includes('remote')) {
+                    emoji = '📍';
+                } else if (lowerReason.includes('experience') || lowerReason.includes('skills') || lowerReason.includes('qualification')) {
+                    emoji = '🎯';
+                } else if (lowerReason.includes('scam') || lowerReason.includes('fraud') || lowerReason.includes('fake')) {
+                    emoji = '🚨';
+                } else if (lowerReason.includes('urgent') || lowerReason.includes('immediate') || lowerReason.includes('asap')) {
+                    emoji = '⏰';
+                } else if (lowerReason.includes('grammar') || lowerReason.includes('spelling') || lowerReason.includes('language')) {
+                    emoji = '📝';
+                } else {
+                    emoji = '🔍'; // analysis/investigation
+                }
+                
+                li.innerHTML = `${emoji} ${reason}`;
                 reasoningList.appendChild(li);
             });
             
