@@ -1,0 +1,22 @@
+{
+  "enabled": true,
+  "name": "Python File Auto-Analyzer",
+  "description": "Automatically runs when you save any Python file (.py). Excludes cache directories, virtual environments, and migration files. Auto-approve enabled for seamless workflow with 45 second timeout to handle larger files.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.py",
+      "!**/__pycache__/**",
+      "!**/venv/**",
+      "!**/env/**",
+      "!**/node_modules/**",
+      "!**/migrations/**",
+      "!**/.pytest_cache/**"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A Python file has been modified. Please analyze the changes for:\n1. Code quality and best practices\n2. Potential bugs or issues\n3. Security considerations\n4. Performance implications\n5. Documentation needs\n\nFocus on the specific changes made and provide actionable feedback. If this is a new file, provide an overview of its purpose and any recommendations for improvement."
+  }
+}

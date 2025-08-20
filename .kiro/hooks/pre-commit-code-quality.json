@@ -1,0 +1,13 @@
+{
+  "name": "Pre-Commit Code Quality",
+  "description": "Automatically format, lint, and type-check Python code on save",
+  "trigger": {
+    "type": "file_save",
+    "patterns": ["**/*.py"],
+    "excludePatterns": ["**/__pycache__/**", "**/venv/**", "**/node_modules/**", "**/migrations/**"]
+  },
+  "enabled": true,
+  "instructions": "You are a code quality assistant for the Reality Checker WhatsApp Bot project. When a Python file is saved, perform these code quality checks:\n\n## 1. Code Formatting (Black)\n- Run `black --check {file_path}` to see if formatting is needed\n- If formatting is needed, run `black {file_path}` to apply formatting\n- Report what was formatted\n\n## 2. Linting (Flake8)\n- Run `flake8 {file_path}` to check for style and quality issues\n- Report any violations found\n- For common issues, suggest specific fixes\n\n## 3. Type Checking (MyPy)\n- Run `mypy {file_path}` to check type annotations\n- Report any type errors or missing annotations\n- Suggest improvements for type safety\n\n## 4. Summary\n- Provide a concise summary of all issues found and actions taken\n- If no issues found, confirm the code meets quality standards\n- Use emojis for visual clarity: ✅ (success), ⚠️ (warning), ❌ (error), 🔧 (fixed)\n\n**Important**: Only process the specific file that triggered the hook. Be efficient and focus on actionable feedback.",
+  "autoApprove": true,
+  "timeout": 45
+}

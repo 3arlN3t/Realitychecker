@@ -1,0 +1,25 @@
+{
+  "enabled": true,
+  "name": "Documentation Maintenance",
+  "description": "Automatically reviews and updates README files, API documentation, and configuration examples whenever code changes significantly",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "app/**/*.py",
+      "dashboard/src/**/*.tsx",
+      "dashboard/src/**/*.ts",
+      "app/config.py",
+      "requirements.txt",
+      "package.json",
+      "docker-compose.yml",
+      "Dockerfile",
+      ".env.example",
+      "alembic.ini"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Code changes have been detected that may require documentation updates. Please review and update the following documentation files as needed:\n\n1. **README.md** - Check if installation instructions, usage examples, or feature descriptions need updates\n2. **API Documentation** - Review if new endpoints, parameters, or response formats need to be documented\n3. **Configuration Examples** - Update .env.example and configuration guides if new settings were added\n4. **Dashboard Documentation** - Update dashboard/README.md if UI components or features changed\n5. **Deployment Documentation** - Check DEPLOYMENT.md if infrastructure or deployment steps changed\n\nFocus on:\n- New features or endpoints that need documentation\n- Changed configuration options or environment variables\n- Updated dependencies or requirements\n- Modified API contracts or data models\n- New or changed Docker/deployment configurations\n\nPlease ensure all documentation remains accurate, complete, and user-friendly."
+  }
+}
