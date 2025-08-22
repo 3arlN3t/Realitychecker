@@ -6,11 +6,11 @@ Admin dashboard for the Reality Checker WhatsApp bot system. Built with React, T
 
 - **Authentication**: JWT-based login system with role-based access control
 - **Dashboard Overview**: System metrics and health monitoring
-- **Analytics**: Usage statistics and trend analysis
-- **Real-time Monitoring**: Live system metrics and active request tracking
+- **Analytics**: Usage statistics, classification trends, and AI analysis performance
+- **Real-time Monitoring**: Live system metrics, OpenAI API status, and active request tracking
 - **User Management**: WhatsApp user interaction history and management
-- **Configuration**: System settings management (admin only)
-- **Reports**: Generate and export comprehensive reports
+- **Configuration**: System settings management including OpenAI model configuration (admin only)
+- **Reports**: Generate and export comprehensive reports with analysis accuracy metrics
 
 ## Technology Stack
 

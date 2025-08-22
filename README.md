@@ -16,12 +16,12 @@ An AI-powered WhatsApp bot that analyzes job advertisements to detect potential 
 
 - **WhatsApp Integration**: Seamless interaction through Twilio WhatsApp Business API
 - **Web Interface**: Simple web-based upload form for text and PDF analysis
-- **AI-Powered Analysis**: Uses OpenAI GPT-4 for intelligent scam detection
-- **PDF Processing**: Extracts and analyzes text from uploaded PDF job postings
-- **Trust Scoring**: Provides 0-100 trust scores with detailed reasoning
-- **Admin Dashboard**: Web-based interface for monitoring and management
-- **Real-time Analytics**: Live metrics, user management, and reporting
-- **Secure & Scalable**: Production-ready with comprehensive security measures
+- **AI-Powered Analysis**: Uses OpenAI GPT-4 with advanced error handling, input validation, and structured response parsing
+- **PDF Processing**: Extracts and analyzes text from uploaded PDF job postings with enhanced error handling for expired URLs
+- **Trust Scoring**: Provides 0-100 trust scores with detailed reasoning and confidence levels
+- **Admin Dashboard**: Web-based interface with real-time monitoring and management
+- **Real-time Analytics**: Live metrics, WebSocket updates, user management, and comprehensive reporting
+- **Secure & Scalable**: Production-ready with comprehensive security measures and multi-channel support architecture
 
 ## 📋 Table of Contents
 
@@ -158,10 +158,15 @@ TWILIO_PHONE_NUMBER=+1234567890
 
 ```bash
 # Application Settings
-OPENAI_MODEL=gpt-4                    # OpenAI model to use
+OPENAI_MODEL=gpt-4                    # OpenAI model to use (gpt-4, gpt-3.5-turbo)
 MAX_PDF_SIZE_MB=10                    # Maximum PDF file size
-LOG_LEVEL=INFO                        # Logging level
+LOG_LEVEL=INFO                        # Logging level (DEBUG, INFO, WARNING, ERROR)
 WEBHOOK_VALIDATION=true               # Enable Twilio webhook validation
+
+# OpenAI Analysis Settings
+OPENAI_TEMPERATURE=0.3                # Analysis consistency (0.0-1.0, lower = more consistent)
+OPENAI_MAX_TOKENS=1000               # Maximum response tokens
+OPENAI_TIMEOUT=30.0                  # API request timeout in seconds
 
 # Authentication
 JWT_SECRET_KEY=your-secret-key        # JWT signing key (CHANGE IN PRODUCTION!)
@@ -180,6 +185,21 @@ The application validates all required configuration on startup:
 ```bash
 # Check configuration
 python -c "from app.config import get_config; print('✅ Configuration valid')"
+
+# Test OpenAI connection
+python -c "
+from app.config import get_config
+from app.services.openai_analysis import OpenAIAnalysisService
+import asyncio
+
+async def test_openai():
+    config = get_config()
+    service = OpenAIAnalysisService(config)
+    health = await service.health_check()
+    print(f'OpenAI Status: {health[\"status\"]}')
+
+asyncio.run(test_openai())
+"
 ```
 
 ## 🎯 Usage
@@ -240,6 +260,17 @@ Access the admin dashboard at `http://localhost:8000/admin`:
 
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
+
+### OpenAI Analysis Service Features
+
+The OpenAI analysis service includes several advanced features:
+
+- **Structured Response Parsing**: Validates JSON responses with required fields
+- **Input Sanitization**: Security validation and text sanitization before analysis
+- **Error Classification**: Specific handling for timeout, rate limit, and API errors
+- **Correlation Tracking**: Request correlation IDs for debugging and monitoring
+- **Metrics Collection**: Performance metrics and error tracking
+- **Health Monitoring**: Service health checks and status reporting
 
 ### Key Endpoints
 
@@ -565,19 +596,30 @@ tail -f logs/app.log
 
 #### 2. OpenAI API Errors
 
-**Symptoms**: "OpenAI API error" messages
+**Symptoms**: "OpenAI API error" messages, timeouts, or rate limit errors
 
 **Solutions**:
 - Verify API key is correct and active
 - Check API quota and billing
 - Verify model name (gpt-4, gpt-3.5-turbo)
 - Check network connectivity
+- Review timeout settings if requests are slow
 
 ```bash
 # Test OpenAI connection
 curl -H "Authorization: Bearer $OPENAI_API_KEY" \
      https://api.openai.com/v1/models
+
+# Test analysis endpoint with timeout
+curl -X POST http://localhost:8000/api/analyze/text \
+     -F "job_text=Software Engineer position at Google" \
+     --max-time 35
 ```
+
+**Common Error Types**:
+- `APITimeoutError`: Increase timeout or check network
+-n
+tylidel availabiy and mo keheck APIror`: C- `APIErplapgrade API  uWait oritError`:  `RateLim
 
 #### 3. Twilio Webhook Issues
 

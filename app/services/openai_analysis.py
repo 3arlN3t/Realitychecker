@@ -7,6 +7,7 @@ OpenAI's GPT-4 API to analyze job advertisements and detect potential scams.
 
 import json
 import logging
+import time
 from typing import Optional
 import openai
 from openai import AsyncOpenAI

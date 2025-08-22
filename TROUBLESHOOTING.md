@@ -128,6 +128,9 @@ uvicorn app.main:app --port 8001
 - "OpenAI API error" in logs
 - Analysis requests failing
 - Rate limit errors
+- Timeout errors
+- "Empty response from OpenAI API" errors
+- Invalid response format errors
 
 **Diagnosis:**
 ```bash
@@ -175,6 +178,25 @@ export OPENAI_MODEL=gpt-3.5-turbo
 # Test network connectivity
 ping api.openai.com
 nslookup api.openai.com
+```
+
+5. **Timeout Issues:**
+```bash
+# Check timeout configuration
+grep OPENAI_TIMEOUT .env
+
+# Increase timeout if needed
+export OPENAI_TIMEOUT=45.0
+```
+
+6. **Response Format Errors:**
+```bash
+# Check correlation ID in logs for specific request
+grep "correlation_id=abc123" logs/app.log
+
+# Test with simple job text
+curl -X POST http://localhost:8000/api/analyze/text \
+     -F "job_text=Simple job posting for testing"
 
 # Check firewall rules
 # Ensure outbound HTTPS (443) is allowed

@@ -177,10 +177,6 @@ class SecurityValidator:
         if len(phone) > MAX_PHONE_LENGTH:
             return False, f"Phone number too long (max {MAX_PHONE_LENGTH} characters)"
         
-        # TEMPORARILY ALLOW ALL PHONE FORMATS FOR DEBUGGING
-        # TODO: Fix validation for actual WhatsApp phone number formats
-        return True, None
-        
         # WhatsApp phone numbers should start with 'whatsapp:+'
         if not phone.startswith('whatsapp:+'):
             return False, "Invalid WhatsApp phone number format"
@@ -216,22 +212,23 @@ class SecurityValidator:
         if len(message_sid) < 3:
             return False, "Message SID too short"
         
-        # Allow various Twilio SID formats:
-        # - Standard message SIDs: SM + 32 hex chars
-        # - Test SIDs for development
-        # - Other Twilio resource SIDs that might be used
-        if (message_sid.startswith('SM') or 
-            message_sid.startswith('test_') or 
-            message_sid.startswith('TEST_') or
-            message_sid.startswith('MM') or  # Media message SIDs
-            message_sid.startswith('MG') or  # Message group SIDs
-            message_sid.startswith('AC')):   # Account SIDs (sometimes used in testing)
-            
-            # Basic format validation - should be alphanumeric with underscores
+        # Standard Twilio message SIDs: SM + 32 hex chars
+        if message_sid.startswith('SM') and len(message_sid) == 34:
+            # Should be SM followed by 32 hex characters
+            hex_part = message_sid[2:]
+            if re.match(r'^[A-Fa-f0-9]{32}$', hex_part):
+                return True, None
+            else:
+                return False, "Invalid message SID format"
+        
+        # Allow test SIDs for development
+        elif (message_sid.startswith('test_') or 
+              message_sid.startswith('TEST_')):
             if re.match(r'^[A-Za-z0-9_]+$', message_sid):
                 return True, None
             else:
-                return False, "Message SID contains invalid characters"
+                return False, "Test message SID contains invalid characters"
+        
         else:
             return False, "Invalid Twilio message SID format"
     

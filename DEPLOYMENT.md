@@ -374,6 +374,11 @@ properties:
 OPENAI_API_KEY=sk-your-production-openai-key
 OPENAI_MODEL=gpt-4
 
+# Optional: OpenAI fine-tuning (use defaults if not specified)
+OPENAI_TEMPERATURE=0.3
+OPENAI_MAX_TOKENS=1000
+OPENAI_TIMEOUT=30.0
+
 # Twilio Configuration
 TWILIO_ACCOUNT_SID=ACyour-production-account-sid
 TWILIO_AUTH_TOKEN=your-production-auth-token

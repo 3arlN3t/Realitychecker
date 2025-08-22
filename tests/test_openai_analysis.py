@@ -186,6 +186,18 @@ class TestOpenAIAnalysisService:
             await openai_service.analyze_job_ad("   ")
     
     @pytest.mark.asyncio
+    @patch('app.services.openai_analysis.SecurityValidator')
+    async def test_analyze_invalid_job_text_security(self, mock_security_validator, openai_service):
+        """Test analysis with job text that fails security validation."""
+        mock_validator = Mock()
+        mock_validator.sanitize_text.return_value = "sanitized text"
+        mock_validator.validate_text_content.return_value = (False, "Contains malicious content")
+        mock_security_validator.return_value = mock_validator
+        
+        with pytest.raises(ValueError, match="Invalid job text content: Contains malicious content"):
+            await openai_service.analyze_job_ad("malicious job text")
+    
+    @pytest.mark.asyncio
     async def test_openai_timeout_error(self, openai_service, legitimate_job_text):
         """Test handling of OpenAI timeout error."""
         with patch.object(openai_service.client.chat.completions, 'create', 
@@ -340,25 +352,58 @@ class TestOpenAIAnalysisService:
         with pytest.raises(Exception, match="Invalid analysis response format"):
             openai_service.parse_analysis_response(response_text)
     
-    def test_parse_analysis_response_invalid_confidence(self, openai_service):
-        """Test parsing response with invalid confidence value."""
+    @pytest.mark.parametrize("confidence_value,should_raise", [
+        (1.5, True),   # > 1.0
+        (-0.1, True),  # < 0.0
+        (0.0, False),  # Valid boundary
+        (1.0, False),  # Valid boundary
+        (0.5, False),  # Valid middle
+    ])
+    def test_parse_analysis_response_confidence_validation(self, openai_service, confidence_value, should_raise):
+        """Test parsing response with various confidence values."""
         response_text = json.dumps({
             "trust_score": 80,
             "classification": "Legit",
             "reasons": ["Reason 1", "Reason 2", "Reason 3"],
-            "confidence": 1.5  # Invalid: > 1.0
+            "confidence": confidence_value
         })
         
-        with pytest.raises(Exception, match="Invalid analysis response format"):
-            openai_service.parse_analysis_response(response_text)
+        if should_raise:
+            with pytest.raises(Exception, match="Invalid analysis response format"):
+                openai_service.parse_analysis_response(response_text)
+        else:
+            result = openai_service.parse_analysis_response(response_text)
+            assert result.confidence == confidence_value
 
 
 class TestOpenAIAnalysisServiceIntegration:
     """Integration tests for OpenAI analysis service."""
     
     @pytest.mark.asyncio
-    async def test_full_analysis_workflow(self, openai_service, legitimate_job_text):
+    @patch('app.services.openai_analysis.time')
+    @patch('app.services.openai_analysis.get_metrics_collector')
+    @patch('app.services.openai_analysis.get_error_tracker')
+    @patch('app.services.openai_analysis.get_correlation_id')
+    @patch('app.services.openai_analysis.SecurityValidator')
+    async def test_full_analysis_workflow(self, mock_security_validator, mock_correlation_id, 
+                                        mock_error_tracker, mock_metrics_collector, mock_time,
+                                        openai_service, legitimate_job_text):
         """Test complete analysis workflow with mocked OpenAI."""
+        # Setup mocks
+        mock_time.time.side_effect = [0, 1.5]  # start_time, end_time
+        mock_correlation_id.return_value = "test-correlation-id"
+        
+        mock_validator = Mock()
+        mock_validator.sanitize_text.return_value = legitimate_job_text
+        mock_validator.validate_text_content.return_value = (True, None)
+        mock_security_validator.return_value = mock_validator
+        
+        mock_metrics = Mock()
+        mock_metrics_collector.return_value = mock_metrics
+        
+        mock_tracker = Mock()
+        mock_error_tracker.return_value = mock_tracker
+        
         expected_response = {
             "trust_score": 90,
             "classification": "Legit",
@@ -389,10 +434,67 @@ class TestOpenAIAnalysisServiceIntegration:
             assert call_args.kwargs['max_tokens'] == 1000
             assert call_args.kwargs['timeout'] == 30.0
             assert len(call_args.kwargs['messages']) == 2
-            assert legitimate_job_text in call_args.kwargs['messages'][1]['content']
+            # Check that the job text is in the prompt (it gets formatted/cleaned)
+            prompt_content = call_args.kwargs['messages'][1]['content']
+            assert "Software Engineer - Google Inc." in prompt_content
+            assert "Mountain View, CA" in prompt_content
+            
+            # Verify metrics and tracking were called
+            # Verify metrics were recorded (timing may vary)
+            mock_metrics.record_service_call.assert_called_once()
+            call_args = mock_metrics.record_service_call.call_args[0]
+            assert call_args[0] == "openai"
+            assert call_args[1] == "analyze_job_ad"
+            assert call_args[2] == True  # success
+            assert isinstance(call_args[3], float)  # duration
+            
+            # Verify tracker was called (timing may vary)
+            mock_tracker.track_service_call.assert_called_once()
+            tracker_call_args = mock_tracker.track_service_call.call_args[0]
+            assert tracker_call_args[0] == "openai"
+            assert tracker_call_args[1] == "analyze_job_ad"
+            assert tracker_call_args[2] == True  # success
+            assert isinstance(tracker_call_args[3], float)  # duration
             
             # Verify result
             assert result.trust_score == 90
             assert result.classification == JobClassification.LEGIT
             assert len(result.reasons) == 3
             assert result.confidence == 0.92
+
+
+class TestOpenAIAnalysisServiceHealthCheck:
+    """Test cases for OpenAI service health check functionality."""
+    
+    @pytest.mark.asyncio
+    async def test_health_check_healthy(self, openai_service):
+        """Test health check with valid configuration."""
+        result = await openai_service.health_check()
+        
+        assert result["status"] == "healthy"
+        assert result["service"] == "openai"
+        assert result["model"] == "gpt-4"
+        assert result["api_key_configured"] is True
+    
+    @pytest.mark.asyncio
+    async def test_health_check_no_api_key(self, mock_config):
+        """Test health check with missing API key."""
+        mock_config.openai_api_key = ""
+        service = OpenAIAnalysisService(mock_config)
+        
+        result = await service.health_check()
+        
+        assert result["status"] == "unhealthy"
+        assert result["api_key_configured"] is False
+        assert "not configured" in result["error"]
+    
+    @pytest.mark.asyncio
+    async def test_health_check_invalid_api_key(self, mock_config):
+        """Test health check with invalid API key format."""
+        mock_config.openai_api_key = "sk"
+        service = OpenAIAnalysisService(mock_config)
+        
+        result = await service.health_check()
+        
+        assert result["status"] == "unhealthy"
+        assert result["api_key_configured"] is False

@@ -227,7 +227,7 @@ class PDFProcessingService:
                 status_code=e.response.status_code,
                 error=str(e),
                 url=media_url,  # Log full URL for debugging
-                response_text=e.response.text[:200] if hasattr(e.response, 'text') else None,
+                response_text=e.response.text[:200] if hasattr(e.response, 'text') and hasattr(e.response.text, '__getitem__') else str(e.response.text) if hasattr(e.response, 'text') else None,
                 is_twilio_url=self._is_twilio_media_url(media_url),
                 correlation_id=correlation_id
             )
