@@ -9,7 +9,7 @@ This guide covers deploying the Reality Checker WhatsApp Bot to production envir
 #### Single Container Deployment
 
 ```bash
-# Build production image
+# Build production image (includes both backend and frontend)
 docker build -t reality-checker:latest .
 
 # Run with production configuration
@@ -20,6 +20,10 @@ docker run -d \
   -p 8000:8000 \
   -v /opt/reality-checker/data:/app/data \
   -v /opt/reality-checker/logs:/app/logs \
+  --health-cmd="curl -f http://localhost:8000/health || exit 1" \
+  --health-interval=30s \
+  --health-timeout=10s \
+  --health-retries=3 \
   reality-checker:latest
 ```
 
@@ -195,16 +199,28 @@ spec:
             cpu: "500m"
         livenessProbe:
           httpGet:
-            path: /health
+            path: /health/liveness
             port: 8000
           initialDelaySeconds: 30
           periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /health
+            path: /health/readiness
             port: 8000
           initialDelaySeconds: 5
           periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 30
 ```
 
 #### Service and Ingress
@@ -297,9 +313,9 @@ spec:
         }
       },
       "healthCheck": {
-        "command": ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"],
+        "command": ["CMD-SHELL", "curl -f http://localhost:8000/health/readiness || exit 1"],
         "interval": 30,
-        "timeout": 5,
+        "timeout": 10,
         "retries": 3,
         "startPeriod": 60
       }

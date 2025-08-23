@@ -35,6 +35,10 @@ class AlertType(Enum):
     SERVICE_FAILURE = "service_failure"
     CONFIGURATION_ERROR = "configuration_error"
     RESOURCE_EXHAUSTION = "resource_exhaustion"
+    CIRCUIT_BREAKER_OPEN = "circuit_breaker_open"
+    SECURITY_INCIDENT = "security_incident"
+    DATA_QUALITY = "data_quality"
+    PERFORMANCE_DEGRADATION = "performance_degradation"
 
 
 @dataclass

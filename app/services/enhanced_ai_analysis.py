@@ -1305,3 +1305,67 @@ Pay special attention to these high salary job red flags:
                     agreements += 1
         
         return agreements / total_feedback if total_feedback > 0 else 0.0
+    
+    async def cleanup(self):
+        """
+        Clean up resources used by the Enhanced AI Analysis service.
+        
+        This method handles graceful cleanup of any resources, connections,
+        HTTP clients, cached data, and background tasks used by the service.
+        """
+        correlation_id = get_correlation_id()
+        
+        try:
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Cleaning up Enhanced AI Analysis service resources",
+                analysis_history_size=len(self.analysis_history),
+                feedback_data_size=sum(len(items) for items in self.feedback_data.values()),
+                correlation_id=correlation_id
+            )
+            
+            # Close the OpenAI client if it has a close method
+            if hasattr(self.client, 'close'):
+                try:
+                    await self.client.close()
+                except Exception as e:
+                    logger.warning(f"Could not close OpenAI client: {e}")
+            
+            # Clear analysis history cache to free memory
+            if self.analysis_history:
+                self.analysis_history.clear()
+                logger.info("Cleared analysis history cache")
+            
+            # Clear feedback data
+            if self.feedback_data:
+                self.feedback_data.clear()
+                logger.info("Cleared feedback data cache")
+            
+            # Clear job ad vectors cache
+            if self.job_ad_vectors:
+                self.job_ad_vectors.clear()
+                logger.info("Cleared job ad vectors cache")
+            
+            # Reset vectorizer state
+            self.vectorizer_fitted = False
+            
+            # Clear any references to prevent memory leaks
+            self.client = None
+            self.vectorizer = None
+            
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Enhanced AI Analysis service cleanup completed successfully",
+                correlation_id=correlation_id
+            )
+            
+        except Exception as e:
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Error during Enhanced AI Analysis service cleanup",
+                error=str(e),
+                correlation_id=correlation_id
+            )

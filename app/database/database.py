@@ -2,7 +2,8 @@
 Database configuration and connection management.
 
 This module provides database connectivity using SQLAlchemy with support
-for both SQLite (development) and PostgreSQL (production).
+for both SQLite (development) and PostgreSQL (production), enhanced with
+connection pooling, caching, and performance optimizations.
 """
 
 import os
@@ -24,11 +25,11 @@ logger = get_logger(__name__)
 Base = declarative_base()
 
 class Database:
-    """Database connection and session management."""
+    """Enhanced database connection and session management with performance optimizations."""
     
     def __init__(self, database_url: Optional[str] = None):
         """
-        Initialize database connection.
+        Initialize database connection with enhanced pooling and caching.
         
         Args:
             database_url: Database connection URL. If None, will use environment variables.
@@ -37,6 +38,7 @@ class Database:
         self.engine = None
         self.session_factory = None
         self._initialized = False
+        self._pool_manager = None
         logger.info(f"Database configured with URL: {self._sanitize_url(self.database_url)}")
     
     def _get_database_url(self) -> str:
@@ -83,49 +85,19 @@ class Database:
         return url
     
     async def initialize(self):
-        """Initialize database connection and create tables."""
+        """Initialize database connection with enhanced pooling and optimizations."""
         if self._initialized:
             return
         
         try:
-            # Configure engine based on database type
-            if self.database_url.startswith('sqlite'):
-                self.engine = create_async_engine(
-                    self.database_url,
-                    echo=os.getenv('DB_ECHO', 'false').lower() == 'true',
-                    poolclass=StaticPool,
-                    connect_args={
-                        "check_same_thread": False,
-                        "timeout": 30
-                    }
-                )
-                
-                # Enable WAL mode for SQLite
-                @event.listens_for(self.engine.sync_engine, "connect")
-                def set_sqlite_pragma(dbapi_connection, connection_record):
-                    cursor = dbapi_connection.cursor()
-                    cursor.execute("PRAGMA journal_mode=WAL")
-                    cursor.execute("PRAGMA synchronous=NORMAL")
-                    cursor.execute("PRAGMA cache_size=1000")
-                    cursor.execute("PRAGMA temp_store=MEMORY")
-                    cursor.close()
+            # Initialize connection pool manager
+            from .connection_pool import get_pool_manager
+            self._pool_manager = get_pool_manager()
+            await self._pool_manager.initialize()
             
-            else:
-                # PostgreSQL configuration
-                self.engine = create_async_engine(
-                    self.database_url,
-                    echo=os.getenv('DB_ECHO', 'false').lower() == 'true',
-                    pool_size=int(os.getenv('DB_POOL_SIZE', '5')),
-                    max_overflow=int(os.getenv('DB_MAX_OVERFLOW', '10')),
-                    pool_timeout=int(os.getenv('DB_POOL_TIMEOUT', '30')),
-                    pool_recycle=int(os.getenv('DB_POOL_RECYCLE', '3600')),
-                )
-            
-            self.session_factory = sessionmaker(
-                self.engine,
-                class_=AsyncSession,
-                expire_on_commit=False
-            )
+            # Use the optimized engine from pool manager
+            self.engine = self._pool_manager.engine
+            self.session_factory = self._pool_manager.session_factory
             
             # Import models to ensure they are registered
             from .models import (
@@ -137,59 +109,99 @@ class Database:
             async with self.engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
             
+            # Apply database optimizations
+            from .query_optimizer import get_query_optimizer
+            optimizer = get_query_optimizer()
+            
+            async with self.get_session() as session:
+                await optimizer.optimize_user_queries(session)
+                await optimizer.optimize_database_settings(session)
+                await session.commit()
+            
+            # Initialize caching service
+            from app.services.caching_service import init_caching_service
+            await init_caching_service()
+            
             self._initialized = True
-            logger.info("Database initialized successfully")
+            logger.info("✅ Enhanced database initialized successfully with pooling and caching")
             
         except Exception as e:
-            logger.error(f"Failed to initialize database: {e}")
+            logger.error(f"❌ Failed to initialize enhanced database: {e}")
             raise
     
     async def close(self):
-        """Close database connection."""
+        """Close database connection and cleanup resources."""
+        if self._pool_manager:
+            await self._pool_manager.cleanup()
+            self._pool_manager = None
+        
         if self.engine:
             await self.engine.dispose()
-            self._initialized = False
-            logger.info("Database connection closed")
+            
+        self._initialized = False
+        logger.info("✅ Enhanced database connection closed")
     
     @asynccontextmanager
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         """
-        Get database session with automatic cleanup.
+        Get optimized database session with automatic cleanup and performance monitoring.
         
         Yields:
-            AsyncSession: Database session
+            AsyncSession: Enhanced database session
         """
         if not self._initialized:
             await self.initialize()
         
-        async with self.session_factory() as session:
-            try:
+        # Use the pool manager's optimized session
+        if self._pool_manager:
+            async with self._pool_manager.get_session() as session:
                 yield session
-            except Exception as e:
-                await session.rollback()
-                logger.error(f"Database session error: {e}")
-                raise
-            finally:
-                await session.close()
+        else:
+            # Fallback to standard session
+            async with self.session_factory() as session:
+                try:
+                    yield session
+                except Exception as e:
+                    await session.rollback()
+                    logger.error(f"Database session error: {e}")
+                    raise
+                finally:
+                    await session.close()
     
     async def health_check(self) -> dict:
         """
-        Perform database health check.
+        Perform comprehensive database health check with performance metrics.
         
         Returns:
-            Dict containing health status information
+            Dict containing detailed health status information
         """
         try:
-            async with self.get_session() as session:
-                result = await session.execute(text("SELECT 1"))
-                result.scalar()
+            if self._pool_manager:
+                # Use enhanced health check from pool manager
+                health_info = await self._pool_manager.health_check()
                 
-                return {
-                    "status": "healthy",
+                # Add database-specific information
+                health_info.update({
                     "database_type": "postgresql" if "postgresql" in self.database_url else "sqlite",
                     "connection_url": self._sanitize_url(self.database_url),
-                    "initialized": self._initialized
-                }
+                    "initialized": self._initialized,
+                    "enhanced_features": True
+                })
+                
+                return health_info
+            else:
+                # Fallback health check
+                async with self.get_session() as session:
+                    result = await session.execute(text("SELECT 1"))
+                    result.scalar()
+                    
+                    return {
+                        "status": "healthy",
+                        "database_type": "postgresql" if "postgresql" in self.database_url else "sqlite",
+                        "connection_url": self._sanitize_url(self.database_url),
+                        "initialized": self._initialized,
+                        "enhanced_features": False
+                    }
         except Exception as e:
             logger.error(f"Database health check failed: {e}")
             return {

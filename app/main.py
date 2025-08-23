@@ -20,7 +20,10 @@ from app.api.webhook import router as webhook_router
 from app.utils.logging import setup_logging, get_logger, set_correlation_id, get_correlation_id
 from app.utils.error_handling import handle_error, ErrorCategory
 from app.middleware.rate_limiting import create_rate_limit_middleware
+from app.middleware.user_rate_limiting import create_user_rate_limit_middleware
+from app.middleware.web_rate_limiting import create_web_rate_limit_middleware
 from app.middleware.security_headers import create_security_headers_middleware
+from app.middleware.performance_middleware import create_performance_middleware
 
 logger = get_logger(__name__)
 
@@ -42,6 +45,21 @@ async def startup_event():
         # Initialize monitoring systems
         from app.utils.metrics import get_metrics_collector
         from app.utils.error_tracking import get_error_tracker, log_alert_handler
+        from app.services.performance_monitor import init_performance_monitor
+        from app.database.connection_pool import init_pool_manager
+        from app.services.caching_service import init_caching_service
+        
+        # Initialize enhanced database connection pool
+        await init_pool_manager()
+        logger.info("✅ Enhanced database connection pool initialized")
+        
+        # Initialize caching service
+        await init_caching_service()
+        logger.info("✅ Caching service initialized")
+        
+        # Initialize performance monitoring
+        await init_performance_monitor()
+        logger.info("✅ Performance monitoring initialized")
         
         # Initialize metrics collector
         metrics_collector = get_metrics_collector()
@@ -134,7 +152,8 @@ async def startup_event():
         
         # Exit the application if startup fails
         logger.critical("Application startup failed. Exiting...")
-        sys.exit(1)
+        # Use raise instead of sys.exit for better container/deployment compatibility
+        raise RuntimeError(f"Application startup failed: {str(exc)}")
 
 
 async def shutdown_event():
@@ -142,6 +161,17 @@ async def shutdown_event():
     logger.info("🛑 Application shutdown initiated...")
     
     try:
+        # Cleanup performance monitoring
+        from app.services.performance_monitor import get_performance_monitor
+        performance_monitor = get_performance_monitor()
+        await performance_monitor.cleanup()
+        logger.info("✅ Performance monitoring cleaned up")
+        
+        # Cleanup connection pool
+        from app.database.connection_pool import cleanup_pool_manager
+        await cleanup_pool_manager()
+        logger.info("✅ Connection pool cleaned up")
+        
         # Get service container and perform cleanup
         service_container = initialize_service_container()
         await service_container.cleanup()
@@ -180,33 +210,24 @@ app = FastAPI(
 # Include routers
 app.include_router(webhook_router)
 
-# Include health check router
+# Include routers - move imports to top for better organization
 from app.api.health import router as health_router
-app.include_router(health_router)
-
-# Include authentication router
 from app.api.auth import router as auth_router
-app.include_router(auth_router)
-
-# Include dashboard router
 from app.api.dashboard import router as dashboard_router
-app.include_router(dashboard_router)
-
-# Include monitoring router
 from app.api.monitoring import router as monitoring_router
-app.include_router(monitoring_router)
-
-# Include analytics router
 from app.api.analytics import router as analytics_router
-app.include_router(analytics_router)
-
-# Include MFA router
 from app.api.mfa import router as mfa_router
-app.include_router(mfa_router)
-
-# Include web upload router
 from app.api.web_upload import router as web_upload_router
+from app.api.performance import router as performance_router
+
+app.include_router(health_router)
+app.include_router(auth_router)
+app.include_router(dashboard_router)
+app.include_router(monitoring_router)
+app.include_router(analytics_router)
+app.include_router(mfa_router)
 app.include_router(web_upload_router)
+app.include_router(performance_router)
 
 # Include API upload router
 try:
@@ -276,11 +297,36 @@ security_headers_middleware = create_security_headers_middleware(
 )
 app.add_middleware(security_headers_middleware)
 
-# Add rate limiting middleware
+# Add performance monitoring middleware
+performance_middleware = create_performance_middleware(
+    exclude_paths=["/health", "/metrics", "/favicon.ico", "/static/"]
+)
+app.add_middleware(performance_middleware)
+
+# Add hybrid web rate limiting middleware (Web API users)
+web_rate_limit_middleware = create_web_rate_limit_middleware(
+    anonymous_per_minute=3,        # Conservative for anonymous users
+    session_per_minute=6,          # Moderate for session users
+    established_per_minute=10,     # Generous for established users
+    enable_fingerprinting=True     # Enhanced abuse detection
+)
+app.add_middleware(web_rate_limit_middleware)
+
+# Add per-user rate limiting middleware (WhatsApp users)
+user_rate_limit_middleware = create_user_rate_limit_middleware(
+    requests_per_minute=5,         # Conservative per-user limit
+    requests_per_hour=50,          # Hourly limit per user
+    requests_per_day=200,          # Daily limit per user
+    burst_limit=3,                 # Burst protection per user
+    trusted_user_multiplier=2.0    # 2x limits for established users
+)
+app.add_middleware(user_rate_limit_middleware)
+
+# Add global rate limiting middleware (final fallback)
 rate_limit_middleware = create_rate_limit_middleware(
-    requests_per_minute=10,
-    requests_per_hour=100,
-    burst_limit=5,
+    requests_per_minute=30,        # Higher since specific limits handle most cases
+    requests_per_hour=300,         # Higher global fallback
+    burst_limit=10,                # Higher burst for uncategorized traffic
     burst_window=10
 )
 app.add_middleware(rate_limit_middleware)
@@ -327,18 +373,28 @@ async def metrics_and_correlation_middleware(request: Request, call_next):
         response.headers["X-Correlation-ID"] = correlation_id
         response.headers["X-Response-Time"] = f"{duration:.3f}s"
         
-        # Log request with sanitized data
-        logger.info(
-            f"{method} {endpoint} - {status_code} - {duration:.3f}s",
-            extra={
-                "method": method,
-                "endpoint": endpoint,
-                "status_code": status_code,
-                "duration_seconds": duration,
-                "correlation_id": correlation_id,
-                "user_agent": request.headers.get("user-agent", "unknown")[:100]
-            }
-        )
+        # Log request with sanitized data (optimized thresholds to reduce noise)
+        # Exclude health checks, static files, and fast successful requests
+        should_log = (
+            duration > 2.0 or  # Increased threshold for slow requests
+            status_code >= 400 or  # Still log all error responses
+            (status_code >= 200 and status_code < 300 and duration > 5.0)  # Very slow successful requests
+        ) and not any(path in endpoint for path in ['/health', '/static/', '/favicon.ico', '/metrics'])
+        
+        if should_log:
+            log_level = logging.WARNING if status_code >= 400 else logging.INFO
+            logger.log(
+                log_level,
+                f"{method} {endpoint} - {status_code} - {duration:.3f}s",
+                extra={
+                    "method": method,
+                    "endpoint": endpoint,
+                    "status_code": status_code,
+                    "duration_seconds": duration,
+                    "correlation_id": correlation_id,
+                    "user_agent": request.headers.get("user-agent", "unknown")[:100]
+                }
+            )
         
         return response
         
@@ -524,9 +580,10 @@ async def health_check() -> Dict[str, Any]:
         
     except Exception as exc:
         logger.error(f"Health check failed: {str(exc)}", exc_info=True)
-        return JSONResponse(
+        # Raise HTTPException instead of returning JSONResponse directly
+        raise HTTPException(
             status_code=503,
-            content={
+            detail={
                 "status": "unhealthy",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "error": "Health check failed",

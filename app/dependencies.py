@@ -215,18 +215,39 @@ class ServiceContainer:
         """Clean up resources."""
         logger.info("Cleaning up service container resources...")
         
-        # Clean up services that need cleanup
-        if self._twilio_service:
-            try:
-                await self._twilio_service.cleanup()
-            except Exception as e:
-                logger.error(f"Error cleaning up Twilio service: {e}")
+        # Clean up services that have cleanup methods
+        services_to_cleanup = [
+            ("Twilio", self._twilio_service),
+            ("OpenAI", self._openai_service),
+            ("PDF Processing", self._pdf_service),
+            ("Message Handler", self._message_handler),
+            ("User Management", self._user_management_service),
+            ("Analytics", self._analytics_service),
+            ("Authentication", self._auth_service),
+            ("MFA", self._mfa_service),
+            ("Security", self._security_service)
+        ]
         
-        if self._openai_service:
-            try:
-                await self._openai_service.cleanup()
-            except Exception as e:
-                logger.error(f"Error cleaning up OpenAI service: {e}")
+        for service_name, service_instance in services_to_cleanup:
+            if service_instance and hasattr(service_instance, 'cleanup'):
+                try:
+                    await service_instance.cleanup()
+                    logger.info(f"✅ {service_name} service cleaned up successfully")
+                except Exception as e:
+                    logger.error(f"❌ Error cleaning up {service_name} service: {e}")
+            elif service_instance:
+                logger.info(f"ℹ️ {service_name} service does not require cleanup")
+        
+        # Clear all service references
+        self._pdf_service = None
+        self._openai_service = None
+        self._twilio_service = None
+        self._message_handler = None
+        self._user_management_service = None
+        self._analytics_service = None
+        self._auth_service = None
+        self._mfa_service = None
+        self._security_service = None
         
         logger.info("Service container cleanup completed")
 

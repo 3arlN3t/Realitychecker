@@ -499,3 +499,48 @@ class TwilioResponseService:
                 "from_number": self.config.twilio_phone_number,
                 "error": str(e)
             }
+    
+    async def cleanup(self):
+        """
+        Clean up resources used by the Twilio service.
+        
+        This method handles graceful cleanup of any resources, connections,
+        or background tasks used by the service.
+        """
+        correlation_id = get_correlation_id()
+        
+        try:
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Cleaning up Twilio service resources",
+                correlation_id=correlation_id
+            )
+            
+            # Close any HTTP connections that might be held by the Twilio client
+            if hasattr(self.client, '_http_client') and self.client._http_client:
+                try:
+                    # The Twilio client uses httpx internally, close it if possible
+                    if hasattr(self.client._http_client, 'close'):
+                        await self.client._http_client.close()
+                except Exception as e:
+                    logger.warning(f"Could not close Twilio HTTP client: {e}")
+            
+            # Clear any cached data or references
+            self.client = None
+            
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Twilio service cleanup completed successfully",
+                correlation_id=correlation_id
+            )
+            
+        except Exception as e:
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Error during Twilio service cleanup",
+                error=str(e),
+                correlation_id=correlation_id
+            )

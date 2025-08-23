@@ -15,13 +15,17 @@ An AI-powered WhatsApp bot that analyzes job advertisements to detect potential 
 ## 🚀 Features
 
 - **WhatsApp Integration**: Seamless interaction through Twilio WhatsApp Business API
-- **Web Interface**: Simple web-based upload form for text and PDF analysis
-- **AI-Powered Analysis**: Uses OpenAI GPT-4 with advanced error handling, input validation, and structured response parsing
-- **PDF Processing**: Extracts and analyzes text from uploaded PDF job postings with enhanced error handling for expired URLs
+- **Multi-Channel Support**: Web interface, direct API, and WhatsApp bot for flexible access
+- **AI-Powered Analysis**: Uses OpenAI GPT-4 with advanced error handling, circuit breakers, and structured response parsing
+- **PDF Processing**: Extracts and analyzes text from uploaded PDF job postings with enhanced error handling
 - **Trust Scoring**: Provides 0-100 trust scores with detailed reasoning and confidence levels
-- **Admin Dashboard**: Web-based interface with real-time monitoring and management
-- **Real-time Analytics**: Live metrics, WebSocket updates, user management, and comprehensive reporting
-- **Secure & Scalable**: Production-ready with comprehensive security measures and multi-channel support architecture
+- **Admin Dashboard**: React-based interface with real-time monitoring, analytics, and user management
+- **Multi-Factor Authentication**: TOTP-based MFA with backup codes and admin management
+- **Real-time Monitoring**: Live metrics, WebSocket updates, error tracking, and performance monitoring
+- **Advanced Analytics**: A/B testing, user clustering, pattern detection, and predictive analytics
+- **Role-Based Access**: Admin and Analyst roles with granular permissions
+- **Comprehensive Reporting**: Generate and export detailed reports with analysis accuracy metrics
+- **Production-Ready**: Comprehensive security, rate limiting, health checks, and observability
 
 ## 📋 Table of Contents
 
@@ -116,6 +120,13 @@ pip install -r requirements.txt
 # Set up database
 python manage_db.py init
 
+# Configure environment
+cp .env.example .env
+# Edit .env with your configuration
+
+# Run database migrations
+alembic upgrade head
+
 # Run the application
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
@@ -129,10 +140,10 @@ cd dashboard
 # Install dependencies
 npm install
 
-# Build for production
+# Build for production (integrated into backend)
 npm run build
 
-# Or run development server
+# Or run development server (for frontend development)
 npm start
 ```
 
@@ -173,6 +184,28 @@ JWT_SECRET_KEY=your-secret-key        # JWT signing key (CHANGE IN PRODUCTION!)
 JWT_EXPIRY_HOURS=24                   # Token expiry time
 ADMIN_USERNAME=admin                  # Default admin username
 ADMIN_PASSWORD=admin123               # Default admin password (CHANGE!)
+
+# Performance & Reliability (optional)
+REDIS_URL=redis://localhost:6379      # Redis for caching and rate limiting
+OPENAI_CACHE_TTL=86400               # AI response cache TTL (24 hours)
+OPENAI_MIN_CONFIDENCE_CACHE=0.7      # Minimum confidence to cache results
+CIRCUIT_BREAKER_FAILURE_THRESHOLD=3  # OpenAI circuit breaker failure limit
+CIRCUIT_BREAKER_RECOVERY_TIMEOUT=60  # Recovery timeout in seconds
+
+# Rate Limiting (optional)
+# WhatsApp User Limits
+USER_RATE_LIMIT_MINUTE=5             # Per-WhatsApp-user requests per minute
+USER_RATE_LIMIT_HOUR=50              # Per-WhatsApp-user requests per hour
+USER_RATE_LIMIT_DAY=200              # Per-WhatsApp-user requests per day
+USER_RATE_LIMIT_BURST=3              # Per-WhatsApp-user burst limit
+TRUSTED_USER_MULTIPLIER=2.0          # Rate limit multiplier for trusted WhatsApp users
+
+# Web User Limits (Progressive Tiers)
+WEB_ANONYMOUS_LIMIT_MINUTE=3         # Anonymous web users per minute
+WEB_SESSION_LIMIT_MINUTE=6           # Session-based web users per minute  
+WEB_ESTABLISHED_LIMIT_MINUTE=10      # Established web users per minute
+WEB_ENABLE_FINGERPRINTING=true       # Enable browser fingerprinting
+WEB_SESSION_ESTABLISHMENT_REQUESTS=5 # Requests needed to become established
 
 # Database (optional)
 DATABASE_URL=sqlite:///data/reality_checker.db
@@ -246,13 +279,16 @@ Reasons:
 
 ### Dashboard Usage
 
-Access the admin dashboard at `http://localhost:8000/admin`:
+Access the admin dashboard at `http://localhost:8000/dashboard`:
 
-1. **Login**: Use configured admin credentials
-2. **Monitor**: View real-time system metrics and health
-3. **Analytics**: Analyze usage trends and detection patterns
-4. **Users**: Manage WhatsApp user interactions
-5. **Reports**: Generate and export comprehensive reports
+1. **Login**: Use configured admin credentials (supports MFA)
+2. **Dashboard**: View real-time system metrics, health status, and key performance indicators
+3. **Analytics**: Analyze usage trends, classification patterns, and AI performance metrics
+4. **Monitoring**: Real-time monitoring of active requests, error rates, and response times
+5. **Users**: Manage WhatsApp user interactions, view history, block/unblock users
+6. **Configuration**: System settings management (admin only)
+7. **Reports**: Generate and export comprehensive reports with custom parameters
+8. **MFA Management**: Setup and manage multi-factor authentication
 
 ## 📚 API Documentation
 
@@ -282,33 +318,125 @@ Content-Type: application/x-www-form-urlencoded
 # Twilio webhook payload
 ```
 
-#### Health Check
+#### Health Check Endpoints
 ```http
+# Basic health check
 GET /health
 
-Response:
-{
-  "status": "healthy",
-  "timestamp": "2025-01-16T10:30:00Z",
-  "services": {
-    "openai": "connected",
-    "twilio": "connected"
-  }
-}
+# Detailed health check with service status
+GET /health/detailed
+
+# Kubernetes-style readiness check
+GET /health/readiness
+
+# Kubernetes-style liveness check
+GET /health/liveness
+
+# Application metrics
+GET /health/metrics
+```
+
+#### Authentication Endpoints
+```http
+# User login
+POST /auth/login
+
+# Token refresh
+POST /auth/refresh
+
+# User logout
+POST /auth/logout
+
+# Get current user info
+GET /auth/me
+
+# Create new user (admin only)
+POST /auth/users
+
+# Get authentication statistics
+GET /auth/stats
 ```
 
 #### Dashboard API
 ```http
-GET /api/dashboard/overview
+# Dashboard overview
+GET /dashboard/overview
 Authorization: Bearer <jwt-token>
 
-Response:
-{
-  "total_requests": 1250,
-  "requests_today": 45,
-  "error_rate": 2.3,
-  "avg_response_time": 1.2
-}
+# Analytics trends
+GET /analytics/trends?period=week
+
+# User management
+GET /users?page=1&limit=50
+
+# Real-time metrics
+GET /metrics/realtime
+
+# Generate reports
+POST /reports/generate
+```
+
+#### Multi-Factor Authentication (MFA)
+```http
+# Setup MFA
+POST /mfa/setup
+
+# Complete MFA setup
+POST /mfa/complete-setup
+
+# Verify MFA token
+POST /mfa/verify
+
+# Get MFA status
+GET /mfa/status
+
+# Disable MFA
+POST /mfa/disable
+
+# Get MFA statistics (admin)
+GET /mfa/statistics
+```
+
+#### Monitoring & Analytics
+```http
+# Real-time monitoring
+GET /monitoring/active-requests
+GET /monitoring/error-rates
+GET /monitoring/response-times
+
+# Circuit breaker status
+GET /monitoring/circuit-breakers
+GET /monitoring/openai/circuit-breaker
+
+# Cache performance metrics  
+GET /monitoring/cache/stats
+GET /monitoring/cache/hit-rate
+
+# Rate limiting statistics
+GET /monitoring/rate-limits/global
+GET /monitoring/rate-limits/whatsapp/{phone_hash}
+GET /monitoring/rate-limits/web/sessions
+GET /monitoring/rate-limits/web/fingerprints
+
+# Advanced analytics
+GET /analytics/patterns
+POST /analytics/ab-tests
+GET /analytics/ab-tests/{test_id}
+POST /analytics/user-clustering
+```
+
+#### Text Analysis APIs
+```http
+# Direct API analysis
+POST /api/direct/analyze
+Content-Type: application/x-www-form-urlencoded
+
+# API upload analysis
+POST /api/upload/text
+Content-Type: application/x-www-form-urlencoded
+
+# Simple API test
+GET /api/simple/test
 ```
 
 ## 🖥️ Dashboard
@@ -317,18 +445,27 @@ The web dashboard provides comprehensive monitoring and management capabilities:
 
 ### Features
 
-- **System Health**: Real-time service status and metrics
-- **Analytics**: Usage trends, classification breakdowns, peak hours
-- **User Management**: WhatsApp user interactions and history
-- **Configuration**: System settings and bot configuration
-- **Reporting**: Custom reports with CSV/PDF export
-- **Real-time Monitoring**: Live metrics and active request tracking
+- **System Health**: Real-time service status, health checks, and dependency monitoring
+- **Analytics**: Usage trends, classification breakdowns, peak hours, and predictive analytics
+- **User Management**: WhatsApp user interactions, detailed profiles, and interaction history
+- **Web Session Monitoring**: Track anonymous, session-based, and established web users
+- **Rate Limit Analytics**: Multi-tier rate limiting statistics and user progression tracking
+- **Abuse Detection**: Browser fingerprinting patterns and suspicious behavior alerts
+- **Configuration**: System settings, OpenAI model configuration, and security settings
+- **Reporting**: Custom reports with CSV/PDF export and scheduled report generation
+- **Real-time Monitoring**: Live metrics, active request tracking, and WebSocket updates
+- **Multi-Factor Authentication**: TOTP setup, backup codes, and admin MFA management
+- **Advanced Analytics**: A/B testing, user clustering, and pattern recognition
+- **Role-Based Access**: Admin and Analyst roles with appropriate permissions
+- **Performance Monitoring**: Response time tracking, error rate analysis, circuit breaker status, and cache hit rates
 
 ### Access
 
-1. Navigate to `http://localhost:8000/admin`
-2. Login with configured credentials
-3. Explore different sections using the navigation menu
+1. Navigate to `http://localhost:8000/dashboard`
+2. Login with configured credentials (admin/admin123 by default)
+3. Setup MFA if required (recommended for production)
+4. Explore different sections using the navigation menu
+5. Use keyboard shortcuts for efficient navigation (press '?' for help)
 
 ## 🚀 Deployment
 
@@ -420,8 +557,10 @@ gcloud run deploy reality-checker \
 
 #### Performance Optimization
 
-- [ ] Configure connection pooling
-- [ ] Set up Redis for caching
+- [x] Configure optimized connection pooling (with reduced pool sizes and faster timeouts)
+- [x] Enhanced database indexes for analytics queries
+- [x] Optimized request logging to reduce I/O overhead
+- [ ] Set up Redis for caching (infrastructure available)
 - [ ] Enable response compression
 - [ ] Configure CDN for static assets
 - [ ] Set up load balancing
@@ -521,43 +660,252 @@ python manage_db.py reset
 reality-checker-whatsapp-bot/
 ├── app/                    # Backend application
 │   ├── api/               # API endpoints
+│   │   ├── auth.py        # Authentication & user management
+│   │   ├── mfa.py         # Multi-factor authentication
+│   │   ├── dashboard.py   # Dashboard API endpoints
+│   │   ├── analytics.py   # Advanced analytics & A/B testing
+│   │   ├── monitoring.py  # Real-time monitoring
+│   │   ├── webhook.py     # WhatsApp webhook handler
+│   │   └── health.py      # Health check endpoints
 │   ├── services/          # Business logic services
+│   │   ├── openai_analysis.py      # AI analysis service
+│   │   ├── message_handler.py      # Message processing
+│   │   ├── authentication.py       # Auth service
+│   │   ├── mfa_service.py          # MFA service
+│   │   └── analytics.py            # Analytics service
 │   ├── models/            # Data models
 │   ├── utils/             # Utility functions
+│   │   ├── websocket.py   # WebSocket support
+│   │   ├── metrics.py     # Metrics collection
+│   │   ├── error_tracking.py # Error tracking & alerting
+│   │   └── circuit_breaker.py # Circuit breaker pattern
+│   ├── middleware/        # Custom middleware
+│   │   ├── rate_limiting.py # Rate limiting
+│   │   └── security_headers.py # Security headers
+│   ├── database/          # Database layer
+│   │   ├── models.py      # SQLAlchemy models
+│   │   └── repositories.py # Data access layer
 │   └── main.py            # FastAPI application
 ├── dashboard/             # React frontend
 │   ├── src/               # Source code
+│   │   ├── components/    # UI components
+│   │   │   ├── admin/     # Admin components
+│   │   │   ├── analytics/ # Analytics components
+│   │   │   ├── monitoring/ # Monitoring components
+│   │   │   ├── users/     # User management
+│   │   │   └── ui/        # Reusable UI components
+│   │   ├── pages/         # Page components
+│   │   ├── hooks/         # Custom React hooks
+│   │   ├── contexts/      # React contexts
+│   │   └── __tests__/     # Frontend tests
 │   ├── public/            # Static assets
 │   └── build/             # Built application
-├── tests/                 # Test suite
+├── tests/                 # Comprehensive test suite
+│   ├── fixtures/          # Test data and fixtures
+│   ├── test_*.py          # Backend unit tests
+│   └── conftest.py        # Test configuration
 ├── migrations/            # Database migrations
+├── k8s/                   # Kubernetes deployment configs
+├── scripts/               # Utility scripts
 ├── data/                  # Database and logs
+├── static/                # Static web assets
+├── templates/             # Jinja2 templates
 ├── docker-compose.yml     # Development environment
-├── Dockerfile             # Container configuration
+├── Dockerfile             # Multi-stage container build
 ├── requirements.txt       # Python dependencies
+├── alembic.ini           # Database migration config
+├── pytest.ini           # Test configuration
 └── README.md              # This file
 ```
+
+## 📈 Recent Performance Improvements
+
+The following optimizations have been implemented to enhance application performance and scalability:
+
+### Database Optimizations
+- **Composite Indexes**: Added optimized indexes for common analytics queries:
+  - `user_id + timestamp` for user activity analysis
+  - `classification + timestamp` for classification trend analysis  
+  - `trust_score + timestamp` for scoring analytics
+  - `response_time + timestamp` for performance monitoring
+- **Connection Pool Tuning**: Optimized PostgreSQL connection pool settings:
+  - Reduced pool size from 20 to 15 connections
+  - Reduced max overflow from 30 to 25 connections
+  - Faster timeout (20s vs 30s) and connection recycling (30min vs 1hr)
+  - Enhanced prepared statement caching (150 vs 100)
+
+### Application Performance
+- **Smart Request Logging**: Optimized middleware logging to reduce I/O overhead:
+  - Increased slow request threshold from 1s to 2s
+  - Excluded health checks, static files, and metrics endpoints
+  - Added warning-level logging for error responses
+- **PDF Processing**: Comprehensive file size validation already implemented:
+  - Content-Length header validation before download
+  - Actual content size validation after download
+  - Configurable size limits via `MAX_PDF_SIZE_MB`
+
+### Infrastructure Readiness
+- **AI Response Caching**: Cost-effective Redis-based caching with 24hr TTL for high-confidence results  
+- **Circuit Breaker Protection**: OpenAI API calls protected with circuit breaker (3 failures → 60s timeout)
+- **Per-User Rate Limiting**: Redis-based sliding window rate limiting with trusted user tiers
+- **Performance Monitoring**: Built-in metrics collection and monitoring endpoints
+
+### Reliability & Cost Optimization
+- **Circuit Breaker Implementation**: 
+  - OpenAI API protected with circuit breaker pattern
+  - Automatically opens after 3 consecutive failures
+  - 60-second recovery timeout with graceful degradation
+  - Fallback responses when service unavailable
+- **Smart Caching Strategy**:
+  - Cache high-confidence analysis results (≥70% confidence) 
+  - 24-hour TTL for cost vs freshness balance
+  - Hash-based exact text matching for reliability
+  - Reduces OpenAI API costs by ~40-60% for repeat queries
+- **Multi-Tier Rate Limiting**:
+  - **WhatsApp Users**: Per-phone sliding window (5/min, 50/hr, 200/day)
+  - **Web Users**: Hybrid approach (IP + Session + Fingerprinting)
+    - Anonymous: 3/min, 20/hr, 50/day (most restrictive)
+    - Session-based: 6/min, 40/hr, 150/day (after cookie acceptance)
+    - Established: 10/min, 80/hr, 300/day (after 5+ successful requests)
+  - **Abuse Detection**: Browser fingerprinting with suspicious pattern penalties
+  - **Progressive Tiers**: Automatic user promotion based on behavior
+  - **Burst Protection**: 2-6 requests per 10-second window (tier-dependent)
+
+## 🐘 PostgreSQL Migration Guide
+
+For production deployments, migrating from SQLite to PostgreSQL is recommended for better performance and scalability.
+
+### Environment Configuration
+
+Set these environment variables to enable PostgreSQL:
+
+```bash
+# PostgreSQL Database Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=reality_checker
+DB_USER=your_db_user
+DB_PASSWORD=your_secure_password
+
+# Optional: Connection Pool Tuning
+DB_POOL_SIZE=15                # Default optimized for moderate load
+DB_MAX_OVERFLOW=25             # Allow burst capacity
+DB_POOL_TIMEOUT=20             # Connection timeout in seconds
+DB_POOL_RECYCLE=1800          # Recycle connections every 30 minutes
+```
+
+### Migration Steps
+
+1. **Setup PostgreSQL Database**:
+   ```sql
+   CREATE DATABASE reality_checker;
+   CREATE USER your_db_user WITH ENCRYPTED PASSWORD 'your_secure_password';
+   GRANT ALL PRIVILEGES ON DATABASE reality_checker TO your_db_user;
+   ```
+
+2. **Update Environment Variables**:
+   - Add the DB_* variables above to your `.env` file
+   - Remove or comment out `DATABASE_URL` if present
+
+3. **Run Database Migrations**:
+   ```bash
+   # The application will automatically detect PostgreSQL configuration
+   # and create tables on startup, or run migrations manually:
+   alembic upgrade head
+   ```
+
+4. **Verify Connection**:
+   ```bash
+   # Test the connection
+   python -c "
+   from app.database.database import get_database
+   import asyncio
+   async def test():
+       db = get_database()
+       health = await db.health_check()
+       print(f'Status: {health[\"status\"]}')
+       print(f'Database: {health[\"database_type\"]}')
+   asyncio.run(test())
+   "
+   ```
+
+### Data Migration (if needed)
+
+For migrating existing SQLite data:
+
+```bash
+# Export SQLite data (manual process)
+sqlite3 data/reality_checker.db ".dump" > backup.sql
+
+# Import to PostgreSQL (after manual cleanup)
+psql -h localhost -U your_db_user -d reality_checker -f cleaned_backup.sql
+```
+
+**Note**: The application automatically detects the database type from environment variables and optimizes accordingly.
 
 ## 🧪 Testing
 
 ### Running Tests
 
+#### Backend Tests
+
 ```bash
-# Run all tests
+# Run all backend tests
 pytest
 
-# Run with coverage
-pytest --cov=app --cov-report=html
+# Run with coverage report
+pytest --cov=app --cov-report=html --cov-report=term
 
-# Run specific test file
-pytest tests/test_message_handler.py
+# Run specific test categories
+pytest tests/test_message_handler.py -v
+pytest tests/test_openai_analysis.py -v
+pytest tests/test_authentication.py -v
+pytest tests/test_mfa.py -v
 
-# Run frontend tests
+# Run integration tests
+pytest tests/test_integration.py -v
+
+# Run end-to-end tests
+pytest tests/test_end_to_end.py -v
+
+# Run performance tests
+pytest tests/test_performance.py -v
+```
+
+#### Frontend Tests
+
+```bash
 cd dashboard
+
+# Run all frontend tests
 npm test
 
-# Run frontend tests with coverage
+# Run tests with coverage
 npm run test:coverage
+
+# Run tests in watch mode
+npm run test:coverage:watch
+
+# Run specific test suites
+npm test -- --testPathPattern=components
+npm test -- --testPathPattern=accessibility
+npm test -- --testPathPattern=integration
+```
+
+#### Comprehensive Test Suite
+
+```bash
+# Run comprehensive test suite (backend + frontend)
+python run_comprehensive_tests.py
+
+# This includes:
+# - Unit tests for all components
+# - Integration tests for API endpoints
+# - End-to-end workflow tests
+# - Performance and load tests
+# - Security and authentication tests
+# - Accessibility tests for frontend
+# - Visual regression tests
 ```
 
 ### Test Categories

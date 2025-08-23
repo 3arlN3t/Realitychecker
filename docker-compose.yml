@@ -15,8 +15,21 @@ services:
     ports:
       - "8000:8000"
     environment:
-      # Database configuration
-      - DATABASE_URL=sqlite:///app/data/reality_checker.db
+      # Database configuration (PostgreSQL for production-like setup)
+      - DATABASE_URL=postgresql+asyncpg://reality_checker:reality_checker_password@postgres:5432/reality_checker
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=reality_checker
+      - DB_USER=reality_checker
+      - DB_PASSWORD=reality_checker_password
+      - DB_POOL_SIZE=20
+      - DB_MAX_OVERFLOW=30
+      - DB_POOL_TIMEOUT=30
+      - DB_POOL_RECYCLE=3600
+      - DB_ECHO=false
+      
+      # Redis configuration
+      - REDIS_URL=redis://redis:6379/0
       
       # Load environment variables from .env file
       - OPENAI_API_KEY=${OPENAI_API_KEY}

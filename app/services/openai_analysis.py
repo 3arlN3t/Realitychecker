@@ -17,6 +17,8 @@ from app.utils.logging import get_logger, get_correlation_id, log_with_context
 from app.utils.security import SecurityValidator
 from app.utils.metrics import get_metrics_collector
 from app.utils.error_tracking import get_error_tracker, AlertSeverity
+from app.utils.circuit_breaker import get_circuit_breaker, CircuitBreakerConfig, CircuitBreakerError
+from app.services.caching_service import get_caching_service
 
 
 logger = get_logger(__name__)
@@ -32,7 +34,7 @@ class OpenAIAnalysisService:
     
     def __init__(self, config: AppConfig):
         """
-        Initialize the OpenAI analysis service.
+        Initialize the OpenAI analysis service with circuit breaker protection.
         
         Args:
             config: Application configuration containing OpenAI API key and model settings
@@ -40,6 +42,47 @@ class OpenAIAnalysisService:
         self.config = config
         self.client = AsyncOpenAI(api_key=config.openai_api_key)
         self.model = config.openai_model
+        
+        # Initialize circuit breaker for OpenAI API calls
+        circuit_config = CircuitBreakerConfig(
+            failure_threshold=3,        # Open after 3 failures
+            recovery_timeout=60,        # Wait 60s before trying again
+            success_threshold=2,        # Close after 2 successes
+            timeout=35.0,              # 35s timeout for API calls
+            expected_exception=Exception  # All exceptions count as failures
+        )
+        self.circuit_breaker = get_circuit_breaker("openai_api", circuit_config)
+        
+        # Cache configuration for cost optimization
+        self.cache_ttl = 86400  # 24 hours
+        self.min_confidence_to_cache = 0.7  # Only cache high-confidence results
+    
+    async def _make_openai_request(self, prompt: str):
+        """
+        Make the actual OpenAI API request (wrapped by circuit breaker).
+        
+        Args:
+            prompt: The prompt to send to OpenAI
+            
+        Returns:
+            OpenAI API response
+        """
+        return await self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert job market analyst specializing in identifying employment scams. Analyze job postings carefully and provide structured responses."
+                },
+                {
+                    "role": "user", 
+                    "content": prompt
+                }
+            ],
+            temperature=0.3,  # Lower temperature for more consistent analysis
+            max_tokens=1000,
+            timeout=30.0  # Circuit breaker will handle timeout at higher level
+        )
         
     async def analyze_job_ad(self, job_text: str) -> JobAnalysisResult:
         """
@@ -70,10 +113,29 @@ class OpenAIAnalysisService:
         metrics = get_metrics_collector()
         error_tracker = get_error_tracker()
         
+        # Check cache first to save costs
+        caching_service = get_caching_service()
+        cached_result = await caching_service.get_cached_analysis_result(sanitized_text)
+        
+        if cached_result:
+            metrics.increment_counter("openai_cache_hit")
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Analysis result found in cache",
+                model=self.model,
+                text_length=len(job_text),
+                trust_score=cached_result.trust_score,
+                classification=cached_result.classification.value,
+                correlation_id=correlation_id
+            )
+            return cached_result
+        
+        metrics.increment_counter("openai_cache_miss")
         log_with_context(
             logger,
             logging.INFO,
-            "Starting job ad analysis",
+            "Starting job ad analysis (cache miss)",
             model=self.model,
             text_length=len(job_text),
             correlation_id=correlation_id
@@ -84,72 +146,160 @@ class OpenAIAnalysisService:
         start_time = time.time()
         
         try:
-            prompt = self.build_analysis_prompt(sanitized_text)
+            # Get circuit breaker for OpenAI API calls
+            from app.utils.circuit_breaker import get_circuit_breaker, CircuitBreakerConfig, CircuitBreakerError
             
-            log_with_context(
-                logger,
-                logging.DEBUG,
-                "Sending request to OpenAI API",
-                model=self.model,
-                prompt_length=len(prompt),
-                correlation_id=correlation_id
+            circuit_breaker = get_circuit_breaker(
+                "openai_analysis",
+                CircuitBreakerConfig(
+                    failure_threshold=5,
+                    recovery_timeout=60,
+                    timeout=45.0  # Longer timeout for analysis
+                )
             )
             
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an expert job market analyst specializing in identifying employment scams. Analyze job postings carefully and provide structured responses."
-                    },
-                    {
-                        "role": "user", 
-                        "content": prompt
-                    }
-                ],
-                temperature=0.3,  # Lower temperature for more consistent analysis
-                max_tokens=1000,
-                timeout=30.0
-            )
-            
-            if not response.choices or not response.choices[0].message.content:
+            async def _perform_analysis():
+                """Internal function to perform the analysis."""
+                prompt = self.build_analysis_prompt(sanitized_text)
+                
                 log_with_context(
                     logger,
-                    logging.ERROR,
-                    "Empty response from OpenAI API",
+                    logging.DEBUG,
+                    "Sending request to OpenAI API",
+                    model=self.model,
+                    prompt_length=len(prompt),
                     correlation_id=correlation_id
                 )
-                raise Exception("Empty response from OpenAI API")
                 
-            analysis_text = response.choices[0].message.content.strip()
+                # Use circuit breaker to protect OpenAI API calls
+                try:
+                    response = await self.circuit_breaker.call(
+                        self._make_openai_request,
+                        prompt
+                    )
+                except CircuitBreakerError as e:
+                    log_with_context(
+                        logger,
+                        logging.ERROR,
+                        "OpenAI API circuit breaker is open",
+                        correlation_id=correlation_id
+                    )
+                    error_tracker.track_error(
+                        "CircuitBreakerOpen",
+                        "OpenAI API is currently unavailable due to circuit breaker",
+                        "openai_service",
+                        correlation_id,
+                        {"circuit_breaker": "openai_api"},
+                        AlertSeverity.HIGH
+                    )
+                    raise Exception("OpenAI service is currently unavailable. Please try again later.")
+                
+                if not response.choices or not response.choices[0].message.content:
+                    log_with_context(
+                        logger,
+                        logging.ERROR,
+                        "Empty response from OpenAI API",
+                        correlation_id=correlation_id
+                    )
+                    raise Exception("Empty response from OpenAI API")
+                    
+                analysis_text = response.choices[0].message.content.strip()
+                
+                log_with_context(
+                    logger,
+                    logging.DEBUG,
+                    "Received OpenAI response",
+                    response_length=len(analysis_text),
+                    correlation_id=correlation_id
+                )
+                
+                return self.parse_analysis_response(analysis_text)
             
-            log_with_context(
-                logger,
-                logging.DEBUG,
-                "Received OpenAI response",
-                response_length=len(analysis_text),
-                correlation_id=correlation_id
-            )
-            
-            result = self.parse_analysis_response(analysis_text)
-            
-            # Record successful metrics
-            duration = time.time() - start_time
-            metrics.record_service_call("openai", "analyze_job_ad", True, duration)
-            error_tracker.track_service_call("openai", "analyze_job_ad", True, duration)
-            
-            log_with_context(
-                logger,
-                logging.INFO,
-                "Job ad analysis completed",
-                trust_score=result.trust_score,
-                classification=result.classification_text,
-                confidence=result.confidence,
-                duration_seconds=duration,
-                correlation_id=correlation_id
-            )
-            
-            return result
+            # Perform analysis through circuit breaker
+            try:
+                result = await circuit_breaker.call(_perform_analysis)
+                
+                # Record successful metrics
+                duration = time.time() - start_time
+                metrics.record_service_call("openai", "analyze_job_ad", True, duration)
+                error_tracker.track_service_call("openai", "analyze_job_ad", True, duration)
+                
+                log_with_context(
+                    logger,
+                    logging.INFO,
+                    "Job ad analysis completed",
+                    trust_score=result.trust_score,
+                    classification=result.classification_text,
+                    confidence=result.confidence,
+                    duration_seconds=duration,
+                    correlation_id=correlation_id
+                )
+                
+                # Cache result if confidence is high enough (cost optimization)
+                if result.confidence >= self.min_confidence_to_cache:
+                    try:
+                        await caching_service.cache_analysis_result(
+                            sanitized_text, 
+                            result, 
+                            ttl=self.cache_ttl
+                        )
+                        metrics.increment_counter("openai_result_cached")
+                        log_with_context(
+                            logger,
+                            logging.DEBUG,
+                            "High-confidence analysis result cached for cost savings",
+                            confidence=result.confidence,
+                            trust_score=result.trust_score,
+                            cache_ttl_hours=self.cache_ttl // 3600,
+                            correlation_id=correlation_id
+                        )
+                    except Exception as cache_error:
+                        # Don't fail the request if caching fails
+                        logger.warning(
+                            f"Failed to cache analysis result: {cache_error}",
+                            extra={"correlation_id": correlation_id}
+                        )
+                        metrics.increment_counter("openai_cache_error")
+                else:
+                    log_with_context(
+                        logger,
+                        logging.DEBUG,
+                        "Analysis result not cached (confidence too low)",
+                        confidence=result.confidence,
+                        min_confidence=self.min_confidence_to_cache,
+                        correlation_id=correlation_id
+                    )
+                    metrics.increment_counter("openai_result_not_cached")
+                
+                return result
+                
+            except CircuitBreakerError:
+                # Circuit breaker is open, provide fallback response
+                duration = time.time() - start_time
+                metrics.record_service_call("openai", "analyze_job_ad", False, duration)
+                error_tracker.track_service_call("openai", "analyze_job_ad", False, duration)
+                
+                log_with_context(
+                    logger,
+                    logging.WARNING,
+                    "OpenAI circuit breaker is open, using fallback analysis",
+                    duration_seconds=duration,
+                    correlation_id=correlation_id
+                )
+                
+                # Return a conservative fallback result
+                from app.models.data_models import JobClassification
+                return JobAnalysisResult(
+                    trust_score=50,
+                    classification=JobClassification.SUSPICIOUS,
+                    reasons=[
+                        "Analysis service temporarily unavailable",
+                        "Please verify job details independently",
+                        "Check company information and contact details",
+                        "Be cautious of any upfront payment requests"
+                    ],
+                    confidence=0.3
+                )
             
         except openai.APITimeoutError as e:
             duration = time.time() - start_time
@@ -398,14 +548,20 @@ Respond ONLY with valid JSON in this exact format:
                     "error": "OpenAI API key not configured"
                 }
             
-            # For now, just check configuration without making API calls
-            # API calls will be tested during actual usage
+            # Include circuit breaker status in health check
+            circuit_status = self.circuit_breaker.get_status()
+            
             return {
-                "status": "healthy",
+                "status": "healthy" if circuit_status["state"] != "open" else "degraded",
                 "service": "openai",
                 "model": self.model,
                 "api_key_configured": True,
-                "note": "Configuration validated, API calls will be tested during usage"
+                "circuit_breaker": {
+                    "state": circuit_status["state"],
+                    "failure_count": circuit_status["failure_count"],
+                    "next_attempt_time": circuit_status["next_attempt_time"]
+                },
+                "note": "Configuration validated, circuit breaker protection enabled"
             }
         except Exception as e:
             return {
@@ -415,3 +571,56 @@ Respond ONLY with valid JSON in this exact format:
                 "api_key_configured": bool(self.config.openai_api_key),
                 "error": str(e)
             }
+    
+    def get_circuit_breaker_status(self) -> dict:
+        """
+        Get the current status of the OpenAI circuit breaker.
+        
+        Returns:
+            dict: Circuit breaker status information
+        """
+        return self.circuit_breaker.get_status()
+    
+    async def cleanup(self):
+        """
+        Clean up resources used by the OpenAI Analysis service.
+        
+        This method handles graceful cleanup of any resources, connections,
+        or HTTP clients used by the service.
+        """
+        correlation_id = get_correlation_id()
+        
+        try:
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Cleaning up OpenAI Analysis service resources",
+                model=self.model,
+                correlation_id=correlation_id
+            )
+            
+            # Close the OpenAI client if it has a close method
+            if hasattr(self.client, 'close'):
+                try:
+                    await self.client.close()
+                except Exception as e:
+                    logger.warning(f"Could not close OpenAI client: {e}")
+            
+            # Clear any references to prevent memory leaks
+            self.client = None
+            
+            log_with_context(
+                logger,
+                logging.INFO,
+                "OpenAI Analysis service cleanup completed successfully",
+                correlation_id=correlation_id
+            )
+            
+        except Exception as e:
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Error during OpenAI Analysis service cleanup",
+                error=str(e),
+                correlation_id=correlation_id
+            )

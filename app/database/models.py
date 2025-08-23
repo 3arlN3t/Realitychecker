@@ -125,6 +125,11 @@ class UserInteraction(Base):
         Index("idx_user_interactions_message_sid", "message_sid"),
         Index("idx_user_interactions_classification", "classification"),
         Index("idx_user_interactions_error_type", "error_type"),
+        # Composite indexes for analytics queries
+        Index("idx_user_interactions_user_timestamp", "user_id", "timestamp"),
+        Index("idx_user_interactions_classification_timestamp", "classification", "timestamp"),
+        Index("idx_user_interactions_trust_score_timestamp", "trust_score", "timestamp"),
+        Index("idx_user_interactions_response_time_timestamp", "response_time", "timestamp"),
         CheckConstraint("trust_score >= 0 AND trust_score <= 1", name="check_trust_score_range"),
         CheckConstraint("confidence >= 0 AND confidence <= 1", name="check_confidence_range"),
         CheckConstraint("response_time >= 0", name="check_response_time_non_negative"),
@@ -164,6 +169,10 @@ class SystemMetric(Base):
     # Indexes
     __table_args__ = (
         Index("idx_system_metrics_timestamp", "timestamp"),
+        # Composite indexes for performance monitoring queries
+        Index("idx_system_metrics_timestamp_cpu", "timestamp", "cpu_usage"),
+        Index("idx_system_metrics_timestamp_memory", "timestamp", "memory_usage"),
+        Index("idx_system_metrics_timestamp_requests", "timestamp", "total_requests"),
         CheckConstraint("cpu_usage >= 0 AND cpu_usage <= 100", name="check_cpu_usage_range"),
         CheckConstraint("memory_usage >= 0 AND memory_usage <= 100", name="check_memory_usage_range"),
         CheckConstraint("disk_usage >= 0 AND disk_usage <= 100", name="check_disk_usage_range"),

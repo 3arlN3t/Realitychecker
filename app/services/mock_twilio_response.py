@@ -219,6 +219,46 @@ class MockTwilioResponseService:
             "note": "Mock service for development - always returns success"
         }
     
+    async def cleanup(self):
+        """
+        Clean up resources used by the mock Twilio service.
+        
+        This method handles graceful cleanup of any resources or data
+        used by the mock service.
+        """
+        correlation_id = get_correlation_id()
+        
+        try:
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Cleaning up mock Twilio service resources",
+                messages_to_clear=len(self.sent_messages),
+                correlation_id=correlation_id
+            )
+            
+            # Clear sent messages
+            self.sent_messages.clear()
+            
+            # Clear any references
+            self.config = None
+            
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Mock Twilio service cleanup completed successfully",
+                correlation_id=correlation_id
+            )
+            
+        except Exception as e:
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Error during mock Twilio service cleanup",
+                error=str(e),
+                correlation_id=correlation_id
+            )
+    
     def get_sent_messages(self) -> list:
         """Get all messages that would have been sent (for testing)."""
         return self.sent_messages

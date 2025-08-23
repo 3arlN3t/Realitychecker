@@ -26,7 +26,7 @@ router = APIRouter(prefix="/health", tags=["health"])
 
 async def check_openai_health(config: AppConfig) -> Dict[str, Any]:
     """
-    Check OpenAI service health.
+    Check OpenAI service health with circuit breaker protection.
     
     Args:
         config: Application configuration
@@ -34,31 +34,51 @@ async def check_openai_health(config: AppConfig) -> Dict[str, Any]:
     Returns:
         Dict containing health status and details
     """
+    from app.utils.circuit_breaker import get_circuit_breaker, CircuitBreakerConfig, CircuitBreakerError
+    
     try:
         if not config.openai_api_key or not config.openai_api_key.startswith('sk-'):
             return {
                 "status": "not_configured",
                 "message": "OpenAI API key not configured",
-                "response_time_ms": 0
+                "response_time_ms": 0,
+                "circuit_breaker": "disabled"
             }
         
-        # Test OpenAI connection with a minimal request
+        # Get circuit breaker for OpenAI health checks
+        circuit_breaker = get_circuit_breaker(
+            "openai_health_check",
+            CircuitBreakerConfig(
+                failure_threshold=3,
+                recovery_timeout=30,
+                timeout=10.0
+            )
+        )
+        
+        async def _check_openai_api():
+            """Internal function to check OpenAI API."""
+            # Import here to avoid circular imports
+            from openai import AsyncOpenAI
+            
+            client = AsyncOpenAI(api_key=config.openai_api_key)
+            
+            try:
+                # Use a minimal completion request to test the connection
+                response = await client.chat.completions.create(
+                    model="gpt-3.5-turbo",  # Use cheaper model for health check
+                    messages=[{"role": "user", "content": "test"}],
+                    max_tokens=1,
+                    timeout=5.0
+                )
+                return response
+            finally:
+                await client.close()
+        
+        # Test OpenAI connection through circuit breaker
         start_time = time.time()
         
-        # Import here to avoid circular imports
-        from openai import AsyncOpenAI
-        
-        client = AsyncOpenAI(api_key=config.openai_api_key)
-        
-        # Make a simple API call to test connectivity
         try:
-            # Use a minimal completion request to test the connection
-            response = await client.chat.completions.create(
-                model="gpt-3.5-turbo",  # Use cheaper model for health check
-                messages=[{"role": "user", "content": "test"}],
-                max_tokens=1,
-                timeout=5.0
-            )
+            await circuit_breaker.call(_check_openai_api)
             
             response_time = (time.time() - start_time) * 1000
             
@@ -66,7 +86,16 @@ async def check_openai_health(config: AppConfig) -> Dict[str, Any]:
                 "status": "healthy",
                 "message": "OpenAI API accessible",
                 "response_time_ms": round(response_time, 2),
-                "model": config.openai_model
+                "model": config.openai_model,
+                "circuit_breaker": circuit_breaker.get_status()
+            }
+            
+        except CircuitBreakerError:
+            return {
+                "status": "circuit_open",
+                "message": "OpenAI service circuit breaker is open",
+                "response_time_ms": 0,
+                "circuit_breaker": circuit_breaker.get_status()
             }
             
         except Exception as api_error:
@@ -76,24 +105,23 @@ async def check_openai_health(config: AppConfig) -> Dict[str, Any]:
             return {
                 "status": "degraded",
                 "message": f"OpenAI API error: {str(api_error)[:100]}",
-                "response_time_ms": round(response_time, 2)
+                "response_time_ms": round(response_time, 2),
+                "circuit_breaker": circuit_breaker.get_status()
             }
-        
-        finally:
-            await client.close()
             
     except Exception as e:
         logger.error(f"OpenAI health check failed: {e}")
         return {
             "status": "unhealthy",
             "message": f"OpenAI health check error: {str(e)[:100]}",
-            "response_time_ms": 0
+            "response_time_ms": 0,
+            "circuit_breaker": "error"
         }
 
 
 async def check_twilio_health(config: AppConfig) -> Dict[str, Any]:
     """
-    Check Twilio service health.
+    Check Twilio service health with circuit breaker protection.
     
     Args:
         config: Application configuration
@@ -101,24 +129,42 @@ async def check_twilio_health(config: AppConfig) -> Dict[str, Any]:
     Returns:
         Dict containing health status and details
     """
+    from app.utils.circuit_breaker import get_circuit_breaker, CircuitBreakerConfig, CircuitBreakerError
+    
     try:
         if not all([config.twilio_account_sid, config.twilio_auth_token, config.twilio_phone_number]):
             return {
                 "status": "not_configured",
                 "message": "Twilio credentials not configured",
-                "response_time_ms": 0
+                "response_time_ms": 0,
+                "circuit_breaker": "disabled"
             }
+        
+        # Get circuit breaker for Twilio health checks
+        circuit_breaker = get_circuit_breaker(
+            "twilio_health_check",
+            CircuitBreakerConfig(
+                failure_threshold=3,
+                recovery_timeout=30,
+                timeout=10.0
+            )
+        )
+        
+        async def _check_twilio_api():
+            """Internal function to check Twilio API."""
+            # Import here to avoid circular imports
+            from twilio.rest import Client
+            
+            client = Client(config.twilio_account_sid, config.twilio_auth_token)
+            
+            # Test Twilio connection by fetching account info
+            account = client.api.accounts(config.twilio_account_sid).fetch()
+            return account
         
         start_time = time.time()
         
-        # Import here to avoid circular imports
-        from twilio.rest import Client
-        
-        client = Client(config.twilio_account_sid, config.twilio_auth_token)
-        
         try:
-            # Test Twilio connection by fetching account info
-            account = client.api.accounts(config.twilio_account_sid).fetch()
+            account = await circuit_breaker.call(_check_twilio_api)
             
             response_time = (time.time() - start_time) * 1000
             
@@ -127,7 +173,16 @@ async def check_twilio_health(config: AppConfig) -> Dict[str, Any]:
                 "message": "Twilio API accessible",
                 "response_time_ms": round(response_time, 2),
                 "account_status": account.status,
-                "phone_number": config.twilio_phone_number
+                "phone_number": config.twilio_phone_number,
+                "circuit_breaker": circuit_breaker.get_status()
+            }
+            
+        except CircuitBreakerError:
+            return {
+                "status": "circuit_open",
+                "message": "Twilio service circuit breaker is open",
+                "response_time_ms": 0,
+                "circuit_breaker": circuit_breaker.get_status()
             }
             
         except Exception as api_error:
@@ -137,7 +192,8 @@ async def check_twilio_health(config: AppConfig) -> Dict[str, Any]:
             return {
                 "status": "degraded",
                 "message": f"Twilio API error: {str(api_error)[:100]}",
-                "response_time_ms": round(response_time, 2)
+                "response_time_ms": round(response_time, 2),
+                "circuit_breaker": circuit_breaker.get_status()
             }
             
     except Exception as e:
@@ -145,7 +201,8 @@ async def check_twilio_health(config: AppConfig) -> Dict[str, Any]:
         return {
             "status": "unhealthy",
             "message": f"Twilio health check error: {str(e)[:100]}",
-            "response_time_ms": 0
+            "response_time_ms": 0,
+            "circuit_breaker": "error"
         }
 
 
@@ -376,3 +433,65 @@ async def liveness_check() -> Dict[str, Any]:
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "message": "Application is alive"
     }
+
+
+@router.get("/circuit-breakers")
+async def circuit_breakers_status() -> Dict[str, Any]:
+    """
+    Get status of all circuit breakers.
+    
+    Returns:
+        Dict containing circuit breaker statuses
+    """
+    try:
+        from app.utils.circuit_breaker import get_circuit_breaker_manager
+        
+        manager = get_circuit_breaker_manager()
+        return {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "circuit_breakers": manager.get_all_status()
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get circuit breaker status: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve circuit breaker status"
+        )
+
+
+@router.get("/alerts")
+async def active_alerts() -> Dict[str, Any]:
+    """
+    Get active alerts from the error tracking system.
+    
+    Returns:
+        Dict containing active alerts
+    """
+    try:
+        error_tracker = get_error_tracker()
+        active_alerts = error_tracker.get_active_alerts()
+        
+        return {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "active_alerts": [
+                {
+                    "id": alert.id,
+                    "type": alert.alert_type.value,
+                    "severity": alert.severity.value,
+                    "title": alert.title,
+                    "message": alert.message,
+                    "timestamp": alert.timestamp.isoformat(),
+                    "context": alert.context
+                }
+                for alert in active_alerts
+            ],
+            "alert_count": len(active_alerts)
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get active alerts: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve active alerts"
+        )
