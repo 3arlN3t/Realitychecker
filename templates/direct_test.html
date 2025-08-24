@@ -140,16 +140,16 @@
         .container {
             flex: 1;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
-            padding: 2rem;
+            padding: 4rem 2rem 2rem;
             min-height: calc(100vh - 120px);
         }
 
         .main-content {
             width: 100%;
-            max-width: 600px;
-            margin-top: -8rem;
+            max-width: 700px;
+            margin-top: 2rem;
         }
 
 
@@ -171,13 +171,14 @@
             overflow: hidden;
             animation: slideUp 0.8s ease-out;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-bottom: 2rem;
         }
 
         .analysis-card:hover {
-            transform: translateY(-8px) scale(1.02);
+            transform: translateY(-4px) scale(1.01);
             box-shadow: 
-                0 40px 80px rgba(0, 0, 0, 0.2),
-                0 12px 40px rgba(102, 126, 234, 0.2),
+                0 35px 70px rgba(0, 0, 0, 0.18),
+                0 10px 35px rgba(102, 126, 234, 0.15),
                 0 0 0 1px rgba(255, 255, 255, 0.4),
                 inset 0 1px 0 rgba(255, 255, 255, 0.5),
                 inset 0 -1px 0 rgba(102, 126, 234, 0.1);
@@ -232,18 +233,32 @@
 
         .card-header {
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 2.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
         }
 
         .card-title {
-            font-size: 2rem;
+            font-size: 2.2rem;
             font-weight: 700;
             background: linear-gradient(135deg, #667eea, #764ba2);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
             text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+        
+        .card-title i {
+            font-size: 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .chat-input-container {
@@ -499,18 +514,21 @@
 
         .result-card {
             display: none;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-radius: 28px;
             padding: 3rem;
             margin-top: 2rem;
             box-shadow: 
-                0 20px 40px rgba(0, 0, 0, 0.1),
-                0 0 0 1px rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+                0 25px 50px rgba(0, 0, 0, 0.15),
+                0 8px 32px rgba(102, 126, 234, 0.1),
+                0 0 0 1px rgba(255, 255, 255, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.4);
             position: relative;
             overflow: hidden;
+            animation: slideUp 0.8s ease-out;
         }
 
         .result-card::before {
@@ -644,17 +662,41 @@
 
         @media (max-width: 768px) {
             .container {
-                padding: 1rem;
+                padding: 2rem 1rem 1rem;
                 align-items: flex-start;
-                padding-top: 2rem;
+            }
+            
+            .main-content {
+                margin-top: 1rem;
+                max-width: 100%;
             }
             
             .analysis-card {
-                padding: 2rem;
+                padding: 2rem 1.5rem;
+                border-radius: 20px;
+            }
+            
+            .card-title {
+                font-size: 1.8rem;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .card-title i {
+                font-size: 1.5rem;
+            }
+            
+            .header-content {
+                padding: 0 1rem;
             }
             
             .floating-shape {
                 display: none;
+            }
+            
+            .result-card {
+                padding: 2rem 1.5rem;
+                border-radius: 20px;
             }
         }
     </style>
@@ -683,8 +725,16 @@
         <div class="main-content">
             <div class="analysis-card">
             <div class="card-header">
-                <h2 class="card-title">Analyze Job Advertisement</h2>
-                <p style="color: #6b7280; margin: 0;">Upload text or PDF to get instant scam detection results</p>
+                <h2 class="card-title">
+                    <i class="fas fa-search"></i>
+                    Analyze Job Advertisement
+                </h2>
+                <p style="color: #6b7280; margin: 0; font-size: 1.1rem; font-weight: 500;">Upload text or PDF to get instant scam detection results</p>
+                <div style="margin-top: 1rem; display: flex; align-items: center; justify-content: center; gap: 1rem; font-size: 0.9rem; color: #9ca3af;">
+                    <span><i class="fas fa-shield-alt" style="color: #10b981;"></i> AI-Powered</span>
+                    <span><i class="fas fa-clock" style="color: #f59e0b;"></i> Instant Results</span>
+                    <span><i class="fas fa-lock" style="color: #6366f1;"></i> Secure</span>
+                </div>
             </div>
             
             <div class="chat-input-container">
@@ -737,6 +787,23 @@
             <div id="reasoning" class="reasoning">
                 <h3>📋 Analysis Details</h3>
                 <ul id="reasoningList"></ul>
+            </div>
+            
+            <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid rgba(102, 126, 234, 0.1); text-align: center;">
+                <button onclick="startNewAnalysis()" style="
+                    background: linear-gradient(135deg, #667eea, #764ba2);
+                    color: white;
+                    border: none;
+                    padding: 0.875rem 2rem;
+                    border-radius: 14px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+                ">
+                    <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>
+                    Analyze Another Job Ad
+                </button>
             </div>
         </div>
 
@@ -1114,6 +1181,34 @@
                 hiddenInput.files = files;
                 handleFileSelect();
             }
+        }
+        
+        function startNewAnalysis() {
+            // Reset the form
+            document.getElementById('chatInput').value = '';
+            removeFile();
+            
+            // Hide result card
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'none';
+            
+            // Reset input height
+            const input = document.getElementById('chatInput');
+            input.style.height = 'auto';
+            
+            // Update button visibility
+            handleInputChange();
+            
+            // Scroll back to input
+            document.querySelector('.analysis-card').scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+            
+            // Focus on input
+            setTimeout(() => {
+                input.focus();
+            }, 500);
         }
     </script>
 </body>

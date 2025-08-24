@@ -14,6 +14,7 @@ function initializeUnifiedForm() {
     const hiddenFileInput = document.getElementById('hiddenFileInput');
     const jobInput = document.getElementById('jobInput');
     const removeFileBtn = document.getElementById('removeFile');
+    const uploadArea = document.querySelector('.upload-area');
     
     if (unifiedForm) {
         // Handle form submission
@@ -41,6 +42,13 @@ function initializeUnifiedForm() {
         fileUploadBtn.addEventListener('click', function() {
             hiddenFileInput.click();
         });
+        
+        // Handle upload area click
+        if (uploadArea) {
+            uploadArea.addEventListener('click', function() {
+                hiddenFileInput.click();
+            });
+        }
         
         // Handle file selection
         hiddenFileInput.addEventListener('change', function(e) {
@@ -195,26 +203,45 @@ function displayResults(response) {
         scoreCircle.classList.add('score-low');
     }
     
-    // Update classification
-    document.getElementById('classification').textContent = result.classification;
+    // Update classification with appropriate icon
+    const classificationElement = document.getElementById('classification');
+    let classificationIcon = '';
+    if (result.classification.toLowerCase().includes('legitimate')) {
+        classificationIcon = '<i class="fas fa-check-circle text-success me-2"></i>';
+    } else if (result.classification.toLowerCase().includes('scam')) {
+        classificationIcon = '<i class="fas fa-exclamation-triangle text-danger me-2"></i>';
+    } else {
+        classificationIcon = '<i class="fas fa-question-circle text-warning me-2"></i>';
+    }
+    classificationElement.innerHTML = classificationIcon + result.classification;
     
     // Update reasoning
     const reasoningElement = document.getElementById('reasoning');
-    let reasoningHtml = '<h6>Analysis Details:</h6><ul class="list-unstyled">';
+    let reasoningHtml = '<h6 class="mb-3">Key Findings:</h6><ul class="list-unstyled">';
     
     result.reasoning.forEach(reason => {
-        reasoningHtml += `<li class="mb-2"><i class="fas fa-check-circle text-primary me-2"></i>${reason}</li>`;
+        reasoningHtml += `<li>${reason}</li>`;
     });
     
     reasoningHtml += '</ul>';
     reasoningElement.innerHTML = reasoningHtml;
     
+    // Update timestamp
+    const now = new Date();
+    const timestamp = now.toLocaleString();
+    document.getElementById('analysisTimestamp').textContent = `Analysis completed at ${timestamp}`;
+    
     // Show results and hide input form
     document.querySelector('.card').style.display = 'none';
     document.getElementById('resultCard').style.display = 'block';
     
-    // Scroll to results
-    document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
+    // Scroll to results with smooth animation
+    setTimeout(() => {
+        document.getElementById('resultCard').scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'start'
+        });
+    }, 100);
 }
 
 function showLoading() {
