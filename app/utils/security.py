@@ -164,8 +164,13 @@ class SecurityValidator:
         """
         Validate phone number format for WhatsApp integration.
         
+        Accepts WhatsApp phone numbers in formats:
+        - whatsapp:+1234567890
+        - whatsapp:1234567890
+        - whatsapp:+1 (234) 567-8900 (with basic formatting)
+        
         Args:
-            phone: Phone number to validate
+            phone: Phone number to validate (must start with 'whatsapp:')
             
         Returns:
             Tuple of (is_valid, error_message)
@@ -177,19 +182,28 @@ class SecurityValidator:
         if len(phone) > MAX_PHONE_LENGTH:
             return False, f"Phone number too long (max {MAX_PHONE_LENGTH} characters)"
         
-        # WhatsApp phone numbers should start with 'whatsapp:+'
-        if not phone.startswith('whatsapp:+'):
+        # WhatsApp phone numbers should start with 'whatsapp:'
+        if not phone.startswith('whatsapp:'):
             return False, "Invalid WhatsApp phone number format"
         
         # Extract the actual phone number part
-        phone_part = phone.replace('whatsapp:+', '')
+        phone_part = phone.replace('whatsapp:', '')
         
-        # Should contain only digits
-        if not phone_part.isdigit():
-            return False, "Phone number should contain only digits"
+        # Check if we have any phone number after the prefix
+        if not phone_part:
+            return False, "No phone number provided after 'whatsapp:' prefix"
+        
+        # Handle both +1234567890 and 1234567890 formats
+        if phone_part.startswith('+'):
+            phone_part = phone_part[1:]
+        
+        # Should contain only digits (allow some special characters like spaces, dashes, parentheses)
+        clean_phone = re.sub(r'[\s\-\(\)]', '', phone_part)
+        if not clean_phone.isdigit():
+            return False, "Phone number should contain only digits and basic formatting"
         
         # Should be reasonable length (7-15 digits for international numbers)
-        if len(phone_part) < 7 or len(phone_part) > 15:
+        if len(clean_phone) < 7 or len(clean_phone) > 15:
             return False, "Phone number length invalid"
         
         return True, None
@@ -212,6 +226,10 @@ class SecurityValidator:
         if len(message_sid) < 3:
             return False, "Message SID too short"
         
+        # Check for maximum reasonable length
+        if len(message_sid) > 100:
+            return False, "Message SID too long"
+        
         # Standard Twilio message SIDs: SM + 32 hex chars
         if message_sid.startswith('SM') and len(message_sid) == 34:
             # Should be SM followed by 32 hex characters
@@ -228,6 +246,14 @@ class SecurityValidator:
                 return True, None
             else:
                 return False, "Test message SID contains invalid characters"
+        
+        # Allow other Twilio SID formats (MM, MG, etc.)
+        elif re.match(r'^[A-Z]{2}[A-Fa-f0-9]{32}$', message_sid):
+            return True, None
+        
+        # Be more lenient for development/testing
+        elif re.match(r'^[A-Za-z0-9_\-]+$', message_sid) and len(message_sid) >= 10:
+            return True, None
         
         else:
             return False, "Invalid Twilio message SID format"

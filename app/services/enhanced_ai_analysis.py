@@ -358,21 +358,25 @@ class EnhancedAIAnalysisService(OpenAIAnalysisService):
             prompt = self.build_analysis_prompt(job_text)
             
             # Stream the response
-            stream = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an expert job market analyst specializing in identifying employment scams. Analyze job postings carefully and provide structured responses."
-                    },
-                    {
-                        "role": "user", 
-                        "content": prompt
-                    }
-                ],
-                temperature=0.3,
-                max_tokens=1000,
-                stream=True
+            stream = await asyncio.wait_for(
+                self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are an expert job market analyst specializing in identifying employment scams. Analyze job postings carefully and provide structured responses."
+                        },
+                        {
+                            "role": "user", 
+                            "content": prompt
+                        }
+                    ],
+                    temperature=0.3,
+                    max_tokens=1000,
+                    stream=True,
+                    timeout=8.0
+                ),
+                timeout=10.0
             )
             
             collected_chunks = []
@@ -621,21 +625,24 @@ class EnhancedAIAnalysisService(OpenAIAnalysisService):
         
         # Perform the analysis
         try:
-            response = await self.client.chat.completions.create(
-                model=model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an expert job market analyst specializing in identifying employment scams. Analyze job postings carefully and provide structured responses."
-                    },
-                    {
-                        "role": "user", 
-                        "content": prompt
-                    }
-                ],
-                temperature=0.3,
-                max_tokens=1000,
-                timeout=30.0
+            response = await asyncio.wait_for(
+                self.client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are an expert job market analyst specializing in identifying employment scams. Analyze job postings carefully and provide structured responses."
+                        },
+                        {
+                            "role": "user", 
+                            "content": prompt
+                        }
+                    ],
+                    temperature=0.3,
+                    max_tokens=1000,
+                    timeout=8.0
+                ),
+                timeout=10.0
             )
             
             if not response.choices or not response.choices[0].message.content:
@@ -768,21 +775,24 @@ class EnhancedAIAnalysisService(OpenAIAnalysisService):
         
         prompt = self.build_analysis_prompt(job_text)
         
-        response = await self.client.chat.completions.create(
-            model=model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are an expert job market analyst specializing in identifying employment scams. Analyze job postings carefully and provide structured responses."
-                },
-                {
-                    "role": "user", 
-                    "content": prompt
-                }
-            ],
-            temperature=0.3,
-            max_tokens=1000,
-            timeout=30.0
+        response = await asyncio.wait_for(
+            self.client.chat.completions.create(
+                model=model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an expert job market analyst specializing in identifying employment scams. Analyze job postings carefully and provide structured responses."
+                    },
+                    {
+                        "role": "user", 
+                        "content": prompt
+                    }
+                ],
+                temperature=0.3,
+                max_tokens=800,  # Reduced from 1000 for faster response
+                timeout=6.0      # Reduced from 8.0 seconds
+            ),
+            timeout=8.0          # Reduced from 10.0 seconds
         )
         
         if not response.choices or not response.choices[0].message.content:

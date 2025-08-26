@@ -270,7 +270,7 @@ class ConnectionPoolManager:
     
     async def get_cached_result(self, cache_key: str) -> Optional[Any]:
         """
-        Get cached result from Redis.
+        Get cached result from Redis with timeout protection.
         
         Args:
             cache_key: Cache key
@@ -282,10 +282,18 @@ class ConnectionPoolManager:
             return None
         
         try:
-            result = await self.redis_client.get(cache_key)
+            # Add 2-second timeout to prevent webhook blocking
+            result = await asyncio.wait_for(
+                self.redis_client.get(cache_key),
+                timeout=2.0
+            )
             if result:
                 import json
                 return json.loads(result)
+        except asyncio.TimeoutError:
+            logger.warning(f"Redis get operation timed out for key: {cache_key}")
+            # Mark Redis as unavailable
+            self.redis_client = None
         except Exception as e:
             logger.warning(f"Cache get error: {e}")
         
@@ -305,10 +313,13 @@ class ConnectionPoolManager:
         
         try:
             import json
-            await self.redis_client.setex(
-                cache_key,
-                ttl,
-                json.dumps(data, default=str)
+            await asyncio.wait_for(
+                self.redis_client.setex(
+                    cache_key,
+                    ttl,
+                    json.dumps(data, default=str)
+                ),
+                timeout=2.0
             )
         except Exception as e:
             logger.warning(f"Cache set error: {e}")
@@ -324,9 +335,15 @@ class ConnectionPoolManager:
             return
         
         try:
-            keys = await self.redis_client.keys(pattern)
+            keys = await asyncio.wait_for(
+                self.redis_client.keys(pattern),
+                timeout=2.0
+            )
             if keys:
-                await self.redis_client.delete(*keys)
+                await asyncio.wait_for(
+                    self.redis_client.delete(*keys),
+                    timeout=2.0
+                )
                 logger.info(f"Invalidated {len(keys)} cache entries matching '{pattern}'")
         except Exception as e:
             logger.warning(f"Cache invalidation error: {e}")
@@ -392,8 +409,18 @@ class ConnectionPoolManager:
         # Redis health check
         if self.redis_client:
             try:
-                await self.redis_client.ping()
+                await asyncio.wait_for(
+                    self.redis_client.ping(),
+                    timeout=2.0
+                )
                 health["redis"] = {"status": "healthy"}
+            except asyncio.TimeoutError:
+                health["redis"] = {
+                    "status": "unhealthy",
+                    "error": "Redis ping timeout"
+                }
+                # Mark Redis as unavailable
+                self.redis_client = None
             except Exception as e:
                 health["redis"] = {
                     "status": "unhealthy",

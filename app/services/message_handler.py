@@ -7,6 +7,7 @@ analysis workflow for both text and media messages from WhatsApp users.
 """
 
 import logging
+import asyncio
 from typing import Optional
 
 from app.models.data_models import TwilioWebhookRequest, JobAnalysisResult, AppConfig, AnalysisResult, MessageType
@@ -150,16 +151,30 @@ class MessageHandlerService:
         )
         
         try:
-            # Check if user is blocked
-            if await self.user_service.is_user_blocked(from_number):
+            # Check if user is blocked (with timeout)
+            try:
+                is_blocked = await asyncio.wait_for(
+                    self.user_service.is_user_blocked(from_number),
+                    timeout=1.0  # 1 second timeout for user blocking check
+                )
+                if is_blocked:
+                    log_with_context(
+                        logger,
+                        logging.WARNING,
+                        "Blocked user attempted to send message",
+                        from_number=sanitize_phone_number(from_number),
+                        correlation_id=correlation_id
+                    )
+                    return True  # Silently ignore blocked users
+            except asyncio.TimeoutError:
                 log_with_context(
                     logger,
                     logging.WARNING,
-                    "Blocked user attempted to send message",
+                    "User blocking check timed out, proceeding with analysis",
                     from_number=sanitize_phone_number(from_number),
                     correlation_id=correlation_id
                 )
-                return True  # Silently ignore blocked users
+                # Continue processing if blocking check times out
             
             # Check for help/welcome requests first (before validation)
             if self._is_help_request(text):
@@ -170,16 +185,19 @@ class MessageHandlerService:
                     from_number=sanitize_phone_number(from_number),
                     correlation_id=correlation_id
                 )
-                success = self.twilio_service.send_welcome_message(from_number)
+                success = await asyncio.wait_for(
+                self.twilio_service.send_welcome_message(from_number),
+                timeout=5.0  # 5 second timeout for Twilio API
+            )
                 
-                # Record help interaction
+                # Record help interaction (non-blocking)
                 response_time = time.time() - start_time
-                await self.user_service.record_interaction(
+                asyncio.create_task(self._record_interaction_safe(
                     phone_number=from_number,
                     message_type="text",
                     message_content="help request",
                     response_time=response_time
-                )
+                ))
                 
                 return success
             
@@ -197,19 +215,19 @@ class MessageHandlerService:
                 error_message = "Content validation failed"
                 success = await self._send_content_validation_error(from_number)
                 
-                # Record validation error interaction
+                # Record validation error interaction (non-blocking)
                 response_time = time.time() - start_time
-                await self.user_service.record_interaction(
+                asyncio.create_task(self._record_interaction_safe(
                     phone_number=from_number,
                     message_type="text",
                     message_content=text[:100] if text else None,
                     response_time=response_time,
                     error=error_message
-                )
+                ))
                 
                 return success
             
-            # Analyze job ad text
+            # Analyze job ad text with timeout protection
             log_with_context(
                 logger,
                 logging.INFO,
@@ -217,7 +235,10 @@ class MessageHandlerService:
                 from_number=sanitize_phone_number(from_number),
                 correlation_id=correlation_id
             )
-            analysis_result = await self.openai_service.analyze_job_ad(text)
+            analysis_result = await asyncio.wait_for(
+                self.openai_service.analyze_job_ad(text),
+                timeout=12.0  # 12 second timeout for entire analysis
+            )
             
             # Send analysis result back to user
             log_with_context(
@@ -229,17 +250,50 @@ class MessageHandlerService:
                 classification=analysis_result.classification_text,
                 correlation_id=correlation_id
             )
-            success = self.twilio_service.send_analysis_result(from_number, analysis_result)
+            success = await asyncio.wait_for(
+                self.twilio_service.send_analysis_result(from_number, analysis_result),
+                timeout=5.0  # 5 second timeout for Twilio API
+            )
             
-            # Record successful interaction
+            # Record successful interaction (non-blocking)
             response_time = time.time() - start_time
-            await self.user_service.record_interaction(
+            asyncio.create_task(self._record_interaction_safe(
                 phone_number=from_number,
                 message_type="text",
                 message_content=text[:100] if text else None,
                 analysis_result=analysis_result,
                 response_time=response_time
+            ))
+            
+            return success
+            
+        except asyncio.TimeoutError:
+            # Handle timeout specifically
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Analysis timed out",
+                from_number=sanitize_phone_number(from_number),
+                correlation_id=correlation_id
             )
+            error_message = "Analysis timeout"
+            success = await self._send_custom_error_message(
+                from_number,
+                "⏱️ *Analysis Taking Too Long*\n\n"
+                "The job analysis is taking longer than expected. "
+                "This might be due to high demand or complex content.\n\n"
+                "Please try again in a few minutes, or send a shorter job description."
+            )
+            
+            # Record timeout interaction (non-blocking)
+            response_time = time.time() - start_time
+            asyncio.create_task(self._record_interaction_safe(
+                phone_number=from_number,
+                message_type="text",
+                message_content=text[:100] if text else None,
+                response_time=response_time,
+                error=error_message
+            ))
             
             return success
             
@@ -258,15 +312,15 @@ class MessageHandlerService:
             error_message = str(e)
             success = await self._send_error_with_fallback(from_number, error_info)
             
-            # Record error interaction
+            # Record error interaction (non-blocking)
             response_time = time.time() - start_time
-            await self.user_service.record_interaction(
+            asyncio.create_task(self._record_interaction_safe(
                 phone_number=from_number,
                 message_type="text",
                 message_content=text[:100] if text else None,
                 response_time=response_time,
                 error=error_message
-            )
+            ))
             
             return success
     
@@ -297,16 +351,30 @@ class MessageHandlerService:
         )
         
         try:
-            # Check if user is blocked
-            if await self.user_service.is_user_blocked(from_number):
+            # Check if user is blocked (with timeout)
+            try:
+                is_blocked = await asyncio.wait_for(
+                    self.user_service.is_user_blocked(from_number),
+                    timeout=1.0  # 1 second timeout for user blocking check
+                )
+                if is_blocked:
+                    log_with_context(
+                        logger,
+                        logging.WARNING,
+                        "Blocked user attempted to send media message",
+                        from_number=sanitize_phone_number(from_number),
+                        correlation_id=correlation_id
+                    )
+                    return True  # Silently ignore blocked users
+            except asyncio.TimeoutError:
                 log_with_context(
                     logger,
                     logging.WARNING,
-                    "Blocked user attempted to send media message",
+                    "User blocking check timed out, proceeding with analysis",
                     from_number=sanitize_phone_number(from_number),
                     correlation_id=correlation_id
                 )
-                return True  # Silently ignore blocked users
+                # Continue processing if blocking check times out
             
             # Validate media type
             if not self._validate_media_type(media_content_type):
@@ -322,15 +390,15 @@ class MessageHandlerService:
                 error_message = f"Unsupported media type: {media_content_type}"
                 success = await self._send_media_type_error(from_number, media_content_type)
                 
-                # Record media type error interaction
+                # Record media type error interaction (non-blocking)
                 response_time = time.time() - start_time
-                await self.user_service.record_interaction(
+                asyncio.create_task(self._record_interaction_safe(
                     phone_number=from_number,
                     message_type="pdf",
                     message_content=f"media_type: {media_content_type}",
                     response_time=response_time,
                     error=error_message
-                )
+                ))
                 
                 return success
             
@@ -360,7 +428,7 @@ class MessageHandlerService:
                 await self._send_custom_error_message(from_number, user_message)
                 return False
             
-            # Analyze extracted text
+            # Analyze extracted text with timeout protection
             log_with_context(
                 logger,
                 logging.INFO,
@@ -369,7 +437,10 @@ class MessageHandlerService:
                 text_length=len(extracted_text),
                 correlation_id=correlation_id
             )
-            analysis_result = await self.openai_service.analyze_job_ad(extracted_text)
+            analysis_result = await asyncio.wait_for(
+                self.openai_service.analyze_job_ad(extracted_text),
+                timeout=12.0  # 12 second timeout for entire analysis
+            )
             
             # Send analysis result back to user
             log_with_context(
@@ -381,17 +452,50 @@ class MessageHandlerService:
                 classification=analysis_result.classification_text,
                 correlation_id=correlation_id
             )
-            success = self.twilio_service.send_analysis_result(from_number, analysis_result)
+            success = await asyncio.wait_for(
+                self.twilio_service.send_analysis_result(from_number, analysis_result),
+                timeout=5.0  # 5 second timeout for Twilio API
+            )
             
-            # Record successful interaction
+            # Record successful interaction (non-blocking)
             response_time = time.time() - start_time
-            await self.user_service.record_interaction(
+            asyncio.create_task(self._record_interaction_safe(
                 phone_number=from_number,
                 message_type="pdf",
                 message_content=extracted_text[:100] if extracted_text else None,
                 analysis_result=analysis_result,
                 response_time=response_time
+            ))
+            
+            return success
+            
+        except asyncio.TimeoutError:
+            # Handle timeout specifically
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "PDF analysis timed out",
+                from_number=sanitize_phone_number(from_number),
+                correlation_id=correlation_id
             )
+            error_message = "PDF analysis timeout"
+            success = await self._send_custom_error_message(
+                from_number,
+                "⏱️ *Analysis Taking Too Long*\n\n"
+                "The PDF analysis is taking longer than expected. "
+                "This might be due to high demand or complex content.\n\n"
+                "Please try again in a few minutes, or send the job details as text instead."
+            )
+            
+            # Record timeout interaction (non-blocking)
+            response_time = time.time() - start_time
+            asyncio.create_task(self._record_interaction_safe(
+                phone_number=from_number,
+                message_type="pdf",
+                message_content=f"media_url: {media_url}",
+                response_time=response_time,
+                error=error_message
+            ))
             
             return success
             
@@ -410,15 +514,15 @@ class MessageHandlerService:
             error_message = str(e)
             success = await self._send_error_with_fallback(from_number, error_info)
             
-            # Record error interaction
+            # Record error interaction (non-blocking)
             response_time = time.time() - start_time
-            await self.user_service.record_interaction(
+            asyncio.create_task(self._record_interaction_safe(
                 phone_number=from_number,
                 message_type="pdf",
                 message_content=f"media_url: {media_url}",
                 response_time=response_time,
                 error=error_message
-            )
+            ))
             
             return success
     
@@ -572,12 +676,23 @@ class MessageHandlerService:
             if not from_number.startswith("whatsapp:"):
                 from_number = f"whatsapp:{from_number}"
                 logger.info(f"Added whatsapp: prefix to number: {sanitize_phone_number(from_number)}")
-                
-            twilio_message = self.twilio_service.client.messages.create(
-                body=message,
-                from_=f"whatsapp:{self.config.twilio_phone_number}",
-                to=from_number
+            
+            # Use asyncio.wait_for to add timeout to Twilio API call
+            import asyncio
+            
+            def send_twilio_message():
+                return self.twilio_service.client.messages.create(
+                    body=message,
+                    from_=f"whatsapp:{self.config.twilio_phone_number}",
+                    to=from_number
+                )
+            
+            # Add 3-second timeout and run in thread pool to prevent blocking
+            twilio_message = await asyncio.wait_for(
+                asyncio.to_thread(send_twilio_message),
+                timeout=3.0
             )
+            
             log_with_context(
                 logger,
                 logging.INFO,
@@ -587,6 +702,17 @@ class MessageHandlerService:
                 correlation_id=get_correlation_id()
             )
             return True
+            
+        except asyncio.TimeoutError:
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Twilio API call timed out",
+                from_number=sanitize_phone_number(from_number),
+                correlation_id=get_correlation_id()
+            )
+            return False
+            
         except Exception as e:
             log_with_context(
                 logger,
@@ -642,6 +768,36 @@ class MessageHandlerService:
         )
         
         return await self._send_custom_error_message(from_number, error_message)
+    
+    async def _record_interaction_safe(self, **kwargs):
+        """
+        Record user interaction with timeout protection to prevent blocking.
+        
+        This method wraps the user_service.record_interaction call with a timeout
+        to ensure database operations don't block the webhook response.
+        """
+        try:
+            await asyncio.wait_for(
+                self.user_service.record_interaction(**kwargs),
+                timeout=2.0  # 2 second timeout for database operations
+            )
+        except asyncio.TimeoutError:
+            log_with_context(
+                logger,
+                logging.WARNING,
+                "Database interaction recording timed out",
+                phone_number=sanitize_phone_number(kwargs.get('phone_number', 'unknown')),
+                correlation_id=get_correlation_id()
+            )
+        except Exception as e:
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Failed to record interaction",
+                error=str(e),
+                phone_number=sanitize_phone_number(kwargs.get('phone_number', 'unknown')),
+                correlation_id=get_correlation_id()
+            )
     
     async def process_web_message(self, message_data: dict) -> AnalysisResult:
         """

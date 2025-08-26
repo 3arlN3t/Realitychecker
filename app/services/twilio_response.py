@@ -35,7 +35,7 @@ class TwilioResponseService:
             self.config.twilio_auth_token
         )
     
-    def send_analysis_result(self, to_number: str, result: JobAnalysisResult) -> bool:
+    async def send_analysis_result(self, to_number: str, result: JobAnalysisResult) -> bool:
         """
         Send job analysis result to user via WhatsApp.
         
@@ -56,10 +56,17 @@ class TwilioResponseService:
         try:
             message_body = self._format_analysis_message(result)
             
-            message = self.client.messages.create(
-                body=message_body,
-                from_=f"whatsapp:{self.config.twilio_phone_number}",
-                to=to_number
+            # Use asyncio.to_thread to prevent blocking
+            import asyncio
+            message = await asyncio.wait_for(
+                asyncio.to_thread(
+                    lambda: self.client.messages.create(
+                        body=message_body,
+                        from_=f"whatsapp:{self.config.twilio_phone_number}",
+                        to=to_number
+                    )
+                ),
+                timeout=3.0
             )
             
             duration = time.time() - start_time
@@ -79,6 +86,20 @@ class TwilioResponseService:
             )
             return True
             
+        except asyncio.TimeoutError:
+            duration = time.time() - start_time
+            metrics.record_service_call("twilio", "send_message", False, duration)
+            error_tracker.track_service_call("twilio", "send_message", False, duration)
+            
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Twilio API call timed out",
+                to_number=sanitize_phone_number(to_number),
+                duration_seconds=duration,
+                correlation_id=correlation_id
+            )
+            return False
         except TwilioException as e:
             duration = time.time() - start_time
             metrics.record_service_call("twilio", "send_message", False, duration)
@@ -127,7 +148,7 @@ class TwilioResponseService:
             )
             return False
     
-    def send_error_message(self, to_number: str, error_type: str = "general") -> bool:
+    async def send_error_message(self, to_number: str, error_type: str = "general") -> bool:
         """
         Send error message to user via WhatsApp.
         
@@ -148,10 +169,17 @@ class TwilioResponseService:
         try:
             message_body = self._get_error_message(error_type)
             
-            message = self.client.messages.create(
-                body=message_body,
-                from_=f"whatsapp:{self.config.twilio_phone_number}",
-                to=to_number
+            # Use asyncio.to_thread to prevent blocking
+            import asyncio
+            message = await asyncio.wait_for(
+                asyncio.to_thread(
+                    lambda: self.client.messages.create(
+                        body=message_body,
+                        from_=f"whatsapp:{self.config.twilio_phone_number}",
+                        to=to_number
+                    )
+                ),
+                timeout=3.0
             )
             
             duration = time.time() - start_time
@@ -219,7 +247,7 @@ class TwilioResponseService:
             )
             return False
     
-    def send_welcome_message(self, to_number: str) -> bool:
+    async def send_welcome_message(self, to_number: str) -> bool:
         """
         Send welcome/help message to user via WhatsApp.
         
@@ -249,10 +277,17 @@ class TwilioResponseService:
                 to_number = f"whatsapp:{to_number}"
                 logger.info(f"Added whatsapp: prefix to number: {sanitize_phone_number(to_number)}")
             
-            message = self.client.messages.create(
-                body=message_body,
-                from_=f"whatsapp:{self.config.twilio_phone_number}",
-                to=to_number
+            # Use asyncio.to_thread to prevent blocking
+            import asyncio
+            message = await asyncio.wait_for(
+                asyncio.to_thread(
+                    lambda: self.client.messages.create(
+                        body=message_body,
+                        from_=f"whatsapp:{self.config.twilio_phone_number}",
+                        to=to_number
+                    )
+                ),
+                timeout=3.0
             )
             
             duration = time.time() - start_time

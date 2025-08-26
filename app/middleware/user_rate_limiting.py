@@ -65,19 +65,38 @@ class RedisUserRateLimiter:
         
         if self.redis_client is None:
             try:
-                # Try to connect to Redis
-                self.redis_client = redis.from_url(
-                    "redis://localhost:6379",
-                    decode_responses=True,
-                    socket_connect_timeout=5,
-                    socket_timeout=5,
-                    retry_on_timeout=True
-                )
-                # Test connection
-                await self.redis_client.ping()
-                logger.info("✅ Connected to Redis for user rate limiting")
+                # Try to connect to Redis with multiple possible URLs
+                redis_urls = [
+                    "redis://redis:6379",      # Docker container
+                    "redis://localhost:6379",  # Local development
+                    "redis://127.0.0.1:6379"   # Alternative local
+                ]
+                
+                for redis_url in redis_urls:
+                    try:
+                        self.redis_client = redis.from_url(
+                            redis_url,
+                            decode_responses=True,
+                            socket_connect_timeout=2,
+                            socket_timeout=2,
+                            retry_on_timeout=False
+                        )
+                        # Test connection with short timeout
+                        await asyncio.wait_for(
+                            self.redis_client.ping(),
+                            timeout=1.0
+                        )
+                        logger.info(f"✅ Connected to Redis at {redis_url} for user rate limiting")
+                        break
+                    except Exception:
+                        self.redis_client = None
+                        continue
+                
+                if self.redis_client is None:
+                    raise Exception("No Redis instance available")
+                    
             except Exception as e:
-                logger.warning(f"❌ Redis not available, falling back to in-memory rate limiting: {e}")
+                logger.warning(f"❌ Redis not available, falling back to in-memory rate limiting: Error {e}")
                 self.redis_client = None
         
         self._initialized = True
@@ -139,7 +158,10 @@ class RedisUserRateLimiter:
             pipe.zcount(window_keys["day"], current_time - 86400, current_time)
             pipe.zcard(window_keys["total"])  # Total requests for trusted user check
             
-            counts = await pipe.execute()
+            counts = await asyncio.wait_for(
+                pipe.execute(),
+                timeout=2.0
+            )
             burst_count, minute_count, hour_count, day_count, total_count = counts
             
             # Check if user is trusted (gets higher limits)
@@ -220,6 +242,11 @@ class RedisUserRateLimiter:
                 "limits": effective_limits
             }
             
+        except asyncio.TimeoutError:
+            logger.warning(f"Redis rate limit check timed out", extra={"correlation_id": correlation_id})
+            # Mark Redis as unavailable and allow the request
+            self.redis_client = None
+            return True, None, {}
         except Exception as e:
             logger.error(f"Redis rate limit check failed: {e}", extra={"correlation_id": correlation_id})
             # On error, allow the request but log the issue
@@ -288,7 +315,10 @@ class RedisUserRateLimiter:
             pipe.zcount(window_keys["day"], current_time - 86400, current_time)
             pipe.zcard(window_keys["total"])
             
-            counts = await pipe.execute()
+            counts = await asyncio.wait_for(
+                pipe.execute(),
+                timeout=2.0
+            )
             burst_count, minute_count, hour_count, day_count, total_count = counts
             
             # Check if user is trusted

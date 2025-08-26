@@ -5,6 +5,7 @@ This module provides the webhook endpoint that receives incoming WhatsApp messag
 from Twilio and processes them through the message handling service.
 """
 
+import asyncio
 import logging
 import hashlib
 import hmac
@@ -24,6 +25,11 @@ from app.utils.error_handling import handle_error, ErrorCategory
 from app.utils.security import validate_webhook_request, SecurityValidator
 
 logger = get_logger(__name__)
+
+# Constants for validation
+MIN_TEXT_LENGTH = 20
+MAX_TEXT_LENGTH = 10000  # Prevent extremely large messages
+MAX_MEDIA_SIZE = 16 * 1024 * 1024  # 16MB limit for media
 
 # Create router for webhook endpoints
 router = APIRouter(prefix="/webhook", tags=["webhook"])
@@ -76,7 +82,7 @@ def validate_twilio_signature(
     is_valid = hmac.compare_digest(signature, expected_signature)
     
     if not is_valid:
-        logger.warning(f"Invalid Twilio signature. Expected: {expected_signature}, Got: {signature}")
+        logger.warning("Invalid Twilio signature detected")
     else:
         logger.debug("Twilio signature validation successful")
     
@@ -100,8 +106,8 @@ async def whatsapp_webhook(
     Twilio WhatsApp webhook endpoint for processing incoming messages.
     
     This endpoint receives webhook requests from Twilio when users send messages
-    to the WhatsApp bot. It validates the request, processes the message content,
-    and returns an appropriate response.
+    to the WhatsApp bot. It validates the request, processes the message content
+    asynchronously in the background, and returns an immediate response to Twilio.
     
     Args:
         request: FastAPI request object for signature validation
@@ -144,11 +150,41 @@ async def whatsapp_webhook(
             "NumMedia": str(NumMedia)
         }
         
-        # Add media parameters if present
+        # Add media parameters if present and validate media content
         if MediaUrl0:
             form_data["MediaUrl0"] = MediaUrl0
+            # Basic URL validation for media
+            if not MediaUrl0.startswith(('https://', 'http://')):
+                log_with_context(
+                    logger,
+                    logging.WARNING,
+                    "Invalid media URL format",
+                    message_sid=MessageSid,
+                    from_number=sanitize_phone_number(From),
+                    correlation_id=correlation_id
+                )
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid media URL format"
+                )
         if MediaContentType0:
             form_data["MediaContentType0"] = MediaContentType0
+            # Validate allowed media types
+            allowed_types = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'text/plain']
+            if MediaContentType0 not in allowed_types:
+                log_with_context(
+                    logger,
+                    logging.WARNING,
+                    "Unsupported media type",
+                    message_sid=MessageSid,
+                    from_number=sanitize_phone_number(From),
+                    media_type=MediaContentType0,
+                    correlation_id=correlation_id
+                )
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Unsupported media type: {MediaContentType0}"
+                )
         
         # Log MessageSid for debugging validation issues
         log_with_context(
@@ -161,6 +197,24 @@ async def whatsapp_webhook(
             from_number=sanitize_phone_number(From),
             correlation_id=correlation_id
         )
+        
+        # Validate Twilio signature for security FIRST (most important security check)
+        if not validate_twilio_signature(request, form_data, config):
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Webhook signature validation failed",
+                message_sid=MessageSid,
+                from_number=sanitize_phone_number(From),
+                webhook_validation_enabled=config.webhook_validation,
+                correlation_id=correlation_id
+            )
+            # Only fail if webhook validation is strictly enabled
+            if config.webhook_validation:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Invalid webhook signature"
+                )
         
         # Validate webhook request data for security
         is_valid, validation_error = validate_webhook_request(
@@ -175,6 +229,11 @@ async def whatsapp_webhook(
                 message_sid_length=len(MessageSid),
                 message_sid_prefix=MessageSid[:5] if len(MessageSid) >= 5 else MessageSid,
                 from_number=sanitize_phone_number(From),
+                to_number=sanitize_phone_number(To),
+                body_length=len(Body) if Body else 0,
+                has_media=NumMedia > 0,
+                media_url=MediaUrl0[:50] + "..." if MediaUrl0 and len(MediaUrl0) > 50 else MediaUrl0,
+                media_type=MediaContentType0,
                 validation_error=validation_error,
                 correlation_id=correlation_id
             )
@@ -183,23 +242,44 @@ async def whatsapp_webhook(
                 detail=f"Invalid request data: {validation_error}"
             )
         
-        # Sanitize input data
+        # Sanitize input data early (reuse validator instance if possible)
         security_validator = SecurityValidator()
         sanitized_body = security_validator.sanitize_text(Body) if Body else ""
         
-        # Validate Twilio signature for security
-        if not validate_twilio_signature(request, form_data, config):
+        # Early validation for text content length to avoid expensive processing
+        text_length = len(sanitized_body.strip()) if sanitized_body else 0
+        if sanitized_body and text_length < MIN_TEXT_LENGTH:
             log_with_context(
                 logger,
-                logging.ERROR,
-                "Webhook signature validation failed",
+                logging.WARNING,
+                "Text content too short for analysis",
                 message_sid=MessageSid,
                 from_number=sanitize_phone_number(From),
+                text_length=text_length,
+                correlation_id=correlation_id
+            )
+            # Send helpful message asynchronously and return success to Twilio
+            task = asyncio.create_task(message_handler.handle_text_message(
+                "help", From  # Trigger help message for short content
+            ))
+            # Add error handling for the background task
+            task.add_done_callback(lambda t: logger.error(f"Help message task failed: {t.exception()}") if t.exception() else None)
+            return PlainTextResponse("", status_code=200)
+        
+        # Validate maximum text length to prevent abuse
+        if sanitized_body and text_length > MAX_TEXT_LENGTH:
+            log_with_context(
+                logger,
+                logging.WARNING,
+                "Text content too long for analysis",
+                message_sid=MessageSid,
+                from_number=sanitize_phone_number(From),
+                text_length=text_length,
                 correlation_id=correlation_id
             )
             raise HTTPException(
-                status_code=401,
-                detail="Invalid webhook signature"
+                status_code=400,
+                detail=f"Text content too long. Maximum {MAX_TEXT_LENGTH} characters allowed."
             )
         
         # Create and validate Twilio webhook request object with sanitized data
@@ -237,24 +317,40 @@ async def whatsapp_webhook(
             correlation_id=correlation_id
         )
         
-        success = await message_handler.process_message(twilio_request)
+        # Process message asynchronously to avoid blocking Twilio webhook
+        # This implements a fire-and-forget pattern for better webhook performance
+        task = asyncio.create_task(message_handler.process_message(twilio_request))
         
-        if success:
-            log_with_context(
-                logger,
-                logging.INFO,
-                "Successfully processed message",
-                message_sid=MessageSid,
-                correlation_id=correlation_id
-            )
-        else:
-            log_with_context(
-                logger,
-                logging.WARNING,
-                "Failed to process message",
-                message_sid=MessageSid,
-                correlation_id=correlation_id
-            )
+        # Add error handling for the background task
+        def handle_task_completion(task_result):
+            if task_result.exception():
+                log_with_context(
+                    logger,
+                    logging.ERROR,
+                    "Background message processing failed",
+                    message_sid=MessageSid,
+                    correlation_id=correlation_id,
+                    error=str(task_result.exception())
+                )
+            else:
+                log_with_context(
+                    logger,
+                    logging.DEBUG,
+                    "Background message processing completed successfully",
+                    message_sid=MessageSid,
+                    correlation_id=correlation_id
+                )
+        
+        task.add_done_callback(handle_task_completion)
+        
+        # Return immediate success to Twilio (they expect quick response)
+        log_with_context(
+            logger,
+            logging.INFO,
+            "Webhook acknowledged, processing message asynchronously",
+            message_sid=MessageSid,
+            correlation_id=correlation_id
+        )
         
         # Return empty response as expected by Twilio
         # Twilio expects HTTP 200 with empty body to acknowledge receipt
@@ -271,7 +367,9 @@ async def whatsapp_webhook(
             {
                 "message_sid": MessageSid,
                 "from_number": sanitize_phone_number(From),
-                "component": "webhook_processing"
+                "component": "webhook_processing",
+                "has_media": NumMedia > 0,
+                "text_length": len(Body) if Body else 0
             },
             correlation_id
         )

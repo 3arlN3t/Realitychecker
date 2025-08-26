@@ -8,6 +8,7 @@ OpenAI's GPT-4 API to analyze job advertisements and detect potential scams.
 import json
 import logging
 import time
+import asyncio
 from typing import Optional
 import openai
 from openai import AsyncOpenAI
@@ -67,21 +68,25 @@ class OpenAIAnalysisService:
         Returns:
             OpenAI API response
         """
-        return await self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are an expert job market analyst specializing in identifying employment scams. Analyze job postings carefully and provide structured responses."
-                },
-                {
-                    "role": "user", 
-                    "content": prompt
-                }
-            ],
-            temperature=0.3,  # Lower temperature for more consistent analysis
-            max_tokens=1000,
-            timeout=30.0  # Circuit breaker will handle timeout at higher level
+        # Add asyncio timeout wrapper for extra protection
+        return await asyncio.wait_for(
+            self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an expert job market analyst specializing in identifying employment scams. Analyze job postings carefully and provide structured responses."
+                    },
+                    {
+                        "role": "user", 
+                        "content": prompt
+                    }
+                ],
+                temperature=0.3,  # Lower temperature for more consistent analysis
+                max_tokens=1000,
+                timeout=8.0  # Reduced OpenAI timeout
+            ),
+            timeout=10.0  # Total timeout including network
         )
         
     async def analyze_job_ad(self, job_text: str) -> JobAnalysisResult:

@@ -9,6 +9,7 @@ import logging
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime, timedelta
 import threading
+import asyncio
 from collections import defaultdict
 import math
 
@@ -43,7 +44,7 @@ class UserManagementService:
         self.config = config
         self._users: Dict[str, UserDetails] = {}
         self._blocked_users: set = set()
-        self._lock = threading.RLock()  # Thread-safe operations
+        self._lock = asyncio.Lock()  # Async-safe operations
         
         logger.info("UserManagementService initialized")
     
@@ -69,7 +70,7 @@ class UserManagementService:
             message_sid: Twilio message SID for tracking
             source: Source of the interaction ("whatsapp" or "web")
         """
-        with self._lock:
+        async with self._lock:
             try:
                 # Create interaction record
                 interaction = UserInteraction(
@@ -121,7 +122,7 @@ class UserManagementService:
         Returns:
             UserDetails object if user exists, None otherwise
         """
-        with self._lock:
+        async with self._lock:
             user = self._users.get(phone_number)
             if user:
                 log_with_context(
@@ -149,7 +150,7 @@ class UserManagementService:
         Returns:
             UserList object with paginated results
         """
-        with self._lock:
+        async with self._lock:
             try:
                 # Get all users
                 all_users = list(self._users.values())
@@ -217,7 +218,7 @@ class UserManagementService:
         Returns:
             bool: True if user was successfully blocked
         """
-        with self._lock:
+        async with self._lock:
             try:
                 user = self._users.get(phone_number)
                 if not user:
@@ -264,7 +265,7 @@ class UserManagementService:
         Returns:
             bool: True if user was successfully unblocked
         """
-        with self._lock:
+        async with self._lock:
             try:
                 user = self._users.get(phone_number)
                 if not user:
@@ -310,7 +311,7 @@ class UserManagementService:
         Returns:
             bool: True if user is blocked
         """
-        with self._lock:
+        async with self._lock:
             return phone_number in self._blocked_users
     
     async def get_user_statistics(self) -> Dict[str, any]:
@@ -320,7 +321,7 @@ class UserManagementService:
         Returns:
             Dictionary containing user statistics
         """
-        with self._lock:
+        async with self._lock:
             try:
                 total_users = len(self._users)
                 blocked_users = len(self._blocked_users)
@@ -390,7 +391,7 @@ class UserManagementService:
         Returns:
             int: Number of interactions removed
         """
-        with self._lock:
+        async with self._lock:
             try:
                 cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
                 total_removed = 0
@@ -475,7 +476,7 @@ class UserManagementService:
         Returns:
             List of UserInteraction objects, most recent first
         """
-        with self._lock:
+        async with self._lock:
             user = self._users.get(phone_number)
             if not user:
                 return []
@@ -492,7 +493,7 @@ class UserManagementService:
         Returns:
             List of matching UserDetails objects
         """
-        with self._lock:
+        async with self._lock:
             matching_users = []
             query_lower = query.lower()
             
@@ -518,7 +519,7 @@ class UserManagementService:
                                  cohort_period: str = "monthly",
                                  retention_periods: List[int] = [1, 7, 30]) -> Dict[str, Any]:
         
-        with self._lock:
+        async with self._lock:
             cohorts = defaultdict(list)
             for user in self._users.values():
                 cohort_key = user.first_interaction.strftime("%Y-%m")
