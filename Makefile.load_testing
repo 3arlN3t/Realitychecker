@@ -1,0 +1,152 @@
+# Makefile for Redis Performance Optimization Load Testing
+# 
+# This Makefile provides convenient commands for running performance tests
+# and benchmarks for the Redis performance optimization implementation.
+
+.PHONY: help test-setup test-all test-webhook test-redis test-capacity test-baseline clean
+
+# Default target
+help:
+	@echo "Redis Performance Optimization - Load Testing"
+	@echo "============================================="
+	@echo ""
+	@echo "Available targets:"
+	@echo "  test-setup     - Verify load testing setup and dependencies"
+	@echo "  test-all       - Run complete performance test suite"
+	@echo "  test-webhook   - Run webhook load tests only"
+	@echo "  test-redis     - Run Redis benchmarks only"
+	@echo "  test-capacity  - Run system capacity tests only"
+	@echo "  test-baseline  - Run baseline validation only"
+	@echo "  test-quick     - Run quick smoke test"
+	@echo "  clean          - Clean up test results and logs"
+	@echo ""
+	@echo "Output options:"
+	@echo "  test-all-save  - Run all tests and save results to file"
+	@echo "  test-verbose   - Run tests with verbose output"
+	@echo ""
+	@echo "Requirements tested:"
+	@echo "  4.1 - Webhook response time tracking with detailed timing breakdowns"
+	@echo "  4.2 - Redis operation monitoring with latency measurements"
+	@echo "  4.3 - Performance threshold alerts for critical metrics"
+	@echo "  5.1 - Connection pool management optimization"
+	@echo "  5.2 - Connection pool utilization monitoring"
+
+# Verify setup and dependencies
+test-setup:
+	@echo "🔍 Verifying load testing setup..."
+	python tests/load_testing/test_load_testing_setup.py
+
+# Run complete test suite
+test-all:
+	@echo "🎯 Running complete performance test suite..."
+	python tests/load_testing/run_performance_tests.py --test-type all
+
+# Run complete test suite with results saved
+test-all-save:
+	@echo "🎯 Running complete performance test suite (saving results)..."
+	mkdir -p results
+	python tests/load_testing/run_performance_tests.py --test-type all --output-file results/performance_test_results_$(shell date +%Y%m%d_%H%M%S).json
+
+# Run with verbose output
+test-verbose:
+	@echo "🎯 Running performance tests with verbose output..."
+	python tests/load_testing/run_performance_tests.py --test-type all --verbose
+
+# Individual test types
+test-webhook:
+	@echo "🌐 Running webhook load tests..."
+	python tests/load_testing/run_performance_tests.py --test-type webhook
+
+test-redis:
+	@echo "🔧 Running Redis benchmarks..."
+	python tests/load_testing/run_performance_tests.py --test-type redis
+
+test-capacity:
+	@echo "📊 Running system capacity tests..."
+	python tests/load_testing/run_performance_tests.py --test-type capacity
+
+test-baseline:
+	@echo "📈 Running baseline validation..."
+	python tests/load_testing/run_performance_tests.py --test-type baseline
+
+# Quick smoke test
+test-quick:
+	@echo "⚡ Running quick smoke test..."
+	python tests/load_testing/run_performance_tests.py --test-type webhook --output-file /tmp/quick_test.json
+
+# Clean up
+clean:
+	@echo "🧹 Cleaning up test results and logs..."
+	rm -rf results/performance_test_*.json
+	rm -f /tmp/quick_test.json
+	find . -name "*.pyc" -delete
+	find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+
+# Development targets
+dev-setup: test-setup
+	@echo "🛠️  Development setup complete"
+
+dev-test: test-setup test-quick
+	@echo "🚀 Development testing complete"
+
+# CI/CD targets
+ci-test: test-all
+	@echo "🤖 CI/CD testing complete"
+
+# Performance monitoring targets
+monitor-webhook:
+	@echo "📊 Monitoring webhook performance..."
+	watch -n 5 'python tests/load_testing/run_performance_tests.py --test-type webhook | tail -20'
+
+monitor-redis:
+	@echo "📊 Monitoring Redis performance..."
+	watch -n 5 'python tests/load_testing/run_performance_tests.py --test-type redis | tail -20'
+
+# Help for specific test types
+help-webhook:
+	@echo "Webhook Load Testing"
+	@echo "==================="
+	@echo "Tests concurrent webhook processing to validate sub-2-second response times."
+	@echo ""
+	@echo "Key metrics:"
+	@echo "  - Target response time: 500ms"
+	@echo "  - Maximum response time: 2000ms"
+	@echo "  - Success rate threshold: 99%"
+	@echo ""
+	@echo "Run with: make test-webhook"
+
+help-redis:
+	@echo "Redis Benchmarking"
+	@echo "=================="
+	@echo "Comprehensive Redis performance testing under high throughput."
+	@echo ""
+	@echo "Key metrics:"
+	@echo "  - Target latency: 5ms average"
+	@echo "  - Maximum latency: 50ms P99"
+	@echo "  - Minimum throughput: 1000 ops/second"
+	@echo ""
+	@echo "Run with: make test-redis"
+
+help-capacity:
+	@echo "System Capacity Testing"
+	@echo "======================="
+	@echo "Tests system behavior at capacity limits and during failures."
+	@echo ""
+	@echo "Key metrics:"
+	@echo "  - Maximum concurrent load capacity"
+	@echo "  - Recovery time under 60 seconds"
+	@echo "  - Success rate during failures > 90%"
+	@echo ""
+	@echo "Run with: make test-capacity"
+
+help-baseline:
+	@echo "Baseline Validation"
+	@echo "==================="
+	@echo "Validates performance improvements against pre-optimization baseline."
+	@echo ""
+	@echo "Expected improvements:"
+	@echo "  - 85% reduction in P99 response time (14s → 2s)"
+	@echo "  - 75% reduction in average response time (2s → 500ms)"
+	@echo "  - 29% improvement in success rate (70% → 99%)"
+	@echo ""
+	@echo "Run with: make test-baseline"

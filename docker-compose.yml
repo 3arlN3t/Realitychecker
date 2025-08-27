@@ -28,8 +28,17 @@ services:
       - DB_POOL_RECYCLE=3600
       - DB_ECHO=false
       
-      # Redis configuration
+      # Redis configuration - Enhanced with performance settings
       - REDIS_URL=redis://redis:6379/0
+      - REDIS_POOL_SIZE=${REDIS_POOL_SIZE:-20}
+      - REDIS_MAX_CONNECTIONS=${REDIS_MAX_CONNECTIONS:-50}
+      - REDIS_CONNECTION_TIMEOUT=${REDIS_CONNECTION_TIMEOUT:-5.0}
+      - REDIS_SOCKET_TIMEOUT=${REDIS_SOCKET_TIMEOUT:-5.0}
+      - REDIS_RETRY_ATTEMPTS=${REDIS_RETRY_ATTEMPTS:-3}
+      - REDIS_RETRY_BACKOFF=${REDIS_RETRY_BACKOFF:-1.0}
+      - REDIS_HEALTH_CHECK_INTERVAL=${REDIS_HEALTH_CHECK_INTERVAL:-30}
+      - REDIS_CIRCUIT_BREAKER_THRESHOLD=${REDIS_CIRCUIT_BREAKER_THRESHOLD:-5}
+      - REDIS_CIRCUIT_BREAKER_TIMEOUT=${REDIS_CIRCUIT_BREAKER_TIMEOUT:-60}
       
       # Load environment variables from .env file
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -42,6 +51,19 @@ services:
       - MAX_PDF_SIZE_MB=${MAX_PDF_SIZE_MB:-10}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - WEBHOOK_VALIDATION=${WEBHOOK_VALIDATION:-true}
+      
+      # Performance tuning parameters
+      - WEBHOOK_TIMEOUT=${WEBHOOK_TIMEOUT:-2.0}
+      - WEBHOOK_ACKNOWLEDGMENT_TIMEOUT=${WEBHOOK_ACKNOWLEDGMENT_TIMEOUT:-0.5}
+      - TASK_QUEUE_MAX_SIZE=${TASK_QUEUE_MAX_SIZE:-1000}
+      - TASK_QUEUE_WORKER_COUNT=${TASK_QUEUE_WORKER_COUNT:-5}
+      - TASK_QUEUE_BATCH_SIZE=${TASK_QUEUE_BATCH_SIZE:-10}
+      - TASK_PROCESSING_TIMEOUT=${TASK_PROCESSING_TIMEOUT:-30}
+      - TASK_RETRY_ATTEMPTS=${TASK_RETRY_ATTEMPTS:-3}
+      - TASK_RETRY_BACKOFF=${TASK_RETRY_BACKOFF:-2.0}
+      - PERFORMANCE_MONITORING_ENABLED=${PERFORMANCE_MONITORING_ENABLED:-true}
+      - PERFORMANCE_ALERT_THRESHOLD_WEBHOOK=${PERFORMANCE_ALERT_THRESHOLD_WEBHOOK:-1.0}
+      - PERFORMANCE_ALERT_THRESHOLD_CRITICAL=${PERFORMANCE_ALERT_THRESHOLD_CRITICAL:-3.0}
       
       # Authentication configuration
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-secret-key-change-in-production}
@@ -94,7 +116,7 @@ services:
       retries: 5
 
   # ============================================================================
-  # Redis (for caching and session storage)
+  # Redis (for caching and session storage) - Optimized Configuration
   # ============================================================================
   redis:
     image: redis:7-alpine
@@ -103,14 +125,31 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    environment:
+      # Redis performance tuning - More conservative settings
+      - REDIS_MAXMEMORY=${REDIS_MAXMEMORY:-512mb}
+      - REDIS_MAXMEMORY_POLICY=${REDIS_MAXMEMORY_POLICY:-allkeys-lru}
+      - REDIS_TIMEOUT=${REDIS_TIMEOUT:-600}
+      - REDIS_TCP_KEEPALIVE=${REDIS_TCP_KEEPALIVE:-60}
     networks:
       - reality-checker-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 10s
       timeout: 5s
       retries: 3
+      start_period: 10s
+    sysctls:
+      # Optimize for performance
+      - net.core.somaxconn=65535
+    ulimits:
+      memlock: -1
+      nofile:
+        soft: 65536
+        hard: 65536
 
   # ============================================================================
   # Nginx Reverse Proxy (for production-like setup)

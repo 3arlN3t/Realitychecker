@@ -55,14 +55,19 @@ services:
       - ./scripts/init-dev-db.sql:/docker-entrypoint-initdb.d/init-dev-db.sql:ro
 
   # ============================================================================
-  # Redis with exposed port for development
+  # Redis with exposed port for development - Performance Optimized
   # ============================================================================
   redis:
     ports:
       - "6379:6379"
-    command: redis-server --appendonly yes --appendfsync everysec
     volumes:
       - redis_dev_data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf --loglevel debug
+    environment:
+      # Development-specific Redis settings
+      - REDIS_MAXMEMORY=128mb
+      - REDIS_MAXMEMORY_POLICY=allkeys-lru
 
   # ============================================================================
   # Development tools and utilities

@@ -14,6 +14,7 @@ import asyncio
 
 from app.utils.logging import get_logger
 from app.models.data_models import JobAnalysisResult, JobClassification
+from app.services.redis_connection_manager import get_redis_manager
 
 logger = get_logger(__name__)
 
@@ -60,7 +61,8 @@ class CachingService:
     
     def __init__(self):
         """Initialize caching service."""
-        self.pool_manager = None
+        self.redis_manager = None
+        self.graceful_handler = None
         self.default_ttl = 300  # 5 minutes
         self.cache_stats = {
             "hits": 0,
@@ -70,16 +72,26 @@ class CachingService:
             "errors": 0
         }
     
-    def _get_pool_manager(self):
-        """Lazy initialization of pool manager to avoid circular imports."""
-        if self.pool_manager is None:
-            from app.database.connection_pool import get_pool_manager
-            self.pool_manager = get_pool_manager()
-        return self.pool_manager
+    def _get_redis_manager(self):
+        """Lazy initialization of Redis manager to avoid circular imports."""
+        if self.redis_manager is None:
+            self.redis_manager = get_redis_manager()
+        return self.redis_manager
+    
+    def _get_graceful_handler(self):
+        """Lazy initialization of graceful error handler to avoid circular imports."""
+        if self.graceful_handler is None:
+            try:
+                from app.utils.graceful_error_handling import get_graceful_error_handler
+                self.graceful_handler = get_graceful_error_handler()
+            except ImportError:
+                # Fallback if graceful error handling is not available
+                self.graceful_handler = None
+        return self.graceful_handler
     
     async def get(self, key: str) -> Optional[Any]:
         """
-        Get value from cache.
+        Get value from cache with graceful fallback.
         
         Args:
             key: Cache key
@@ -88,11 +100,24 @@ class CachingService:
             Cached value or None
         """
         try:
-            pool_manager = self._get_pool_manager()
-            result = await pool_manager.get_cached_result(key)
+            graceful_handler = self._get_graceful_handler()
+            
+            if graceful_handler:
+                result = await graceful_handler.redis_get_with_fallback(key)
+            else:
+                # Fallback to direct Redis access
+                redis_manager = self._get_redis_manager()
+                result = await redis_manager.execute_command("get", key)
+            
             if result is not None:
                 self.cache_stats["hits"] += 1
                 logger.debug(f"Cache hit: {key}")
+                # Parse JSON if it's a string
+                if isinstance(result, str):
+                    try:
+                        return json.loads(result)
+                    except json.JSONDecodeError:
+                        return result
                 return result
             else:
                 self.cache_stats["misses"] += 1
@@ -105,7 +130,7 @@ class CachingService:
     
     async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
         """
-        Set value in cache.
+        Set value in cache with graceful fallback.
         
         Args:
             key: Cache key
@@ -117,11 +142,25 @@ class CachingService:
         """
         try:
             ttl = ttl or self.default_ttl
-            pool_manager = self._get_pool_manager()
-            await pool_manager.set_cached_result(key, value, ttl)
-            self.cache_stats["sets"] += 1
-            logger.debug(f"Cache set: {key} (TTL: {ttl}s)")
-            return True
+            graceful_handler = self._get_graceful_handler()
+            
+            # Serialize value to JSON if it's not a string
+            if not isinstance(value, str):
+                value = json.dumps(value, default=str)
+            
+            if graceful_handler:
+                result = await graceful_handler.redis_set_with_fallback(key, value, ttl)
+            else:
+                # Fallback to direct Redis access
+                redis_manager = self._get_redis_manager()
+                result = await redis_manager.execute_command("setex", key, ttl, value)
+                result = result is not None
+            
+            if result:
+                self.cache_stats["sets"] += 1
+                logger.debug(f"Cache set: {key} (TTL: {ttl}s)")
+                return True
+            return False
         except Exception as e:
             self.cache_stats["errors"] += 1
             logger.warning(f"Cache set error for key '{key}': {e}")
@@ -138,11 +177,13 @@ class CachingService:
             True if successful, False otherwise
         """
         try:
-            pool_manager = self._get_pool_manager()
-            await pool_manager.invalidate_cache_pattern(key)
-            self.cache_stats["deletes"] += 1
-            logger.debug(f"Cache delete: {key}")
-            return True
+            redis_manager = self._get_redis_manager()
+            result = await redis_manager.execute_command("delete", key)
+            if result is not None:
+                self.cache_stats["deletes"] += 1
+                logger.debug(f"Cache delete: {key}")
+                return True
+            return False
         except Exception as e:
             self.cache_stats["errors"] += 1
             logger.warning(f"Cache delete error for key '{key}': {e}")
@@ -159,10 +200,17 @@ class CachingService:
             True if successful, False otherwise
         """
         try:
-            pool_manager = self._get_pool_manager()
-            await pool_manager.invalidate_cache_pattern(pattern)
-            logger.info(f"Cache pattern invalidated: {pattern}")
-            return True
+            redis_manager = self._get_redis_manager()
+            
+            # Get keys matching pattern
+            keys = await redis_manager.execute_command("keys", pattern)
+            if keys and len(keys) > 0:
+                # Delete all matching keys
+                result = await redis_manager.execute_command("delete", *keys)
+                if result is not None:
+                    logger.info(f"Cache pattern invalidated: {pattern} ({len(keys)} keys)")
+                    return True
+            return True  # No keys to delete is also success
         except Exception as e:
             self.cache_stats["errors"] += 1
             logger.warning(f"Cache pattern invalidation error for '{pattern}': {e}")
@@ -350,17 +398,19 @@ class CachingService:
         
         # Add Redis stats if available
         try:
-            pool_manager = self._get_pool_manager()
-            pool_stats = await pool_manager.get_pool_stats()
-            if "redis_keyspace_hits" in pool_stats:
-                redis_hits = pool_stats["redis_keyspace_hits"]
-                redis_misses = pool_stats["redis_keyspace_misses"]
-                redis_total = redis_hits + redis_misses
-                
-                stats["redis_hits"] = redis_hits
-                stats["redis_misses"] = redis_misses
-                stats["redis_hit_rate"] = (redis_hits / redis_total * 100) if redis_total > 0 else 0
-                stats["redis_memory"] = pool_stats.get("redis_used_memory", "0B")
+            redis_manager = self._get_redis_manager()
+            redis_metrics = await redis_manager.get_metrics()
+            health_status = await redis_manager.health_check()
+            
+            stats["redis_total_requests"] = redis_metrics.total_requests
+            stats["redis_successful_requests"] = redis_metrics.successful_requests
+            stats["redis_failed_requests"] = redis_metrics.failed_requests
+            stats["redis_uptime_percentage"] = redis_metrics.uptime_percentage
+            stats["redis_average_response_time"] = redis_metrics.average_response_time
+            stats["redis_is_available"] = redis_manager.is_available()
+            stats["redis_circuit_breaker_state"] = health_status.state.value
+            stats["redis_memory"] = health_status.memory_usage or "Unknown"
+            stats["redis_connected_clients"] = health_status.connected_clients or 0
         except Exception as e:
             logger.warning(f"Failed to get Redis stats: {e}")
         

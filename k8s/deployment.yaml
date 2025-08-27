@@ -42,13 +42,15 @@ spec:
         envFrom:
         - configMapRef:
             name: reality-checker-config
+        - configMapRef:
+            name: reality-checker-performance-config
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
             memory: "512Mi"
             cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
         livenessProbe:
           httpGet:
             path: /health

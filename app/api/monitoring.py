@@ -17,6 +17,7 @@ from app.utils.error_tracking import get_error_tracker
 from app.utils.logging import get_logger
 from app.services.authentication import AuthenticationService
 from app.dependencies import get_auth_service
+from app.database.connection_pool import get_pool_manager
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/monitoring", tags=["monitoring"])
@@ -272,3 +273,167 @@ async def get_response_times(
             "total_requests": current_metrics.get("requests", {}).get("total", 0)
         }
     }
+
+
+@router.get("/connection-pool")
+async def get_connection_pool_status(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    auth_service: AuthenticationService = Depends(get_auth_service)
+) -> Dict[str, Any]:
+    """
+    Get comprehensive connection pool status and metrics.
+    
+    Args:
+        credentials: HTTP Authorization credentials
+        auth_service: Authentication service
+        
+    Returns:
+        Dict containing connection pool status and metrics
+    """
+    # Validate token
+    validation = await auth_service.validate_jwt_token(credentials.credentials)
+    if not validation.valid:
+        raise HTTPException(status_code=401, detail="Invalid authentication token")
+    
+    try:
+        # Get pool manager and stats
+        pool_manager = get_pool_manager()
+        pool_stats = await pool_manager.get_pool_stats()
+        health_status = await pool_manager.health_check()
+        
+        return {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "status": "healthy" if health_status["database"]["status"] == "healthy" else "degraded",
+            "pool_stats": pool_stats,
+            "health_check": health_status,
+            "recommendations": _generate_pool_recommendations(pool_stats)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting connection pool status: {e}")
+        return {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "status": "error",
+            "error": str(e),
+            "pool_stats": {},
+            "health_check": {},
+            "recommendations": []
+        }
+
+
+@router.get("/circuit-breakers")
+async def get_circuit_breaker_status(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    auth_service: AuthenticationService = Depends(get_auth_service)
+) -> Dict[str, Any]:
+    """
+    Get status of all circuit breakers in the system.
+    
+    Args:
+        credentials: HTTP Authorization credentials
+        auth_service: Authentication service
+        
+    Returns:
+        Dict containing circuit breaker statuses
+    """
+    # Validate token
+    validation = await auth_service.validate_jwt_token(credentials.credentials)
+    if not validation.valid:
+        raise HTTPException(status_code=401, detail="Invalid authentication token")
+    
+    try:
+        from app.utils.circuit_breaker import get_circuit_breaker_manager
+        
+        # Get all circuit breaker statuses
+        cb_manager = get_circuit_breaker_manager()
+        all_statuses = cb_manager.get_all_status()
+        
+        # Add database circuit breaker from pool manager
+        pool_manager = get_pool_manager()
+        db_cb_status = pool_manager.get_circuit_breaker_status()
+        if db_cb_status.get("name"):
+            all_statuses[db_cb_status["name"]] = db_cb_status
+        
+        return {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "circuit_breakers": all_statuses,
+            "summary": {
+                "total": len(all_statuses),
+                "open": sum(1 for cb in all_statuses.values() if cb.get("state") == "open"),
+                "half_open": sum(1 for cb in all_statuses.values() if cb.get("state") == "half_open"),
+                "closed": sum(1 for cb in all_statuses.values() if cb.get("state") == "closed")
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting circuit breaker status: {e}")
+        return {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "error": str(e),
+            "circuit_breakers": {},
+            "summary": {"total": 0, "open": 0, "half_open": 0, "closed": 0}
+        }
+
+
+def _generate_pool_recommendations(pool_stats: Dict[str, Any]) -> list:
+    """Generate recommendations based on pool statistics."""
+    recommendations = []
+    
+    utilization = pool_stats.get("utilization", 0)
+    pool_config = pool_stats.get("pool_config", {})
+    
+    # High utilization warnings
+    if utilization >= 0.95:
+        recommendations.append({
+            "type": "critical",
+            "message": f"Connection pool utilization is critically high ({utilization:.1%}). Consider increasing pool size immediately.",
+            "action": "Increase DB_POOL_SIZE and DB_MAX_OVERFLOW environment variables"
+        })
+    elif utilization >= 0.8:
+        recommendations.append({
+            "type": "warning",
+            "message": f"Connection pool utilization is high ({utilization:.1%}). Monitor for scaling needs.",
+            "action": "Consider increasing pool size if utilization remains high"
+        })
+    
+    # Circuit breaker recommendations
+    circuit_breaker = pool_stats.get("circuit_breaker", {})
+    if circuit_breaker.get("state") == "open":
+        recommendations.append({
+            "type": "critical",
+            "message": "Database circuit breaker is OPEN. Database connections are failing.",
+            "action": "Check database connectivity and health. Review error logs."
+        })
+    elif circuit_breaker.get("state") == "half_open":
+        recommendations.append({
+            "type": "warning",
+            "message": "Database circuit breaker is HALF_OPEN. System is testing database recovery.",
+            "action": "Monitor circuit breaker status. It should close automatically if database is healthy."
+        })
+    
+    # Health check recommendations
+    failed_health_checks = pool_stats.get("failed_health_checks", 0)
+    total_health_checks = pool_stats.get("health_checks", 0)
+    if total_health_checks > 0 and failed_health_checks / total_health_checks > 0.1:
+        recommendations.append({
+            "type": "warning",
+            "message": f"High health check failure rate ({failed_health_checks}/{total_health_checks})",
+            "action": "Investigate database connectivity issues"
+        })
+    
+    # Redis recommendations
+    redis_stats = pool_stats.get("redis", {})
+    if redis_stats.get("status") == "unavailable":
+        recommendations.append({
+            "type": "warning",
+            "message": "Redis cache is unavailable. Performance may be degraded.",
+            "action": "Check Redis connectivity and configuration"
+        })
+    elif redis_stats.get("hit_rate", 0) < 0.5:
+        recommendations.append({
+            "type": "info",
+            "message": f"Redis cache hit rate is low ({redis_stats.get('hit_rate', 0):.1%})",
+            "action": "Consider adjusting cache TTL settings or cache key strategies"
+        })
+    
+    return recommendations

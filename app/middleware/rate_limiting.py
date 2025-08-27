@@ -1,6 +1,8 @@
 """Rate limiting middleware for API endpoints."""
 
 import time
+import json
+import asyncio
 from typing import Dict, Optional, Tuple
 from collections import defaultdict, deque
 from dataclasses import dataclass
@@ -11,6 +13,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
 from app.utils.logging import get_logger, sanitize_phone_number
+from app.services.redis_connection_manager import get_redis_manager
 
 logger = get_logger(__name__)
 
@@ -25,12 +28,133 @@ class RateLimitConfig:
 
 
 class RateLimiter:
-    """Thread-safe rate limiter with multiple time windows."""
+    """Thread-safe rate limiter with multiple time windows and Redis support."""
     
     def __init__(self, config: RateLimitConfig):
         self.config = config
         self._requests: Dict[str, deque] = defaultdict(deque)
         self._lock = Lock()
+        self.redis_manager = None
+        self.graceful_handler = None
+    
+    def _get_redis_manager(self):
+        """Get Redis manager instance."""
+        if self.redis_manager is None:
+            self.redis_manager = get_redis_manager()
+        return self.redis_manager
+    
+    def _get_graceful_handler(self):
+        """Get graceful error handler instance."""
+        if self.graceful_handler is None:
+            try:
+                from app.utils.graceful_error_handling import get_graceful_error_handler
+                self.graceful_handler = get_graceful_error_handler()
+            except ImportError:
+                # Fallback if graceful error handling is not available
+                self.graceful_handler = None
+        return self.graceful_handler
+    
+    async def is_allowed_async(self, identifier: str) -> Tuple[bool, Optional[str]]:
+        """
+        Async version of is_allowed that uses Redis with graceful fallback.
+        
+        Implements Requirement 6.2: Graceful degradation for rate limiting without Redis
+        
+        Args:
+            identifier: Unique identifier for the client
+            
+        Returns:
+            Tuple of (is_allowed, reason_if_blocked)
+        """
+        try:
+            graceful_handler = self._get_graceful_handler()
+            
+            if graceful_handler:
+                # Use graceful error handling for rate limiting
+                return await graceful_handler.rate_limit_check_with_fallback(
+                    identifier,
+                    self.config.requests_per_minute,
+                    60  # 1 minute window
+                )
+            else:
+                # Fallback to original Redis-based rate limiting
+                redis_manager = self._get_redis_manager()
+                
+                # Try Redis first if available
+                if redis_manager.is_available():
+                    try:
+                        return await self._check_redis_limits(identifier)
+                    except Exception as e:
+                        logger.warning(f"Redis rate limiting failed, falling back to memory: {e}")
+                
+                # Fallback to in-memory rate limiting
+                return self.is_allowed(identifier)
+        except Exception as e:
+            logger.warning(f"Rate limiting failed, allowing request: {e}")
+            # In case of complete failure, allow the request to prevent blocking
+            return True, None
+    
+    async def _check_redis_limits(self, identifier: str) -> Tuple[bool, Optional[str]]:
+        """Check rate limits using Redis."""
+        current_time = int(time.time())
+        redis_manager = self._get_redis_manager()
+        
+        # Use Redis pipeline for atomic operations
+        pipe_commands = []
+        
+        # Keys for different time windows
+        burst_key = f"rate_limit:burst:{identifier}"
+        minute_key = f"rate_limit:minute:{identifier}"
+        hour_key = f"rate_limit:hour:{identifier}"
+        
+        # Check burst limit (sliding window)
+        burst_window_start = current_time - self.config.burst_window
+        burst_count = await redis_manager.execute_command(
+            "zcount", burst_key, burst_window_start, current_time
+        )
+        
+        if burst_count and burst_count >= self.config.burst_limit:
+            return False, f"Burst limit exceeded ({self.config.burst_limit} requests per {self.config.burst_window}s)"
+        
+        # Check minute limit
+        minute_window_start = current_time - 60
+        minute_count = await redis_manager.execute_command(
+            "zcount", minute_key, minute_window_start, current_time
+        )
+        
+        if minute_count and minute_count >= self.config.requests_per_minute:
+            return False, f"Rate limit exceeded ({self.config.requests_per_minute} requests per minute)"
+        
+        # Check hour limit
+        hour_window_start = current_time - 3600
+        hour_count = await redis_manager.execute_command(
+            "zcount", hour_key, hour_window_start, current_time
+        )
+        
+        if hour_count and hour_count >= self.config.requests_per_hour:
+            return False, f"Rate limit exceeded ({self.config.requests_per_hour} requests per hour)"
+        
+        # Record this request in all windows
+        request_id = f"{current_time}:{identifier}"
+        
+        # Add to burst window
+        await redis_manager.execute_command("zadd", burst_key, current_time, request_id)
+        await redis_manager.execute_command("expire", burst_key, self.config.burst_window * 2)
+        
+        # Add to minute window
+        await redis_manager.execute_command("zadd", minute_key, current_time, request_id)
+        await redis_manager.execute_command("expire", minute_key, 120)  # 2 minutes
+        
+        # Add to hour window
+        await redis_manager.execute_command("zadd", hour_key, current_time, request_id)
+        await redis_manager.execute_command("expire", hour_key, 7200)  # 2 hours
+        
+        # Clean up old entries
+        await redis_manager.execute_command("zremrangebyscore", burst_key, 0, burst_window_start)
+        await redis_manager.execute_command("zremrangebyscore", minute_key, 0, minute_window_start)
+        await redis_manager.execute_command("zremrangebyscore", hour_key, 0, hour_window_start)
+        
+        return True, None
     
     def is_allowed(self, identifier: str) -> Tuple[bool, Optional[str]]:
         """
@@ -150,8 +274,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Get client identifier (prefer phone number from webhook, fallback to IP)
         identifier = self._get_client_identifier(request)
         
-        # Check rate limits
-        allowed, reason = self.rate_limiter.is_allowed(identifier)
+        # Check rate limits (use async version for Redis support)
+        allowed, reason = await self.rate_limiter.is_allowed_async(identifier)
         
         if not allowed:
             # Log rate limit violation

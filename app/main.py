@@ -16,7 +16,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import get_config
 from app.dependencies import get_service_container, reset_service_container, initialize_service_container
-from app.api.webhook import router as webhook_router
+from app.api.optimized_webhook import router as webhook_router
 from app.utils.logging import setup_logging, get_logger, set_correlation_id, get_correlation_id
 from app.utils.error_handling import handle_error, ErrorCategory
 from app.middleware.rate_limiting import create_rate_limit_middleware
@@ -49,6 +49,11 @@ async def startup_event():
         from app.database.connection_pool import init_pool_manager
         from app.services.caching_service import init_caching_service
         
+        # Initialize Redis connection manager
+        from app.services.redis_connection_manager import init_redis_manager
+        await init_redis_manager()
+        logger.info("✅ Redis connection manager initialized")
+        
         # Initialize enhanced database connection pool
         await init_pool_manager()
         logger.info("✅ Enhanced database connection pool initialized")
@@ -60,6 +65,21 @@ async def startup_event():
         # Initialize performance monitoring
         await init_performance_monitor()
         logger.info("✅ Performance monitoring initialized")
+        
+        # Initialize background task processor
+        from app.services.background_task_processor import init_task_processor
+        from app.services.task_handlers import register_default_handlers
+        task_processor = await init_task_processor()
+        register_default_handlers(task_processor)
+        logger.info("✅ Background task processor initialized")
+        
+        # Initialize graceful error handling system
+        from app.services.graceful_error_init import initialize_graceful_error_handling
+        graceful_success = await initialize_graceful_error_handling()
+        if graceful_success:
+            logger.info("✅ Graceful error handling system initialized")
+        else:
+            logger.warning("⚠️ Graceful error handling system initialization failed - continuing with basic error handling")
         
         # Initialize metrics collector
         metrics_collector = get_metrics_collector()
@@ -161,16 +181,31 @@ async def shutdown_event():
     logger.info("🛑 Application shutdown initiated...")
     
     try:
+        # Cleanup Redis connection manager
+        from app.services.redis_connection_manager import cleanup_redis_manager
+        await cleanup_redis_manager()
+        logger.info("✅ Redis connection manager cleaned up")
+        
         # Cleanup performance monitoring
         from app.services.performance_monitor import get_performance_monitor
         performance_monitor = get_performance_monitor()
         await performance_monitor.cleanup()
         logger.info("✅ Performance monitoring cleaned up")
         
+        # Cleanup background task processor
+        from app.services.background_task_processor import cleanup_task_processor
+        await cleanup_task_processor()
+        logger.info("✅ Background task processor cleaned up")
+        
         # Cleanup connection pool
         from app.database.connection_pool import cleanup_pool_manager
         await cleanup_pool_manager()
         logger.info("✅ Connection pool cleaned up")
+        
+        # Cleanup graceful error handling system
+        from app.services.graceful_error_init import cleanup_graceful_error_handling
+        await cleanup_graceful_error_handling()
+        logger.info("✅ Graceful error handling system cleaned up")
         
         # Get service container and perform cleanup
         service_container = initialize_service_container()

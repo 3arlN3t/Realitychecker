@@ -322,20 +322,165 @@ async def get_performance_alerts(
         List of recent performance alerts
     """
     try:
-        # TODO: Implement alert storage and retrieval
-        # For now, return placeholder data
+        performance_monitor = get_performance_monitor()
+        
+        # Get active alerts
+        active_alerts = performance_monitor.get_active_alerts()
+        alert_summary = performance_monitor.get_alert_summary()
+        
+        # Convert alerts to serializable format
+        alerts_data = []
+        for alert in active_alerts:
+            alerts_data.append({
+                "alert_id": alert.alert_id,
+                "severity": alert.severity,
+                "metric_name": alert.metric_name,
+                "current_value": alert.current_value,
+                "threshold_value": alert.threshold_value,
+                "message": alert.message,
+                "context": alert.context,
+                "timestamp": alert.timestamp.isoformat(),
+                "resolved": alert.resolved,
+                "resolved_at": alert.resolved_at.isoformat() if alert.resolved_at else None
+            })
         
         return {
             "status": "success",
             "data": {
-                "alerts": [],
-                "total_count": 0,
+                "active_alerts": alerts_data,
+                "alert_summary": alert_summary,
                 "time_range_hours": hours
             },
-            "message": "Alert history feature coming soon",
             "timestamp": datetime.utcnow().isoformat()
         }
         
     except Exception as e:
         logger.error(f"Failed to get performance alerts: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve performance alerts")
+
+
+@router.get("/webhook-timing")
+async def get_webhook_timing_analysis(
+    current_user: User = Depends(get_current_active_user)
+) -> Dict[str, Any]:
+    """
+    Get detailed webhook timing analysis.
+    
+    Implements Requirement 4.1: Add webhook response time tracking with detailed timing breakdowns
+    
+    Returns:
+        Dictionary with webhook timing analysis
+    """
+    try:
+        performance_monitor = get_performance_monitor()
+        webhook_summary = performance_monitor.get_webhook_timing_summary()
+        
+        return {
+            "status": "success",
+            "data": webhook_summary,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get webhook timing analysis: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve webhook timing analysis")
+
+
+@router.get("/redis-operations")
+async def get_redis_operation_analysis(
+    current_user: User = Depends(get_current_active_user)
+) -> Dict[str, Any]:
+    """
+    Get Redis operation performance analysis.
+    
+    Implements Requirement 4.2: Implement Redis operation monitoring with latency measurements
+    
+    Returns:
+        Dictionary with Redis operation analysis
+    """
+    try:
+        performance_monitor = get_performance_monitor()
+        redis_summary = performance_monitor.get_redis_operation_summary()
+        
+        return {
+            "status": "success",
+            "data": redis_summary,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get Redis operation analysis: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve Redis operation analysis")
+
+
+@router.get("/task-queue")
+async def get_task_queue_analysis(
+    current_user: User = Depends(get_current_active_user)
+) -> Dict[str, Any]:
+    """
+    Get task queue performance analysis.
+    
+    Implements Requirement 4.4: Add task queue depth monitoring and backpressure detection
+    
+    Returns:
+        Dictionary with task queue analysis
+    """
+    try:
+        performance_monitor = get_performance_monitor()
+        task_queue_summary = performance_monitor.get_task_queue_summary()
+        
+        return {
+            "status": "success",
+            "data": task_queue_summary,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get task queue analysis: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve task queue analysis")
+
+
+@router.post("/alerts/{alert_key}/resolve")
+async def resolve_performance_alert(
+    alert_key: str,
+    resolution_message: str = Query("Manually resolved by admin"),
+    current_user: User = Depends(require_admin_user)
+) -> Dict[str, Any]:
+    """
+    Resolve a performance alert (admin only).
+    
+    Args:
+        alert_key: Alert key to resolve
+        resolution_message: Message describing resolution
+        
+    Returns:
+        Success message
+    """
+    try:
+        performance_monitor = get_performance_monitor()
+        
+        # Check if alert exists
+        active_alerts = performance_monitor.get_active_alerts()
+        alert_exists = any(alert.alert_id == alert_key for alert in active_alerts)
+        
+        if not alert_exists:
+            raise HTTPException(status_code=404, detail="Alert not found")
+        
+        # Resolve the alert
+        performance_monitor.resolve_alert(alert_key, resolution_message)
+        
+        logger.info(f"Alert {alert_key} resolved by admin {current_user.username}: {resolution_message}")
+        
+        return {
+            "status": "success",
+            "message": f"Alert {alert_key} resolved successfully",
+            "resolution_message": resolution_message,
+            "resolved_by": current_user.username,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to resolve alert: {e}")
+        raise HTTPException(status_code=500, detail="Failed to resolve alert")
