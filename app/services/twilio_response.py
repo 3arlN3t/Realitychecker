@@ -5,7 +5,9 @@ This module handles sending formatted responses back to users via Twilio's
 WhatsApp API, including analysis results and error messages.
 """
 
+import asyncio
 import logging
+import time
 from typing import Optional
 from twilio.rest import Client
 from twilio.base.exceptions import TwilioException
@@ -50,14 +52,12 @@ class TwilioResponseService:
         metrics = get_metrics_collector()
         error_tracker = get_error_tracker()
         
-        import time
         start_time = time.time()
         
         try:
             message_body = self._format_analysis_message(result)
             
             # Use asyncio.to_thread to prevent blocking
-            import asyncio
             message = await asyncio.wait_for(
                 asyncio.to_thread(
                     lambda: self.client.messages.create(
@@ -163,14 +163,12 @@ class TwilioResponseService:
         metrics = get_metrics_collector()
         error_tracker = get_error_tracker()
         
-        import time
         start_time = time.time()
         
         try:
             message_body = self._get_error_message(error_type)
             
             # Use asyncio.to_thread to prevent blocking
-            import asyncio
             message = await asyncio.wait_for(
                 asyncio.to_thread(
                     lambda: self.client.messages.create(
@@ -261,7 +259,6 @@ class TwilioResponseService:
         metrics = get_metrics_collector()
         error_tracker = get_error_tracker()
         
-        import time
         start_time = time.time()
         
         try:
@@ -278,7 +275,6 @@ class TwilioResponseService:
                 logger.info(f"Added whatsapp: prefix to number: {sanitize_phone_number(to_number)}")
             
             # Use asyncio.to_thread to prevent blocking
-            import asyncio
             message = await asyncio.wait_for(
                 asyncio.to_thread(
                     lambda: self.client.messages.create(

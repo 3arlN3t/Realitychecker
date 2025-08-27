@@ -2,6 +2,7 @@
 
 import logging
 import sys
+import time
 from datetime import datetime, timezone
 from typing import Dict, Any
 from contextlib import asynccontextmanager
@@ -242,6 +243,24 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# DIAGNOSTIC MIDDLEWARE: Add webhook request logging
+@app.middleware("http")
+async def diagnostic_webhook_logging(request: Request, call_next):
+    """Diagnostic middleware to track webhook requests."""
+    start_time = time.time()
+    
+    if request.url.path.startswith("/webhook"):
+        logger.critical(f"🔥 MIDDLEWARE: Webhook request detected - {request.method} {request.url.path}")
+        logger.critical(f"🔥 HEADERS: {dict(request.headers)}")
+    
+    response = await call_next(request)
+    
+    if request.url.path.startswith("/webhook"):
+        duration = (time.time() - start_time) * 1000
+        logger.critical(f"🔥 MIDDLEWARE DONE: Webhook response - status={response.status_code}, duration={duration:.1f}ms")
+    
+    return response
+
 # Include routers
 app.include_router(webhook_router)
 
@@ -345,7 +364,8 @@ web_rate_limit_middleware = create_web_rate_limit_middleware(
     established_per_minute=10,     # Generous for established users
     enable_fingerprinting=True     # Enhanced abuse detection
 )
-app.add_middleware(web_rate_limit_middleware)
+# TEMPORARILY DISABLED: Rate limiting causing Redis deadlock  
+# app.add_middleware(web_rate_limit_middleware)
 
 # Add per-user rate limiting middleware (WhatsApp users)
 user_rate_limit_middleware = create_user_rate_limit_middleware(
@@ -355,7 +375,8 @@ user_rate_limit_middleware = create_user_rate_limit_middleware(
     burst_limit=3,                 # Burst protection per user
     trusted_user_multiplier=2.0    # 2x limits for established users
 )
-app.add_middleware(user_rate_limit_middleware)
+# TEMPORARILY DISABLED: Rate limiting causing Redis deadlock
+# app.add_middleware(user_rate_limit_middleware)
 
 # Add global rate limiting middleware (final fallback)
 rate_limit_middleware = create_rate_limit_middleware(
@@ -364,7 +385,8 @@ rate_limit_middleware = create_rate_limit_middleware(
     burst_limit=10,                # Higher burst for uncategorized traffic
     burst_window=10
 )
-app.add_middleware(rate_limit_middleware)
+# TEMPORARILY DISABLED: Rate limiting causing Redis deadlock
+# app.add_middleware(rate_limit_middleware)
 
 # Configure CORS middleware
 app.add_middleware(

@@ -19,6 +19,7 @@ import hashlib
 import hmac
 import base64
 import time
+import traceback
 from typing import Dict, Any, Optional, Tuple
 from urllib.parse import urlencode
 from dataclasses import dataclass
@@ -42,7 +43,7 @@ from app.utils.security import validate_webhook_request, SecurityValidator
 logger = get_logger(__name__)
 
 # Constants for validation
-MIN_TEXT_LENGTH = 20
+MIN_TEXT_LENGTH = 10  # Reduced from 20 to 10 to allow shorter messages
 MAX_TEXT_LENGTH = 10000  # Prevent extremely large messages
 MAX_MEDIA_SIZE = 16 * 1024 * 1024  # 16MB limit for media
 
@@ -275,6 +276,9 @@ async def whatsapp_webhook_optimized(
     Raises:
         HTTPException: 400 for validation errors, 401 for signature validation failures
     """
+    # DIAGNOSTIC LOG #1: Check if request reaches handler
+    logger.critical(f"🔥 WEBHOOK ENTRY: Request reached handler - MessageSid={MessageSid}, From={From}")
+    
     start_time = time.time()
     correlation_id = get_correlation_id()
     
@@ -336,16 +340,46 @@ async def whatsapp_webhook_optimized(
             
             # Fast basic validation (optimized for speed)
             validation_error = None
+            
+            # Debug logging to identify the exact validation failure
+            logger.info(f"Validating webhook: MessageSid='{MessageSid}' (len={len(MessageSid) if MessageSid else 0}), From='{From}', Body length={len(Body) if Body else 0}")
+            
+            # DIAGNOSTIC: Additional validation details
+            log_with_context(
+                logger,
+                logging.INFO,
+                "🔍 VALIDATION DETAILS",
+                message_sid=MessageSid,
+                message_sid_length=len(MessageSid) if MessageSid else 0,
+                from_field=From,
+                from_starts_whatsapp=From.startswith("whatsapp:") if From else False,
+                body_present=bool(Body),
+                body_length=len(Body) if Body else 0,
+                num_media=NumMedia,
+                has_media_url=bool(MediaUrl0),
+                correlation_id=correlation_id
+            )
+            
             if not MessageSid or len(MessageSid) < 10:
-                validation_error = "Invalid MessageSid"
+                validation_error = f"Invalid MessageSid: '{MessageSid}' (length: {len(MessageSid) if MessageSid else 0})"
             elif not From or not From.startswith("whatsapp:"):
-                validation_error = "Invalid From number"
+                validation_error = f"Invalid From number: '{From}'"
             elif Body and len(Body) > MAX_TEXT_LENGTH:
-                validation_error = f"Text too long (max {MAX_TEXT_LENGTH} chars)"
+                validation_error = f"Text too long (max {MAX_TEXT_LENGTH} chars): {len(Body)}"
             elif MediaContentType0 and MediaContentType0 not in ['application/pdf', 'image/jpeg', 'image/png', 'image/gif']:
                 validation_error = f"Unsupported media type: {MediaContentType0}"
             
             if validation_error:
+                # DIAGNOSTIC: Log validation failure details
+                log_with_context(
+                    logger,
+                    logging.ERROR,
+                    "🚨 VALIDATION FAILED",
+                    validation_error=validation_error,
+                    message_sid=MessageSid,
+                    from_field=From,
+                    correlation_id=correlation_id
+                )
                 await webhook_processor.cache_validation_result(
                     cache_key,
                     ValidationCacheEntry(False, datetime.now(), validation_error)
@@ -356,6 +390,16 @@ async def whatsapp_webhook_optimized(
             await webhook_processor.cache_validation_result(
                 cache_key,
                 ValidationCacheEntry(True, datetime.now())
+            )
+            
+            # DIAGNOSTIC: Log successful validation
+            log_with_context(
+                logger,
+                logging.INFO,
+                "✅ VALIDATION PASSED",
+                message_sid=MessageSid,
+                from_field=sanitize_phone_number(From),
+                correlation_id=correlation_id
             )
         
         validation_time = (time.time() - validation_start) * 1000
@@ -385,6 +429,12 @@ async def whatsapp_webhook_optimized(
             raise HTTPException(status_code=400, detail=f"Invalid request data: {str(e)}")
         
         # PHASE 3: BACKGROUND PROCESSING QUEUE (Non-blocking)
+        # DIAGNOSTIC LOG #2: Check task processor state
+        queue_status = await webhook_processor.task_processor.get_queue_status()
+        queue_size = sum(queue_status.pending_tasks.values())
+        active_workers = len([w for w in webhook_processor.task_processor.workers if not w.done()])
+        logger.critical(f"🔥 TASK QUEUE STATE: Queue size={queue_size}, Active workers={active_workers}/5")
+        
         # Ensure task handlers are registered (one-time setup)
         if not webhook_processor._handlers_registered:
             register_default_handlers(webhook_processor.task_processor)
@@ -395,14 +445,23 @@ async def whatsapp_webhook_optimized(
         
         # Create and queue task for background processing (non-blocking)
         try:
+            # DIAGNOSTIC LOG #3: Before task creation
+            logger.critical(f"🔥 TASK CREATION: About to create and queue task")
+            
             processing_task = await create_message_processing_task(
                 twilio_request, 
                 correlation_id, 
                 priority
             )
             
+            # DIAGNOSTIC LOG #4: Before queuing
+            logger.critical(f"🔥 TASK QUEUING: About to queue task - priority={priority.name}")
+            
             # Queue task without waiting for confirmation to maintain speed
             task_id = await webhook_processor.task_processor.queue_task(processing_task)
+            
+            # DIAGNOSTIC LOG #5: After queuing
+            logger.critical(f"🔥 TASK QUEUED: Task queued successfully - task_id={task_id}")
             
             log_with_context(
                 logger,
@@ -542,6 +601,18 @@ async def whatsapp_webhook_optimized(
         # Handle unexpected errors with comprehensive diagnostics
         response_time_ms = (time.time() - start_time) * 1000
         response_time_seconds = response_time_ms / 1000
+        
+        # DIAGNOSTIC: Log full exception details immediately
+        log_with_context(
+            logger,
+            logging.CRITICAL,
+            "🔍 WEBHOOK EXCEPTION DETAILS - Full traceback for diagnosis",
+            message_sid=MessageSid,
+            exception_type=type(e).__name__,
+            exception_str=str(e),
+            full_traceback=traceback.format_exc(),
+            correlation_id=correlation_id
+        )
         
         # Record failed request metrics
         performance_monitor.record_request_end(request_id, response_time_seconds, success=False)

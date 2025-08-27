@@ -1,0 +1,16 @@
+{
+  "timestamp": "2025-08-27T17:18:42.577206+00:00",
+  "redis_url": "redis://localhost:6379/0",
+  "connection_test": {
+    "status": "connection_error",
+    "latency": null,
+    "error": "Error connecting to localhost:6379. Multiple exceptions: [Errno 61] Connect call failed ('::1', 6379, 0, 0), [Errno 61] Connect call failed ('127.0.0.1', 6379)."
+  },
+  "info_stats": {},
+  "memory_usage": {},
+  "client_stats": {},
+  "performance_metrics": {},
+  "recommendations": [
+    "CRITICAL: Cannot connect to Redis - Check server and network"
+  ]
+}

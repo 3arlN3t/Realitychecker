@@ -541,7 +541,7 @@ class MessageHandlerService:
             return False
         
         # Check minimum length for meaningful job ad analysis
-        min_length = 20
+        min_length = 10  # Reduced from 20 to 10 to allow shorter messages
         if len(text.strip()) < min_length:
             logger.debug(f"Text too short: {len(text.strip())} chars (min: {min_length})")
             return False
