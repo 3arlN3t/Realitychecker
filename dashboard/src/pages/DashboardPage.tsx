@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Grid,
   Card,
   CardHeader,
   CardContent,
   Typography,
   Box,
   Chip,
-  Divider,
-  Paper
+
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import {
   Timeline as TimelineIcon,
@@ -18,13 +18,18 @@ import {
   TrendingDown as TrendingDownIcon,
   People as PeopleIcon,
   Storage as StorageIcon,
-  Bolt as BoltIcon
+  Bolt as BoltIcon,
+  Wifi as WifiIcon,
+  WifiOff as WifiOffIcon
 } from '@mui/icons-material';
 
-import SystemHealthCard, { SystemHealth } from '../components/admin/SystemHealthCard';
-import MetricsOverviewCard, { MetricsOverview } from '../components/admin/MetricsOverviewCard';
-import ActiveAlertsCard, { Alert as AlertType } from '../components/admin/ActiveAlertsCard';
-import ServiceStatusGrid, { ServiceDetails } from '../components/admin/ServiceStatusGrid';
+import EnhancedSystemHealthCard from '../components/admin/EnhancedSystemHealthCard';
+import MetricsOverviewCard from '../components/admin/MetricsOverviewCard';
+import ActiveAlertsCard from '../components/admin/ActiveAlertsCard';
+import ServiceStatusGrid from '../components/admin/ServiceStatusGrid';
+import { SystemHealth, MetricsOverview, Alert as AlertType, ServiceDetails } from '../types/dashboard';
+import { useDashboardData } from '../hooks/useDashboardData';
+import { useHealthCheck } from '../hooks/useHealthCheck';
 
 // Sample data generators
 const generateSystemHealth = (): SystemHealth => {
@@ -206,19 +211,42 @@ const generateServiceDetails = (): Record<string, ServiceDetails> => {
 };
 
 const DashboardPage: React.FC = () => {
-  const [systemHealth, setSystemHealth] = useState<SystemHealth>(generateSystemHealth());
-  const [metricsOverview, setMetricsOverview] = useState<MetricsOverview>(generateMetricsOverview());
+  // Use live data hooks
+  const {
+    overview,
+    metrics,
+    metricsOverview,
+    isLoading: isDashboardLoading,
+    error: dashboardError,
+    isUsingMockData: isDashboardMock,
+    lastFetch: dashboardLastFetch,
+    refresh: refreshDashboard
+  } = useDashboardData({
+    pollInterval: 10000, // 10 seconds
+    useMockFallback: true
+  });
+
+  const {
+    healthData: systemHealth,
+    isLoading: isHealthLoading,
+    error: healthError,
+    isUsingMockData: isHealthMock,
+    lastFetch: healthLastFetch
+  } = useHealthCheck({
+    pollInterval: 30000, // 30 seconds
+    useMockFallback: true
+  });
+
+  // Fallback state for components that still need mock data
   const [alerts, setAlerts] = useState<AlertType[]>(generateAlerts());
   const [serviceDetails, setServiceDetails] = useState<Record<string, ServiceDetails>>(generateServiceDetails());
 
-  // Simulate real-time updates
+  // Update alerts and service details periodically (until we have live endpoints)
   useEffect(() => {
     const interval = setInterval(() => {
-      setSystemHealth(generateSystemHealth());
-      setMetricsOverview(generateMetricsOverview());
       setAlerts(generateAlerts());
       setServiceDetails(generateServiceDetails());
-    }, 10000); // Update every 10 seconds
+    }, 30000); // Update every 30 seconds
 
     return () => clearInterval(interval);
   }, []);
@@ -248,137 +276,181 @@ const DashboardPage: React.FC = () => {
     }));
   };
 
+  // Determine overall loading state
+  const isLoading = isDashboardLoading || isHealthLoading;
+  const hasError = dashboardError || healthError;
+  const isUsingMockData = isDashboardMock || isHealthMock;
+
   return (
     <Box sx={{ p: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Admin Dashboard
         </Typography>
-        <Chip
-          icon={<TimelineIcon />}
-          label="Live Data"
-          variant="outlined"
-          color="primary"
-        />
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          {isLoading && (
+            <Chip
+              icon={<CircularProgress size={16} />}
+              label="Loading..."
+              variant="outlined"
+              color="default"
+            />
+          )}
+          <Chip
+            icon={isUsingMockData ? <WifiOffIcon /> : <WifiIcon />}
+            label={isUsingMockData ? "Mock Data" : "Live Data"}
+            variant="outlined"
+            color={isUsingMockData ? "warning" : "success"}
+          />
+          {dashboardLastFetch && (
+            <Chip
+              label={`Updated: ${dashboardLastFetch.toLocaleTimeString()}`}
+              variant="outlined"
+              size="small"
+            />
+          )}
+        </Box>
       </Box>
+
+      {/* Error Alert */}
+      {hasError && (
+        <Alert 
+          severity="warning" 
+          sx={{ mb: 3 }}
+          action={
+            <Chip
+              label="Retry"
+              size="small"
+              onClick={() => refreshDashboard()}
+              clickable
+            />
+          }
+        >
+          <Typography variant="body2">
+            {isUsingMockData 
+              ? "Using mock data due to API connection issues. Some features may be limited."
+              : "There was an issue fetching some data. Please try refreshing."
+            }
+          </Typography>
+        </Alert>
+      )}
 
       {/* Quick Stats Overview */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr 1fr' }, gap: 3, mb: 3 }}>
-        <Card>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="subtitle2" color="textSecondary">
-                System Status
+      {metricsOverview && systemHealth && (
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr 1fr' }, gap: 3, mb: 3 }}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="subtitle2" color="textSecondary">
+                  System Status
+                </Typography>
+                <StorageIcon color="action" fontSize="small" />
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Chip
+                  icon={systemHealth.status === 'healthy' ? <CheckCircleIcon /> : <WarningIcon />}
+                  label={systemHealth.status}
+                  color={systemHealth.status === 'healthy' ? 'success' : 'error'}
+                  size="small"
+                />
+              </Box>
+              <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
+                Uptime: {systemHealth.uptime}
               </Typography>
-              <StorageIcon color="action" fontSize="small" />
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Chip
-                icon={systemHealth.status === 'healthy' ? <CheckCircleIcon /> : <WarningIcon />}
-                label={systemHealth.status}
-                color={systemHealth.status === 'healthy' ? 'success' : 'error'}
-                size="small"
-              />
-            </Box>
-            <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
-              Uptime: {systemHealth.uptime}
-            </Typography>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="subtitle2" color="textSecondary">
-                Total Requests
-              </Typography>
-              <TimelineIcon color="action" fontSize="small" />
-            </Box>
-            <Typography variant="h5">{metricsOverview.totalRequests.toLocaleString()}</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-              {metricsOverview.requestsTrend === 'up' ? (
-                <TrendingUpIcon fontSize="small" color="success" />
-              ) : metricsOverview.requestsTrend === 'down' ? (
-                <TrendingDownIcon fontSize="small" color="error" />
-              ) : null}
-              <Typography variant="caption" color="textSecondary" sx={{ ml: 0.5 }}>
-                {metricsOverview.requestsToday} today
-              </Typography>
-            </Box>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="subtitle2" color="textSecondary">
+                  Total Requests
+                </Typography>
+                <TimelineIcon color="action" fontSize="small" />
+              </Box>
+              <Typography variant="h5">{metricsOverview.totalRequests.toLocaleString()}</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                {metricsOverview.requestsTrend === 'up' ? (
+                  <TrendingUpIcon fontSize="small" color="success" />
+                ) : metricsOverview.requestsTrend === 'down' ? (
+                  <TrendingDownIcon fontSize="small" color="error" />
+                ) : null}
+                <Typography variant="caption" color="textSecondary" sx={{ ml: 0.5 }}>
+                  {metricsOverview.requestsToday} today
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="subtitle2" color="textSecondary">
-                Error Rate
-              </Typography>
-              <WarningIcon color="action" fontSize="small" />
-            </Box>
-            <Typography variant="h5">{metricsOverview.errorRate}%</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-              {metricsOverview.errorTrend === 'down' ? (
-                <TrendingDownIcon fontSize="small" color="success" />
-              ) : metricsOverview.errorTrend === 'up' ? (
-                <TrendingUpIcon fontSize="small" color="error" />
-              ) : null}
-              <Typography variant="caption" color="textSecondary" sx={{ ml: 0.5 }}>
-                Success: {metricsOverview.successRate}%
-              </Typography>
-            </Box>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="subtitle2" color="textSecondary">
+                  Error Rate
+                </Typography>
+                <WarningIcon color="action" fontSize="small" />
+              </Box>
+              <Typography variant="h5">{metricsOverview.errorRate}%</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                {metricsOverview.errorTrend === 'down' ? (
+                  <TrendingDownIcon fontSize="small" color="success" />
+                ) : metricsOverview.errorTrend === 'up' ? (
+                  <TrendingUpIcon fontSize="small" color="error" />
+                ) : null}
+                <Typography variant="caption" color="textSecondary" sx={{ ml: 0.5 }}>
+                  Success: {metricsOverview.successRate}%
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="subtitle2" color="textSecondary">
-                Active Users
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="subtitle2" color="textSecondary">
+                  Active Users
+                </Typography>
+                <PeopleIcon color="action" fontSize="small" />
+              </Box>
+              <Typography variant="h5">{metricsOverview.activeUsers}</Typography>
+              <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
+                Peak: {metricsOverview.peakHour}
               </Typography>
-              <PeopleIcon color="action" fontSize="small" />
-            </Box>
-            <Typography variant="h5">{metricsOverview.activeUsers}</Typography>
-            <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
-              Peak: {metricsOverview.peakHour}
-            </Typography>
-          </CardContent>
-        </Card>
-      </Box>
+            </CardContent>
+          </Card>
+        </Box>
+      )}
 
       {/* Main Content Grid */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
-        {/* System Health Card */}
+        {/* Enhanced System Health Card with Real API Integration */}
         <Card>
-          <CardHeader
-            title={
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <StorageIcon sx={{ mr: 1 }} />
-                <Typography variant="h6">System Health</Typography>
-              </Box>
-            }
-            subheader="Current system performance and resource usage"
-          />
-          <CardContent>
-            <SystemHealthCard health={systemHealth} />
+          <CardContent sx={{ p: 3 }}>
+            <EnhancedSystemHealthCard 
+              pollInterval={30000}
+              showDetails={true}
+              showRefreshButton={true}
+            />
           </CardContent>
         </Card>
 
         {/* Metrics Overview Card */}
-        <Card>
-          <CardHeader
-            title={
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <TimelineIcon sx={{ mr: 1 }} />
-                <Typography variant="h6">Performance Metrics</Typography>
-              </Box>
-            }
-            subheader="Key performance indicators and trends"
-          />
-          <CardContent>
-            <MetricsOverviewCard metrics={metricsOverview} />
-          </CardContent>
-        </Card>
+        {metricsOverview && (
+          <Card>
+            <CardHeader
+              title={
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <TimelineIcon sx={{ mr: 1 }} />
+                  <Typography variant="h6">Performance Metrics</Typography>
+                </Box>
+              }
+              subheader="Key performance indicators and trends"
+            />
+            <CardContent>
+              <MetricsOverviewCard metrics={metricsOverview} />
+            </CardContent>
+          </Card>
+        )}
       </Box>
 
       {/* Active Alerts */}

@@ -80,42 +80,96 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = async (username: string, password: string): Promise<AuthResult> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Check against sample users
-    const sampleUser = SAMPLE_USERS.find(
-      user => user.username === username && user.password === password
-    );
+    try {
+      // Get API base URL
+      const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+      
+      // Make API call to backend
+      const response = await fetch(`${apiBaseUrl}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      });
 
-    if (sampleUser) {
-      const user: User = {
-        username: sampleUser.username,
-        role: sampleUser.role,
-        createdAt: sampleUser.createdAt,
-        lastLogin: new Date().toISOString(), // Update last login to current time
-      };
+      if (response.ok) {
+        const data = await response.json();
+        
+        const user: User = {
+          username: data.user.username,
+          role: data.user.role,
+          createdAt: data.user.created_at,
+          lastLogin: data.user.last_login,
+        };
+        
+        const token = data.access_token;
+        
+        setUser(user);
+        setToken(token);
+        
+        // Store in localStorage
+        localStorage.setItem('auth_token', token);
+        localStorage.setItem('auth_user', JSON.stringify(user));
+        
+        console.log('✅ Login successful:', { username: user.username, role: user.role });
+        
+        return {
+          success: true,
+          user,
+          token,
+          refreshToken: data.refresh_token,
+        };
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: 'Login failed' }));
+        console.warn('⚠️ Login failed:', errorData.detail);
+        
+        return {
+          success: false,
+          errorMessage: errorData.detail || 'Invalid username or password',
+        };
+      }
+    } catch (error) {
+      console.error('❌ Login error:', error);
       
-      const token = `mock-jwt-token-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      // Fallback to sample users if API is not available
+      console.log('🎭 API unavailable, trying sample users...');
       
-      setUser(user);
-      setToken(token);
-      
-      // Store in localStorage
-      localStorage.setItem('auth_token', token);
-      localStorage.setItem('auth_user', JSON.stringify(user));
-      
+      const sampleUser = SAMPLE_USERS.find(
+        user => user.username === username && user.password === password
+      );
+
+      if (sampleUser) {
+        const user: User = {
+          username: sampleUser.username,
+          role: sampleUser.role,
+          createdAt: sampleUser.createdAt,
+          lastLogin: new Date().toISOString(),
+        };
+        
+        const token = `mock-jwt-token-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        setUser(user);
+        setToken(token);
+        
+        // Store in localStorage
+        localStorage.setItem('auth_token', token);
+        localStorage.setItem('auth_user', JSON.stringify(user));
+        
+        console.log('🎭 Using mock authentication:', { username: user.username, role: user.role });
+        
+        return {
+          success: true,
+          user,
+          token,
+        };
+      }
+
       return {
-        success: true,
-        user,
-        token,
+        success: false,
+        errorMessage: error instanceof Error ? error.message : 'Network error occurred',
       };
     }
-
-    return {
-      success: false,
-      errorMessage: 'Invalid username or password',
-    };
   };
 
   const logout = () => {

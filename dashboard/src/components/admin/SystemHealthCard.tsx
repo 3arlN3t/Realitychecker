@@ -13,27 +13,7 @@ import {
   Error as ErrorIcon,
   Info as InfoIcon
 } from '@mui/icons-material';
-
-export interface SystemHealth {
-  status: 'healthy' | 'warning' | 'critical' | 'unknown';
-  uptime: string;
-  lastUpdated: string;
-  services: {
-    openai: ServiceStatus;
-    twilio: ServiceStatus;
-    database: ServiceStatus;
-    webhook: ServiceStatus;
-  };
-  memoryUsage: number; // percentage
-  cpuUsage: number; // percentage
-}
-
-export interface ServiceStatus {
-  status: 'healthy' | 'warning' | 'critical' | 'unknown';
-  responseTime?: number; // in ms
-  lastCheck: string;
-  errorCount?: number;
-}
+import { SystemHealth, ServiceStatus } from '../../types/dashboard';
 
 interface SystemHealthCardProps {
   health: SystemHealth;

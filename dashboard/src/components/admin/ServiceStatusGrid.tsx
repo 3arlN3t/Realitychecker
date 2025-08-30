@@ -23,26 +23,7 @@ import {
   Http as WebhookIcon,
   Psychology as BrainIcon
 } from '@mui/icons-material';
-import { ServiceStatus } from './SystemHealthCard';
-
-export interface ServiceDetails extends ServiceStatus {
-  name: string;
-  description: string;
-  version?: string;
-  endpoint?: string;
-  dependencies?: string[];
-  metrics?: {
-    requestsPerMinute: number;
-    successRate: number;
-    avgResponseTime: number;
-    uptime: string;
-  };
-  recentErrors?: Array<{
-    timestamp: string;
-    error: string;
-    count: number;
-  }>;
-}
+import { ServiceStatus, ServiceDetails } from '../../types/dashboard';
 
 interface ServiceStatusGridProps {
   services: Record<string, ServiceDetails>;

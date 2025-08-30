@@ -1028,14 +1028,72 @@ uvicorn app.main:app --reload --log-level debug
 
 ### Health Checks
 
+The system includes comprehensive health monitoring for all external APIs and services:
+
 ```bash
-# Check application health
+# Basic health check (for load balancers)
 curl http://localhost:8000/health
 
-# Check specific service health
-curl http://localhost:8000/api/health/openai
-curl http://localhost:8000/api/health/twilio
+# Detailed health check (all services)
+curl http://localhost:8000/health/detailed
+
+# Individual service health checks
+curl http://localhost:8000/health/openai      # OpenAI API status
+curl http://localhost:8000/health/twilio     # Twilio API status  
+curl http://localhost:8000/health/database   # Database connectivity
+curl http://localhost:8000/health/redis      # Redis cache status
+curl http://localhost:8000/health/ngrok      # ngrok tunnel status
+
+# External services combined
+curl http://localhost:8000/health/external
+
+# Additional monitoring endpoints
+curl http://localhost:8000/health/metrics         # Performance metrics
+curl http://localhost:8000/health/readiness       # Kubernetes readiness
+curl http://localhost:8000/health/liveness        # Kubernetes liveness
+curl http://localhost:8000/health/circuit-breakers # Circuit breaker status
+curl http://localhost:8000/health/alerts          # Active system alerts
 ```
+
+#### Automated Health Monitoring
+
+Run continuous health monitoring:
+
+```bash
+# Continuous monitoring (every 30 seconds)
+python3 monitor_health.py
+
+# Single health check
+python3 monitor_health.py --once
+
+# Custom interval and URL
+python3 monitor_health.py --url http://localhost:8000 --interval 60
+
+# Quiet mode (only show alerts)
+python3 monitor_health.py --quiet
+```
+
+#### Test All Health Endpoints
+
+```bash
+# Comprehensive health system test
+python3 test_enhanced_health_checks.py
+```
+
+**Monitored Services:**
+- ✅ **OpenAI API**: AI analysis functionality with circuit breaker protection
+- ✅ **Twilio API**: WhatsApp messaging with account validation
+- ✅ **Database**: Connection pool health and query performance
+- ✅ **Redis**: Cache operations and connection status
+- ✅ **ngrok**: Development tunnel status (optional)
+
+**Health Status Types:**
+- `healthy`: Service fully operational
+- `degraded`: Service working with issues
+- `unhealthy`: Service not working
+- `not_configured`: Service not configured (expected for optional services)
+- `not_available`: Service not available (normal for dev tools in production)
+- `circuit_open`: Circuit breaker activated due to failures
 
 ### Log Analysis
 

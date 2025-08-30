@@ -35,6 +35,7 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
 import ShieldIcon from '@mui/icons-material/Shield';
 import CloseIcon from '@mui/icons-material/Close';
+import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 
 const drawerWidth = 240;
 
@@ -64,6 +65,11 @@ const navigationItems: NavigationItem[] = [
     text: 'Real-time Monitoring',
     icon: <TimelineIcon />,
     path: '/monitoring',
+  },
+  {
+    text: 'Health Check',
+    icon: <HealthAndSafetyIcon />,
+    path: '/health',
   },
   {
     text: 'User Management',

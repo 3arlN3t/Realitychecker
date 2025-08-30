@@ -21,19 +21,7 @@ import {
   NotificationsActive as NotificationsActiveIcon,
   NotificationsOff as NotificationsOffIcon,
 } from '@mui/icons-material';
-
-export interface Alert {
-  id: string;
-  type: 'error' | 'warning' | 'info' | 'success';
-  title: string;
-  message: string;
-  timestamp: string;
-  source: string; // e.g., 'OpenAI', 'Twilio', 'System'
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  acknowledged: boolean;
-  details?: string;
-  actionRequired?: boolean;
-}
+import { Alert } from '../../types/dashboard';
 
 interface ActiveAlertsCardProps {
   alerts: Alert[];

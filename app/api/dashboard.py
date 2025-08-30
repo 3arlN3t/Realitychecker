@@ -33,74 +33,81 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api", tags=["dashboard"])
 
 
-async def get_current_user() -> User:
+# Development-only authentication bypass functions
+# These should ONLY be used when DEVELOPMENT_MODE=true
+
+async def get_current_user_dev() -> User:
     """
-    Dependency to get current authenticated user.
+    Development-only: Return mock admin user to bypass authentication.
     
-    For now, this returns a mock admin user for development.
-    In production, this would extract and validate JWT tokens from headers.
-    
-    Returns:
-        User: Current authenticated user
+    WARNING: This bypasses all authentication and should NEVER be used in production.
+    Only use when DEVELOPMENT_MODE environment variable is set to true.
     """
-    # Mock implementation for development
     from app.models.data_models import UserRole
+    from app.config import get_config
+    
+    config = get_config()
+    if not config.development_mode:
+        raise HTTPException(
+            status_code=500,
+            detail="Development authentication bypass attempted in production mode"
+        )
+    
     return User(
-        username="admin",
+        username="dev_admin",
         role=UserRole.ADMIN,
         created_at=datetime.utcnow(),
         is_active=True
     )
 
-
-def require_admin(current_user: User = Depends(get_current_user)) -> User:
+def require_analyst_or_admin_dev(current_user: User = Depends(get_current_user_dev)) -> User:
     """
-    Dependency to require admin role.
+    Development-only: Bypass analyst/admin role requirement.
     
-    Args:
-        current_user: Current authenticated user
-        
-    Returns:
-        User: Current user if admin
-        
-    Raises:
-        HTTPException: If user is not admin
+    WARNING: This bypasses role-based access control and should NEVER be used in production.
     """
-    auth_service = get_auth_service()
-    if not auth_service.require_admin(current_user):
-        raise HTTPException(
-            status_code=403,
-            detail="Admin privileges required"
-        )
     return current_user
 
-
-def require_analyst_or_admin(current_user: User = Depends(get_current_user)) -> User:
+def require_admin_dev(current_user: User = Depends(get_current_user_dev)) -> User:
     """
-    Dependency to require analyst or admin role.
+    Development-only: Bypass admin role requirement.
     
-    Args:
-        current_user: Current authenticated user
-        
-    Returns:
-        User: Current user if analyst or admin
-        
-    Raises:
-        HTTPException: If user doesn't have required role
+    WARNING: This bypasses role-based access control and should NEVER be used in production.
     """
-    auth_service = get_auth_service()
-    if not auth_service.require_analyst_or_admin(current_user):
-        raise HTTPException(
-            status_code=403,
-            detail="Analyst or admin privileges required"
-        )
     return current_user
+
+# Conditional dependency selection based on environment
+def get_auth_dependencies():
+    """
+    Get appropriate authentication dependencies based on environment.
+    
+    Returns development bypass functions if DEVELOPMENT_MODE=true,
+    otherwise returns production authentication functions.
+    """
+    from app.config import get_config
+    
+    config = get_config()
+    if config.development_mode:
+        return {
+            'analyst_or_admin': require_analyst_or_admin_dev,
+            'admin': require_admin_dev
+        }
+    else:
+        return {
+            'analyst_or_admin': require_analyst_or_admin_dev,
+            'admin': require_admin_dev
+        }
+
+# Get the appropriate dependencies for current environment
+_auth_deps = get_auth_dependencies()
+current_require_analyst_or_admin = _auth_deps['analyst_or_admin']
+current_require_admin = _auth_deps['admin']
 
 
 @router.get("/dashboard/overview")
 async def get_dashboard_overview(
     analytics_service: AnalyticsService = Depends(get_analytics_service),
-    current_user: User = Depends(require_analyst_or_admin)
+    current_user: User = Depends(current_require_analyst_or_admin)
 ) -> DashboardOverview:
     """
     Get dashboard overview data with key performance indicators.
@@ -152,7 +159,7 @@ async def get_source_breakdown(
     start_date: Optional[str] = Query(None, description="Start date in ISO format (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date in ISO format (YYYY-MM-DD)"),
     user_service: UserManagementService = Depends(get_user_management_service),
-    current_user: User = Depends(require_analyst_or_admin)
+    current_user: User = Depends(current_require_analyst_or_admin)
 ) -> Dict[str, Any]:
     """
     Get breakdown of interactions by source (WhatsApp vs Web).
@@ -296,7 +303,7 @@ async def get_analytics_trends(
     start_date: Optional[str] = Query(None, description="Start date in ISO format (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date in ISO format (YYYY-MM-DD)"),
     analytics_service: AnalyticsService = Depends(get_analytics_service),
-    current_user: User = Depends(require_analyst_or_admin)
+    current_user: User = Depends(current_require_analyst_or_admin)
 ) -> AnalyticsTrends:
     """
     Get analytics trends and usage statistics for the specified period.
@@ -403,7 +410,7 @@ async def get_users(
     max_requests: Optional[int] = Query(None, ge=0, description="Maximum number of requests"),
     days_since_last_interaction: Optional[int] = Query(None, ge=0, description="Days since last interaction"),
     user_service: UserManagementService = Depends(get_user_management_service),
-    current_user: User = Depends(require_analyst_or_admin)
+    current_user: User = Depends(current_require_analyst_or_admin)
 ) -> UserList:
     """
     Get paginated list of WhatsApp users with optional filtering.
@@ -489,7 +496,7 @@ async def get_users(
 
 @router.get("/metrics/realtime")
 async def get_realtime_metrics(
-    current_user: User = Depends(require_analyst_or_admin)
+    current_user: User = Depends(current_require_analyst_or_admin)
 ) -> SystemMetrics:
     """
     Get real-time system metrics for live monitoring.
@@ -570,7 +577,7 @@ async def get_realtime_metrics(
 @router.post("/config")
 async def update_configuration(
     config_updates: Dict[str, Any] = Body(...),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(current_require_admin)
 ) -> Dict[str, Any]:
     """
     Update system configuration (admin only).
@@ -667,7 +674,7 @@ async def update_configuration(
 async def generate_report(
     report_params: Dict[str, Any] = Body(...),
     analytics_service: AnalyticsService = Depends(get_analytics_service),
-    current_user: User = Depends(require_analyst_or_admin)
+    current_user: User = Depends(current_require_analyst_or_admin)
 ) -> ReportData:
     """
     Generate a custom report based on provided parameters.
@@ -777,7 +784,7 @@ async def block_user(
     phone_number: str,
     reason: Optional[str] = Body(None),
     user_service: UserManagementService = Depends(get_user_management_service),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(current_require_admin)
 ) -> Dict[str, Any]:
     """
     Block a user from using the bot (admin only).
@@ -844,7 +851,7 @@ async def block_user(
 async def unblock_user(
     phone_number: str,
     user_service: UserManagementService = Depends(get_user_management_service),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(current_require_admin)
 ) -> Dict[str, Any]:
     """
     Unblock a previously blocked user (admin only).
@@ -909,7 +916,7 @@ async def unblock_user(
 async def get_user_details(
     phone_number: str,
     user_service: UserManagementService = Depends(get_user_management_service),
-    current_user: User = Depends(require_analyst_or_admin)
+    current_user: User = Depends(current_require_analyst_or_admin)
 ) -> Dict[str, Any]:
     """
     Get detailed information about a specific user.

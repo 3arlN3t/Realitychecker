@@ -14,28 +14,7 @@ import {
   BarChart as BarChartIcon,
   Warning as WarningIcon,
 } from '@mui/icons-material';
-
-// Define a type alias for trend directions
-type TrendDirection = 'up' | 'down' | 'stable';
-
-export interface MetricsOverview {
-  totalRequests: number;
-  requestsToday: number;
-  requestsTrend: TrendDirection;
-  requestsChange: number; // percentage change
-  errorRate: number;
-  errorTrend: TrendDirection;
-  errorChange: number;
-  avgResponseTime: number; // in seconds
-  responseTrend: TrendDirection;
-  responseChange: number;
-  activeUsers: number;
-  usersTrend: TrendDirection;
-  usersChange: number;
-  successRate: number;
-  peakHour: string;
-  lastUpdated: string;
-}
+import { MetricsOverview, TrendDirection } from '../../types/dashboard';
 
 // Helper functions for trend visualization
 const getTrendIcon = (trend: TrendDirection) => {

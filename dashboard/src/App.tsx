@@ -12,6 +12,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import MonitoringPage from './pages/MonitoringPage';
+import HealthCheckPage from './pages/HealthCheckPage';
 import UsersPage from './pages/UsersPage';
 import ConfigurationPage from './pages/ConfigurationPage';
 import ReportingPage from './pages/ReportingPage';
@@ -117,6 +118,16 @@ function App() {
                     <ProtectedRoute>
                       <Layout>
                         <MonitoringPage />
+                      </Layout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/health"
+                  element={
+                    <ProtectedRoute>
+                      <Layout>
+                        <HealthCheckPage />
                       </Layout>
                     </ProtectedRoute>
                   }

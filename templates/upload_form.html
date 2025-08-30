@@ -17,6 +17,8 @@
             padding-bottom: 1rem;
             margin: 0;
         }
+        /* Utility */
+        .border-dashed { border-style: dashed !important; }
         
         /* Top Navigation Bar */
         .top-nav {
@@ -246,6 +248,10 @@
             border-color: #4f46e5 !important;
             background-color: rgba(79, 70, 229, 0.02);
         }
+        .upload-area:focus-visible {
+            outline: 3px solid rgba(79, 70, 229, 0.35);
+            outline-offset: 2px;
+        }
         
         .analysis-details ul {
             padding-left: 0;
@@ -340,10 +346,11 @@
                                 rows="6" 
                                 placeholder="Paste the job advertisement text here... Include details like job title, company name, salary, requirements, and contact information."
                                 oninput="adjustTextareaHeight(this); toggleSubmitButton()"
+                                aria-label="Job advertisement text input"
                             ></textarea>
                             <div class="form-text">
                                 <i class="fas fa-info-circle me-1"></i>
-                                Provide as much detail as possible for better analysis accuracy
+                                Provide as much detail as possible for better analysis accuracy. Press Enter to insert a new line.
                             </div>
                         </div>
                         
@@ -353,13 +360,14 @@
                         
                         <!-- File Upload Section -->
                         <div class="upload-section mb-4">
-                            <div class="upload-area text-center p-4 border border-2 border-dashed rounded-3" style="border-color: #e5e7eb !important;">
+                            <div class="upload-area text-center p-4 border border-2 border-dashed rounded-3" style="border-color: #e5e7eb !important;" role="button" tabindex="0" aria-label="Choose a PDF file to analyze (up to 10MB)">
                                 <i class="fas fa-cloud-upload-alt fa-2x text-muted mb-2"></i>
-                                <p class="mb-2">Upload PDF Document</p>
+                                <p class="mb-1">Upload PDF Document</p>
+                                <small class="text-muted d-block mb-2">PDF only • Up to 10MB</small>
                                 <button type="button" class="btn btn-outline-primary" id="fileUploadBtn">
                                     <i class="fas fa-file-pdf me-2"></i>Choose PDF File
                                 </button>
-                                <div class="form-text mt-2">Maximum file size: 10MB</div>
+                                <div class="form-text mt-2">We’ll extract the text securely for analysis</div>
                             </div>
                         </div>
                         
@@ -381,8 +389,8 @@
                         
                         <!-- Submit Button -->
                         <div class="d-grid">
-                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>
-                                <i class="fas fa-shield-alt me-2"></i>Analyze for Scams
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled aria-label="Analyze job advert">
+                                <i class="fas fa-search me-2"></i>Analyze
                             </button>
                         </div>
                     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Card,
@@ -7,7 +7,9 @@ import {
   Typography,
   Chip,
   Paper,
-  Grid
+
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import {
   BarChart as BarChart3Icon,
@@ -18,7 +20,9 @@ import {
   Timeline as ActivityIcon,
   CheckCircle as CheckCircleIcon,
   Error as AlertCircleIcon,
-  Info as InfoIcon
+  Info as InfoIcon,
+  Wifi as WifiIcon,
+  WifiOff as WifiOffIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import ClassificationChart from '../components/analytics/ClassificationChart';
@@ -33,6 +37,7 @@ import {
   UserEngagementData,
   PeriodType
 } from '../components/analytics/types';
+import { useAnalyticsData } from '../hooks/useAnalyticsData';
 
 // Sample analytics data
 const generateAnalyticsData = (period: PeriodType) => {
@@ -145,18 +150,20 @@ const generateAnalyticsData = (period: PeriodType) => {
 const AnalyticsPage: React.FC = () => {
   const { user } = useAuth();
   const [period, setPeriod] = useState<PeriodType>('week');
-  const [analyticsData, setAnalyticsData] = useState(generateAnalyticsData(period));
-
-  // Update analytics data when period changes or every 30 seconds
-  useEffect(() => {
-    setAnalyticsData(generateAnalyticsData(period));
-    
-    const interval = setInterval(() => {
-      setAnalyticsData(generateAnalyticsData(period));
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [period]);
+  
+  // Use live analytics data
+  const {
+    analyticsData,
+    sourceBreakdown,
+    isLoading,
+    error,
+    isUsingMockData,
+    lastFetch,
+    refresh
+  } = useAnalyticsData(period, {
+    pollInterval: 30000, // 30 seconds
+    useMockFallback: true
+  });
 
   return (
     <Box sx={{ p: 3 }}>
@@ -201,9 +208,20 @@ const AnalyticsPage: React.FC = () => {
             </Box>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {isLoading && (
+              <Chip
+                icon={<CircularProgress size={16} />}
+                label="Loading..."
+                sx={{
+                  bgcolor: 'rgba(255,255,255,0.2)',
+                  color: 'white',
+                  backdropFilter: 'blur(4px)'
+                }}
+              />
+            )}
             <Chip
-              icon={<ActivityIcon />}
-              label="Live Data"
+              icon={isUsingMockData ? <WifiOffIcon /> : <WifiIcon />}
+              label={isUsingMockData ? "Mock Data" : "Live Data"}
               sx={{
                 bgcolor: 'rgba(255,255,255,0.2)',
                 color: 'white',
@@ -219,9 +237,43 @@ const AnalyticsPage: React.FC = () => {
                 border: '1px solid rgba(255,255,255,0.3)'
               }}
             />
+            {lastFetch && (
+              <Chip
+                label={`Updated: ${lastFetch.toLocaleTimeString()}`}
+                sx={{
+                  bgcolor: 'rgba(255,255,255,0.1)',
+                  color: 'rgba(255,255,255,0.8)',
+                  fontSize: '0.75rem'
+                }}
+                size="small"
+              />
+            )}
           </Box>
         </Box>
       </Paper>
+
+      {/* Error Alert */}
+      {error && (
+        <Alert 
+          severity="warning" 
+          sx={{ mb: 3 }}
+          action={
+            <Chip
+              label="Retry"
+              size="small"
+              onClick={() => refresh(period)}
+              clickable
+            />
+          }
+        >
+          <Typography variant="body2">
+            {isUsingMockData 
+              ? "Using mock data due to API connection issues. Some features may be limited."
+              : "There was an issue fetching analytics data. Please try refreshing."
+            }
+          </Typography>
+        </Alert>
+      )}
 
       {/* Period Selector */}
       <Box sx={{ mb: 3 }}>
@@ -232,178 +284,185 @@ const AnalyticsPage: React.FC = () => {
       </Box>
 
       {/* Key Metrics */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2, mb: 3 }}>
-        <Card>
-          <CardHeader
-            title={
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="subtitle2">Classification Accuracy</Typography>
-                <TargetIcon color="action" fontSize="small" />
-              </Box>
-            }
-            sx={{ pb: 1 }}
-          />
-          <CardContent sx={{ pt: 0 }}>
-            <Typography variant="h4" sx={{ color: 'success.main', mb: 0.5 }}>
-              {analyticsData.classificationAccuracy}%
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              AI Model Performance
-            </Typography>
-          </CardContent>
-        </Card>
+      {analyticsData && (
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2, mb: 3 }}>
+          <Card>
+            <CardHeader
+              title={
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="subtitle2">Classification Accuracy</Typography>
+                  <TargetIcon color="action" fontSize="small" />
+                </Box>
+              }
+              sx={{ pb: 1 }}
+            />
+            <CardContent sx={{ pt: 0 }}>
+              <Typography variant="h4" sx={{ color: 'success.main', mb: 0.5 }}>
+                {analyticsData.classificationAccuracy}%
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                AI Model Performance
+              </Typography>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader
-            title={
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="subtitle2">Total Analyses</Typography>
-                <BarChart3Icon color="action" fontSize="small" />
-              </Box>
-            }
-            sx={{ pb: 1 }}
-          />
-          <CardContent sx={{ pt: 0 }}>
-            <Typography variant="h4" sx={{ color: 'primary.main', mb: 0.5 }}>
-              {analyticsData.totalAnalyses.toLocaleString()}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              All time
-            </Typography>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader
+              title={
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="subtitle2">Total Analyses</Typography>
+                  <BarChart3Icon color="action" fontSize="small" />
+                </Box>
+              }
+              sx={{ pb: 1 }}
+            />
+            <CardContent sx={{ pt: 0 }}>
+              <Typography variant="h4" sx={{ color: 'primary.main', mb: 0.5 }}>
+                {analyticsData.totalAnalyses.toLocaleString()}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                All time
+              </Typography>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader
-            title={
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="subtitle2">Weekly Growth</Typography>
-                <TrendingUpIcon color="action" fontSize="small" />
-              </Box>
-            }
-            sx={{ pb: 1 }}
-          />
-          <CardContent sx={{ pt: 0 }}>
-            <Typography variant="h4" sx={{ color: 'success.main', mb: 0.5 }}>
-              +{analyticsData.weeklyGrowth}%
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              vs last week
-            </Typography>
-          </CardContent>
-        </Card>
-      </Box>
+          <Card>
+            <CardHeader
+              title={
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="subtitle2">Weekly Growth</Typography>
+                  <TrendingUpIcon color="action" fontSize="small" />
+                </Box>
+              }
+              sx={{ pb: 1 }}
+            />
+            <CardContent sx={{ pt: 0 }}>
+              <Typography variant="h4" sx={{ color: 'success.main', mb: 0.5 }}>
+                +{analyticsData.weeklyGrowth}%
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                vs last week
+              </Typography>
+            </CardContent>
+          </Card>
+        </Box>
+      )}
 
       {/* Charts - First Row */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
-        <Card>
-          <CardHeader
-            title={
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <BarChart3Icon sx={{ mr: 1 }} />
-                <Typography variant="h6">Classification Breakdown</Typography>
-              </Box>
-            }
-            subheader="Distribution of job posting classifications"
-          />
-          <CardContent>
-            <ClassificationChart data={analyticsData.classifications} />
-          </CardContent>
-        </Card>
+      {analyticsData && (
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
+          <Card>
+            <CardHeader
+              title={
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <BarChart3Icon sx={{ mr: 1 }} />
+                  <Typography variant="h6">Classification Breakdown</Typography>
+                </Box>
+              }
+              subheader="Distribution of job posting classifications"
+            />
+            <CardContent>
+              <ClassificationChart data={analyticsData.classifications} />
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader
-            title={
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <TrendingUpIcon sx={{ mr: 1 }} />
-                <Typography variant="h6">Usage Trends</Typography>
-              </Box>
-            }
-            subheader="Request volume over time"
-          />
-          <CardContent>
-            <UsageTrendsChart data={analyticsData.usageTrends} period={period} />
-          </CardContent>
-        </Card>
-      </Box>
+          <Card>
+            <CardHeader
+              title={
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <TrendingUpIcon sx={{ mr: 1 }} />
+                  <Typography variant="h6">Usage Trends</Typography>
+                </Box>
+              }
+              subheader="Request volume over time"
+            />
+            <CardContent>
+              <UsageTrendsChart data={analyticsData.usageTrends} period={period} />
+            </CardContent>
+          </Card>
+        </Box>
+      )}
 
       {/* Charts - Second Row */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
-        <Card>
-          <CardHeader
-            title={
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <ClockIcon sx={{ mr: 1 }} />
-                <Typography variant="h6">Peak Hours</Typography>
-              </Box>
-            }
-            subheader="Usage patterns throughout the day"
-          />
-          <CardContent>
-            <PeakHoursChart data={analyticsData.peakHours} />
-          </CardContent>
-        </Card>
+      {analyticsData && (
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
+          <Card>
+            <CardHeader
+              title={
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <ClockIcon sx={{ mr: 1 }} />
+                  <Typography variant="h6">Peak Hours</Typography>
+                </Box>
+              }
+              subheader="Usage patterns throughout the day"
+            />
+            <CardContent>
+              <PeakHoursChart data={analyticsData.peakHours} />
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader
-            title={
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <UsersIcon sx={{ mr: 1 }} />
-                <Typography variant="h6">User Engagement</Typography>
-              </Box>
-            }
-            subheader="User behavior and engagement metrics"
-          />
-          <CardContent>
-            <UserEngagementMetrics data={analyticsData.userEngagement} />
-          </CardContent>
-        </Card>
-      </Box>
+          <Card>
+            <CardHeader
+              title={
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <UsersIcon sx={{ mr: 1 }} />
+                  <Typography variant="h6">User Engagement</Typography>
+                </Box>
+              }
+              subheader="User behavior and engagement metrics"
+            />
+            <CardContent>
+              <UserEngagementMetrics data={analyticsData.userEngagement} />
+            </CardContent>
+          </Card>
+        </Box>
+      )}
 
       {/* System Performance & Insights */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
-        <Card>
-          <CardHeader
-            title={
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <ActivityIcon sx={{ mr: 1 }} />
-                <Typography variant="h6">System Performance</Typography>
+      {analyticsData && (
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
+          <Card>
+            <CardHeader
+              title={
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <ActivityIcon sx={{ mr: 1 }} />
+                  <Typography variant="h6">System Performance</Typography>
+                </Box>
+              }
+              subheader="Current system health and performance metrics"
+            />
+            <CardContent>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2">Average Response Time:</Typography>
+                  <Chip
+                    label={`${analyticsData.systemPerformance.avgResponseTime}s`}
+                    variant="outlined"
+                    color="primary"
+                    size="small"
+                  />
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2">Success Rate:</Typography>
+                  <Chip
+                    label={`${analyticsData.systemPerformance.successRate}%`}
+                    variant="outlined"
+                    color="success"
+                    size="small"
+                  />
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2">System Uptime:</Typography>
+                  <Chip
+                    label={`${analyticsData.systemPerformance.uptime}%`}
+                    variant="outlined"
+                    color="success"
+                    size="small"
+                  />
+                </Box>
               </Box>
-            }
-            subheader="Current system health and performance metrics"
-          />
-          <CardContent>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="body2">Average Response Time:</Typography>
-                <Chip
-                  label={`${analyticsData.systemPerformance.avgResponseTime}s`}
-                  variant="outlined"
-                  color="primary"
-                  size="small"
-                />
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="body2">Success Rate:</Typography>
-                <Chip
-                  label={`${analyticsData.systemPerformance.successRate}%`}
-                  variant="outlined"
-                  color="success"
-                  size="small"
-                />
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="body2">System Uptime:</Typography>
-                <Chip
-                  label={`${analyticsData.systemPerformance.uptime}%`}
-                  variant="outlined"
-                  color="success"
-                  size="small"
-                />
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
         <Card>
           <CardHeader
@@ -439,8 +498,9 @@ const AnalyticsPage: React.FC = () => {
               </Box>
             </Box>
           </CardContent>
-        </Card>
-      </Box>
+          </Card>
+        </Box>
+      )}
     </Box>
   );
 };

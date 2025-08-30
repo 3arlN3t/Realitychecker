@@ -287,6 +287,12 @@
             transform: translateY(-2px);
         }
 
+        .chat-hint {
+            color: #6b7280;
+            font-size: 0.9rem;
+            margin-top: 8px;
+        }
+
         .attachment-btn {
             background: linear-gradient(135deg, #667eea, #764ba2);
             border: none;
@@ -339,6 +345,12 @@
         .attachment-btn i {
             font-size: 14px;
             font-weight: 600;
+        }
+
+        .attachment-btn:focus-visible,
+        .send-btn:focus-visible {
+            outline: 3px solid rgba(102, 126, 234, 0.35);
+            outline-offset: 2px;
         }
 
         .chat-input {
@@ -750,11 +762,15 @@
                         rows="1"
                         oninput="handleInputChange()"
                         onkeydown="handleKeyDown(event)"
+                        aria-label="Job advertisement text input"
                     ></textarea>
-                    <button class="send-btn" id="sendBtn" onclick="handleSend()" style="display: none;">
+                    <button class="send-btn" id="sendBtn" onclick="handleSend()" style="display: none;" title="Submit for analysis">
                         <i class="fas fa-arrow-up"></i>
                         <span>Submit</span>
                     </button>
+                </div>
+                <div class="chat-hint">
+                    Tip: Press Enter to submit, Shift+Enter for a new line. PDF only • Up to 10MB.
                 </div>
                 <input type="file" id="hiddenFileInput" accept=".pdf" style="display: none;" onchange="handleFileSelect()" />
                 <div class="file-preview" id="filePreview" style="display: none;">
@@ -804,11 +820,30 @@
                     <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>
                     Analyze Another Job Ad
                 </button>
+                <button onclick="window.print()" style="
+                    background: white;
+                    color: #374151;
+                    border: 1px solid #e5e7eb;
+                    padding: 0.875rem 1.25rem;
+                    border-radius: 14px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    margin-left: 0.75rem;
+                ">
+                    <i class="fas fa-print" style="margin-right: 0.5rem;"></i>
+                    Print Results
+                </button>
             </div>
         </div>
 
 
     </div>
+
+    <footer class="footer" style="text-align:center; margin: 1.5rem 0; color: rgba(255,255,255,0.9);">
+        <p>Reality Checker helps you identify potential job scams. Always verify job opportunities independently.</p>
+        <p>© 2025 Reality Checker</p>
+    </footer>
 
 
     
