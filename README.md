@@ -208,7 +208,7 @@ WEB_ENABLE_FINGERPRINTING=true       # Enable browser fingerprinting
 WEB_SESSION_ESTABLISHMENT_REQUESTS=5 # Requests needed to become established
 
 # Database (optional)
-DATABASE_URL=sqlite:///data/reality_checker.db
+DATABASE_URL=sqlite+aiosqlite:///data/reality_checker.db
 ```
 
 ### Configuration Validation

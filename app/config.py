@@ -43,7 +43,7 @@ class PerformanceConfig:
 @dataclass
 class DatabaseConfig:
     """Database connection pool configuration."""
-    url: str = "sqlite:///data/reality_checker.db"
+    url: str = "sqlite+aiosqlite:///data/reality_checker.db"
     pool_size: int = 20
     max_overflow: int = 30
     pool_timeout: int = 30
@@ -140,7 +140,7 @@ class AppConfig:
         
         # Create Database configuration
         database_config = DatabaseConfig(
-            url=os.getenv("DATABASE_URL", "sqlite:///data/reality_checker.db"),
+            url=os.getenv("DATABASE_URL", "sqlite+aiosqlite:///data/reality_checker.db"),
             pool_size=int(os.getenv("DB_POOL_SIZE", "20")),
             max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "30")),
             pool_timeout=int(os.getenv("DB_POOL_TIMEOUT", "30")),

@@ -31,7 +31,13 @@ from app.utils.logging import get_logger, log_with_context
 from app.utils.pattern_recognition import PatternRecognitionEngine
 from app.utils.ab_testing import ABTesting
 from app.utils.reporting_engine import ReportingEngine, ReportScheduler
-from app.api.dashboard import get_current_user, require_admin, require_analyst_or_admin
+# Import authentication dependencies - use the same pattern as dashboard
+from app.api.dashboard import get_auth_dependencies
+
+# Get the appropriate authentication dependencies for current environment
+_auth_deps = get_auth_dependencies()
+require_analyst_or_admin = _auth_deps['analyst_or_admin']
+require_admin = _auth_deps['admin']
 
 logger = get_logger(__name__)
 

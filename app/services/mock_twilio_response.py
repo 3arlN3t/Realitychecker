@@ -21,7 +21,7 @@ class MockTwilioResponseService:
         self.config = config
         self.sent_messages = []  # Store messages for testing
         
-    def send_analysis_result(self, to_number: str, result: JobAnalysisResult) -> bool:
+    async def send_analysis_result(self, to_number: str, result: JobAnalysisResult) -> bool:
         """
         Mock sending job analysis result to user.
         
@@ -63,7 +63,7 @@ class MockTwilioResponseService:
         
         return True
         
-    def send_error_message(self, to_number: str, error_type: str = "general") -> bool:
+    async def send_error_message(self, to_number: str, error_type: str = "general") -> bool:
         """
         Mock sending error message to user.
         
@@ -102,7 +102,7 @@ class MockTwilioResponseService:
         
         return True
     
-    def send_welcome_message(self, to_number: str) -> bool:
+    async def send_welcome_message(self, to_number: str) -> bool:
         """
         Mock sending welcome message to user.
         
@@ -136,6 +136,7 @@ class MockTwilioResponseService:
         print(message_body)
         print("=" * 50)
         
+        # Return immediately to maintain async interface compatibility
         return True
     
     def _format_analysis_message(self, result: JobAnalysisResult) -> str:

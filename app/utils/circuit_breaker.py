@@ -298,7 +298,7 @@ class CircuitBreaker:
         
         log_with_context(
             logger,
-            logger.WARNING,
+            logging.WARNING,
             f"Circuit breaker '{self.name}' transitioned to OPEN",
             failure_count=self.failure_count,
             recovery_timeout=self.config.recovery_timeout,
@@ -327,7 +327,7 @@ class CircuitBreaker:
         
         log_with_context(
             logger,
-            logger.INFO,
+            logging.INFO,
             f"Circuit breaker '{self.name}' transitioned to HALF_OPEN",
             failure_count=self.failure_count
         )
@@ -342,7 +342,7 @@ class CircuitBreaker:
         
         log_with_context(
             logger,
-            logger.INFO,
+            logging.INFO,
             f"Circuit breaker '{self.name}' transitioned to CLOSED (recovered)"
         )
     
