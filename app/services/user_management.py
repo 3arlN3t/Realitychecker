@@ -15,9 +15,14 @@ import math
 
 from app.models.data_models import (
     UserDetails, UserInteraction, UserList, UserSearchCriteria,
-    JobAnalysisResult, AppConfig
+    JobAnalysisResult, AppConfig, JobClassification
 )
 from app.utils.logging import get_logger, log_with_context, sanitize_phone_number
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+import os
+from app.database.repositories import WhatsAppUserRepository, UserInteractionRepository
+from app.database.models import WhatsAppUser, UserInteraction as DBUserInteraction, JobClassificationEnum
 
 
 logger = get_logger(__name__)
@@ -42,11 +47,16 @@ class UserManagementService:
             config: Application configuration
         """
         self.config = config
-        self._users: Dict[str, UserDetails] = {}
-        self._blocked_users: set = set()
-        self._lock = asyncio.Lock()  # Async-safe operations
         
-        logger.info("UserManagementService initialized")
+        # Create simple database connection without complex initialization
+        db_path = os.getenv('DATABASE_PATH', 'data/reality_checker.db')
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        database_url = f"sqlite+aiosqlite:///{db_path}"
+        
+        self.engine = create_async_engine(database_url, echo=False)
+        self.session_factory = sessionmaker(self.engine, class_=AsyncSession, expire_on_commit=False)
+        
+        logger.info("UserManagementService initialized with direct database connection")
     
     async def record_interaction(self, 
                                phone_number: str,
@@ -70,47 +80,76 @@ class UserManagementService:
             message_sid: Twilio message SID for tracking
             source: Source of the interaction ("whatsapp" or "web")
         """
-        async with self._lock:
-            try:
-                # Create interaction record
-                interaction = UserInteraction(
-                    timestamp=datetime.utcnow(),
-                    message_type=message_type,
-                    message_content=message_content,
-                    analysis_result=analysis_result,
-                    response_time=response_time,
-                    error=error,
-                    message_sid=message_sid,
-                    source=source
-                )
+        try:
+            async with self.session_factory() as session:
+                user_repo = WhatsAppUserRepository(session)
+                interaction_repo = UserInteractionRepository(session)
                 
                 # Get or create user
-                user = self._get_or_create_user(phone_number)
+                user = await user_repo.get_or_create_user(phone_number)
                 
-                # Add interaction to user history
-                user.add_interaction(interaction)
+                # Create interaction record
+                interaction = await interaction_repo.create_interaction(
+                    user_id=user.id,
+                    message_sid=message_sid or f"web-{datetime.utcnow().timestamp()}",
+                    message_type=message_type,
+                    message_content=message_content
+                )
+                
+                # Update interaction with results or error
+                if analysis_result:
+                    # Convert trust_score from 0-100 to 0.0-1.0 for database storage
+                    db_analysis_result = JobAnalysisResult(
+                        trust_score=analysis_result.trust_score,
+                        classification=analysis_result.classification,
+                        reasons=analysis_result.reasons,
+                        confidence=analysis_result.confidence,
+                        timestamp=analysis_result.timestamp
+                    )
+                    await interaction_repo.update_interaction_result(
+                        interaction.id,
+                        db_analysis_result,
+                        response_time,
+                        response_time  # processing_time same as response_time for now
+                    )
+                elif error:
+                    await interaction_repo.update_interaction_error(
+                        interaction.id,
+                        "processing_error",
+                        error,
+                        response_time
+                    )
+                
+                # Update user statistics
+                await user_repo.update_user_stats(
+                    user.id,
+                    analysis_result is not None and error is None,
+                    response_time
+                )
+                
+                await session.commit()
                 
                 log_with_context(
                     logger,
                     logging.INFO,
-                    "User interaction recorded",
+                    "User interaction recorded in database",
                     phone_number=sanitize_phone_number(phone_number),
                     message_type=message_type,
-                    source=interaction.source,
-                    success=interaction.was_successful,
+                    source=source,
+                    success=analysis_result is not None and error is None,
                     response_time=response_time,
-                    total_requests=user.total_requests
+                    user_id=user.id
                 )
                 
-            except Exception as e:
-                log_with_context(
-                    logger,
-                    logging.ERROR,
-                    "Failed to record user interaction",
-                    phone_number=sanitize_phone_number(phone_number),
-                    error=str(e)
-                )
-                raise
+        except Exception as e:
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Failed to record user interaction",
+                phone_number=sanitize_phone_number(phone_number),
+                error=str(e)
+            )
+            raise
     
     async def get_user_details(self, phone_number: str) -> Optional[UserDetails]:
         """
@@ -122,18 +161,82 @@ class UserManagementService:
         Returns:
             UserDetails object if user exists, None otherwise
         """
-        async with self._lock:
-            user = self._users.get(phone_number)
-            if user:
+        try:
+            async with self.session_factory() as session:
+                user_repo = WhatsAppUserRepository(session)
+                interaction_repo = UserInteractionRepository(session)
+                
+                db_user = await user_repo.get_by_phone_number(phone_number)
+                if not db_user:
+                    return None
+                
+                # Get recent interactions
+                db_interactions = await interaction_repo.get_user_interactions(
+                    db_user.id, limit=50
+                )
+                
+                # Convert to UserDetails format
+                interactions = []
+                for db_interaction in db_interactions:
+                    # Convert classification enum back to JobClassification
+                    analysis_result = None
+                    if db_interaction.classification and db_interaction.trust_score is not None:
+                        classification_map = {
+                            JobClassificationEnum.LEGITIMATE: JobClassification.LEGIT,
+                            JobClassificationEnum.SUSPICIOUS: JobClassification.SUSPICIOUS,
+                            JobClassificationEnum.SCAM: JobClassification.LIKELY_SCAM
+                        }
+                        
+                        analysis_result = JobAnalysisResult(
+                            trust_score=int(db_interaction.trust_score * 100),  # Convert back to 0-100 scale
+                            classification=classification_map.get(db_interaction.classification, JobClassification.SUSPICIOUS),
+                            reasons=db_interaction.classification_reasons.get("reasons", []) if db_interaction.classification_reasons else [],
+                            confidence=db_interaction.confidence or 0.0,
+                            timestamp=db_interaction.timestamp
+                        )
+                    
+                    interaction = UserInteraction(
+                        timestamp=db_interaction.timestamp,
+                        message_type=db_interaction.message_type,
+                        message_content=db_interaction.message_content,
+                        analysis_result=analysis_result,
+                        response_time=db_interaction.response_time or 0.0,
+                        error=db_interaction.error_message,
+                        message_sid=db_interaction.message_sid,
+                        source="whatsapp" if not db_interaction.message_sid.startswith("web-") else "web"
+                    )
+                    interactions.append(interaction)
+                
+                user_details = UserDetails(
+                    phone_number=db_user.phone_number,
+                    first_interaction=db_user.created_at,
+                    last_interaction=db_user.last_interaction,
+                    total_requests=db_user.total_requests,
+                    blocked=db_user.blocked,
+                    interaction_history=interactions,
+                    notes=db_user.notes
+                )
+                
                 log_with_context(
                     logger,
                     logging.DEBUG,
-                    "Retrieved user details",
+                    "Retrieved user details from database",
                     phone_number=sanitize_phone_number(phone_number),
-                    total_requests=user.total_requests,
-                    blocked=user.blocked
+                    total_requests=user_details.total_requests,
+                    blocked=user_details.blocked
                 )
-            return user
+                
+                return user_details
+                
+        except Exception as e:
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Failed to get user details",
+                phone_number=sanitize_phone_number(phone_number),
+                error=str(e)
+            )
+            return None
     
     async def get_users(self, 
                        page: int = 1, 
@@ -150,35 +253,74 @@ class UserManagementService:
         Returns:
             UserList object with paginated results
         """
-        async with self._lock:
-            try:
-                # Get all users
-                all_users = list(self._users.values())
+        try:
+            async with self.session_factory() as session:
+                user_repo = WhatsAppUserRepository(session)
+                interaction_repo = UserInteractionRepository(session)
                 
-                # Apply search criteria if provided
-                if search_criteria:
-                    filtered_users = [
-                        user for user in all_users 
-                        if search_criteria.matches_user(user)
-                    ]
-                else:
-                    filtered_users = all_users
+                # Get paginated users from database
+                db_users, total_count = await user_repo.get_users_paginated(
+                    page=page,
+                    limit=limit,
+                    search_criteria=search_criteria
+                )
                 
-                # Sort users by last interaction (most recent first)
-                filtered_users.sort(key=lambda u: u.last_interaction, reverse=True)
+                # Convert to UserDetails format
+                users = []
+                for db_user in db_users:
+                    # Get recent interactions for each user
+                    db_interactions = await interaction_repo.get_user_interactions(
+                        db_user.id, limit=10  # Limit to recent interactions for performance
+                    )
+                    
+                    # Convert interactions
+                    interactions = []
+                    for db_interaction in db_interactions:
+                        analysis_result = None
+                        if db_interaction.classification and db_interaction.trust_score is not None:
+                            classification_map = {
+                                JobClassificationEnum.LEGITIMATE: JobClassification.LEGIT,
+                                JobClassificationEnum.SUSPICIOUS: JobClassification.SUSPICIOUS,
+                                JobClassificationEnum.SCAM: JobClassification.LIKELY_SCAM
+                            }
+                            
+                            analysis_result = JobAnalysisResult(
+                                trust_score=int(db_interaction.trust_score * 100),
+                                classification=classification_map.get(db_interaction.classification, JobClassification.SUSPICIOUS),
+                                reasons=db_interaction.classification_reasons.get("reasons", []) if db_interaction.classification_reasons else [],
+                                confidence=db_interaction.confidence or 0.0,
+                                timestamp=db_interaction.timestamp
+                            )
+                        
+                        interaction = UserInteraction(
+                            timestamp=db_interaction.timestamp,
+                            message_type=db_interaction.message_type,
+                            message_content=db_interaction.message_content,
+                            analysis_result=analysis_result,
+                            response_time=db_interaction.response_time or 0.0,
+                            error=db_interaction.error_message,
+                            message_sid=db_interaction.message_sid,
+                            source="whatsapp" if not db_interaction.message_sid.startswith("web-") else "web"
+                        )
+                        interactions.append(interaction)
+                    
+                    user_details = UserDetails(
+                        phone_number=db_user.phone_number,
+                        first_interaction=db_user.created_at,
+                        last_interaction=db_user.last_interaction,
+                        total_requests=db_user.total_requests,
+                        blocked=db_user.blocked,
+                        interaction_history=interactions,
+                        notes=db_user.notes
+                    )
+                    users.append(user_details)
                 
-                # Calculate pagination
-                total_users = len(filtered_users)
-                total_pages = math.ceil(total_users / limit) if total_users > 0 else 1
-                start_idx = (page - 1) * limit
-                end_idx = start_idx + limit
-                
-                # Get page of users
-                page_users = filtered_users[start_idx:end_idx]
+                # Calculate total pages
+                total_pages = math.ceil(total_count / limit) if total_count > 0 else 1
                 
                 user_list = UserList(
-                    users=page_users,
-                    total=total_users,
+                    users=users,
+                    total=total_count,
                     page=page,
                     pages=total_pages,
                     limit=limit
@@ -187,8 +329,8 @@ class UserManagementService:
                 log_with_context(
                     logger,
                     logging.DEBUG,
-                    "Retrieved user list",
-                    total_users=total_users,
+                    "Retrieved user list from database",
+                    total_users=total_count,
                     page=page,
                     limit=limit,
                     filtered=search_criteria is not None
@@ -196,16 +338,16 @@ class UserManagementService:
                 
                 return user_list
                 
-            except Exception as e:
-                log_with_context(
-                    logger,
-                    logging.ERROR,
-                    "Failed to retrieve user list",
-                    page=page,
-                    limit=limit,
-                    error=str(e)
-                )
-                raise
+        except Exception as e:
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Failed to retrieve user list",
+                page=page,
+                limit=limit,
+                error=str(e)
+            )
+            raise
     
     async def block_user(self, phone_number: str, reason: Optional[str] = None) -> bool:
         """
@@ -218,10 +360,12 @@ class UserManagementService:
         Returns:
             bool: True if user was successfully blocked
         """
-        async with self._lock:
-            try:
-                user = self._users.get(phone_number)
-                if not user:
+        try:
+            async with self.session_factory() as session:
+                user_repo = WhatsAppUserRepository(session)
+                
+                db_user = await user_repo.get_by_phone_number(phone_number)
+                if not db_user:
                     log_with_context(
                         logger,
                         logging.WARNING,
@@ -231,29 +375,30 @@ class UserManagementService:
                     return False
                 
                 # Block the user
-                user.blocked = True
-                user.notes = f"Blocked: {reason}" if reason else "Blocked"
-                self._blocked_users.add(phone_number)
+                notes = f"Blocked: {reason}" if reason else "Blocked"
+                success = await user_repo.block_user(db_user.id, notes)
                 
-                log_with_context(
-                    logger,
-                    logging.INFO,
-                    "User blocked",
-                    phone_number=sanitize_phone_number(phone_number),
-                    reason=reason
-                )
+                if success:
+                    await session.commit()
+                    log_with_context(
+                        logger,
+                        logging.INFO,
+                        "User blocked in database",
+                        phone_number=sanitize_phone_number(phone_number),
+                        reason=reason
+                    )
                 
-                return True
+                return success
                 
-            except Exception as e:
-                log_with_context(
-                    logger,
-                    logging.ERROR,
-                    "Failed to block user",
-                    phone_number=sanitize_phone_number(phone_number),
-                    error=str(e)
-                )
-                return False
+        except Exception as e:
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Failed to block user",
+                phone_number=sanitize_phone_number(phone_number),
+                error=str(e)
+            )
+            return False
     
     async def unblock_user(self, phone_number: str) -> bool:
         """
@@ -265,10 +410,12 @@ class UserManagementService:
         Returns:
             bool: True if user was successfully unblocked
         """
-        async with self._lock:
-            try:
-                user = self._users.get(phone_number)
-                if not user:
+        try:
+            async with self.session_factory() as session:
+                user_repo = WhatsAppUserRepository(session)
+                
+                db_user = await user_repo.get_by_phone_number(phone_number)
+                if not db_user:
                     log_with_context(
                         logger,
                         logging.WARNING,
@@ -278,28 +425,28 @@ class UserManagementService:
                     return False
                 
                 # Unblock the user
-                user.blocked = False
-                user.notes = "Unblocked"
-                self._blocked_users.discard(phone_number)
+                success = await user_repo.unblock_user(db_user.id)
                 
-                log_with_context(
-                    logger,
-                    logging.INFO,
-                    "User unblocked",
-                    phone_number=sanitize_phone_number(phone_number)
-                )
+                if success:
+                    await session.commit()
+                    log_with_context(
+                        logger,
+                        logging.INFO,
+                        "User unblocked in database",
+                        phone_number=sanitize_phone_number(phone_number)
+                    )
                 
-                return True
+                return success
                 
-            except Exception as e:
-                log_with_context(
-                    logger,
-                    logging.ERROR,
-                    "Failed to unblock user",
-                    phone_number=sanitize_phone_number(phone_number),
-                    error=str(e)
-                )
-                return False
+        except Exception as e:
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Failed to unblock user",
+                phone_number=sanitize_phone_number(phone_number),
+                error=str(e)
+            )
+            return False
     
     async def is_user_blocked(self, phone_number: str) -> bool:
         """
@@ -311,8 +458,22 @@ class UserManagementService:
         Returns:
             bool: True if user is blocked
         """
-        async with self._lock:
-            return phone_number in self._blocked_users
+        try:
+            async with self.session_factory() as session:
+                user_repo = WhatsAppUserRepository(session)
+                
+                db_user = await user_repo.get_by_phone_number(phone_number)
+                return db_user.blocked if db_user else False
+                
+        except Exception as e:
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Failed to check if user is blocked",
+                phone_number=sanitize_phone_number(phone_number),
+                error=str(e)
+            )
+            return False
     
     async def get_user_statistics(self) -> Dict[str, any]:
         """
@@ -321,65 +482,68 @@ class UserManagementService:
         Returns:
             Dictionary containing user statistics
         """
-        async with self._lock:
-            try:
-                total_users = len(self._users)
-                blocked_users = len(self._blocked_users)
-                active_users_7d = 0
-                active_users_30d = 0
-                total_interactions = 0
-                successful_interactions = 0
+        try:
+            async with self.session_factory() as session:
+                user_repo = WhatsAppUserRepository(session)
+                interaction_repo = UserInteractionRepository(session)
                 
+                # Get user statistics from database
+                user_stats = await user_repo.get_user_statistics()
+                
+                # Get interaction statistics
+                interaction_stats = await interaction_repo.get_interaction_statistics(days=30)
+                
+                # Calculate active users for different periods
                 now = datetime.utcnow()
                 seven_days_ago = now - timedelta(days=7)
                 thirty_days_ago = now - timedelta(days=30)
                 
-                # Calculate statistics
-                for user in self._users.values():
-                    total_interactions += user.total_requests
-                    
-                    # Count successful interactions
-                    successful_interactions += sum(
-                        1 for interaction in user.interaction_history 
-                        if interaction.was_successful
-                    )
-                    
-                    # Count active users
-                    if user.last_interaction >= seven_days_ago:
-                        active_users_7d += 1
-                    if user.last_interaction >= thirty_days_ago:
-                        active_users_30d += 1
+                # Get active users count (this could be optimized with a direct query)
+                from sqlalchemy import select, func, and_
+                from app.database.models import WhatsAppUser
                 
-                success_rate = (successful_interactions / total_interactions * 100) if total_interactions > 0 else 0
+                # Active users in last 7 days
+                result_7d = await session.execute(
+                    select(func.count(WhatsAppUser.id))
+                    .where(WhatsAppUser.last_interaction >= seven_days_ago)
+                )
+                active_users_7d = result_7d.scalar()
+                
+                # Active users in last 30 days
+                result_30d = await session.execute(
+                    select(func.count(WhatsAppUser.id))
+                    .where(WhatsAppUser.last_interaction >= thirty_days_ago)
+                )
+                active_users_30d = result_30d.scalar()
                 
                 statistics = {
-                    "total_users": total_users,
-                    "blocked_users": blocked_users,
+                    "total_users": user_stats["total_users"],
+                    "blocked_users": user_stats["blocked_users"],
                     "active_users_7d": active_users_7d,
                     "active_users_30d": active_users_30d,
-                    "total_interactions": total_interactions,
-                    "successful_interactions": successful_interactions,
-                    "success_rate": round(success_rate, 2),
-                    "average_requests_per_user": round(total_interactions / total_users, 2) if total_users > 0 else 0
+                    "total_interactions": interaction_stats["total_interactions"],
+                    "successful_interactions": interaction_stats["successful_interactions"],
+                    "success_rate": round(interaction_stats["success_rate"], 2),
+                    "average_requests_per_user": user_stats["average_requests_per_user"]
                 }
                 
                 log_with_context(
                     logger,
                     logging.DEBUG,
-                    "Generated user statistics",
+                    "Generated user statistics from database",
                     **statistics
                 )
                 
                 return statistics
                 
-            except Exception as e:
-                log_with_context(
-                    logger,
-                    logging.ERROR,
-                    "Failed to generate user statistics",
-                    error=str(e)
-                )
-                raise
+        except Exception as e:
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Failed to generate user statistics",
+                error=str(e)
+            )
+            raise
     
     async def cleanup_old_interactions(self, days_to_keep: int = 90) -> int:
         """
@@ -424,44 +588,7 @@ class UserManagementService:
                 )
                 raise
     
-    def _get_or_create_user(self, phone_number: str) -> UserDetails:
-        """
-        Get existing user or create a new one.
-        
-        Args:
-            phone_number: User's WhatsApp phone number or web user ID
-            
-        Returns:
-            UserDetails object for the user
-        """
-        user = self._users.get(phone_number)
-        if not user:
-            now = datetime.utcnow()
-            
-            # Handle web users differently
-            if phone_number.startswith("web-"):
-                # For web users, we need to add the whatsapp: prefix to satisfy the validation
-                # This is a workaround until we refactor the UserDetails class to handle different user types
-                if not phone_number.startswith("whatsapp:"):
-                    phone_number = f"whatsapp:{phone_number}"
-            
-            user = UserDetails(
-                phone_number=phone_number,
-                first_interaction=now,
-                last_interaction=now,
-                total_requests=0,
-                blocked=phone_number in self._blocked_users
-            )
-            self._users[phone_number] = user
-            
-            log_with_context(
-                logger,
-                logging.INFO,
-                "New user created",
-                phone_number=sanitize_phone_number(phone_number)
-            )
-        
-        return user
+
     
     async def get_user_interaction_history(self, 
                                          phone_number: str, 
@@ -476,12 +603,61 @@ class UserManagementService:
         Returns:
             List of UserInteraction objects, most recent first
         """
-        async with self._lock:
-            user = self._users.get(phone_number)
-            if not user:
-                return []
-            
-            return user.get_recent_interactions(limit)
+        try:
+            async with self.session_factory() as session:
+                user_repo = WhatsAppUserRepository(session)
+                interaction_repo = UserInteractionRepository(session)
+                
+                db_user = await user_repo.get_by_phone_number(phone_number)
+                if not db_user:
+                    return []
+                
+                db_interactions = await interaction_repo.get_user_interactions(
+                    db_user.id, limit=limit
+                )
+                
+                # Convert to UserInteraction format
+                interactions = []
+                for db_interaction in db_interactions:
+                    analysis_result = None
+                    if db_interaction.classification and db_interaction.trust_score is not None:
+                        classification_map = {
+                            JobClassificationEnum.LEGITIMATE: JobClassification.LEGIT,
+                            JobClassificationEnum.SUSPICIOUS: JobClassification.SUSPICIOUS,
+                            JobClassificationEnum.SCAM: JobClassification.LIKELY_SCAM
+                        }
+                        
+                        analysis_result = JobAnalysisResult(
+                            trust_score=int(db_interaction.trust_score * 100),
+                            classification=classification_map.get(db_interaction.classification, JobClassification.SUSPICIOUS),
+                            reasons=db_interaction.classification_reasons.get("reasons", []) if db_interaction.classification_reasons else [],
+                            confidence=db_interaction.confidence or 0.0,
+                            timestamp=db_interaction.timestamp
+                        )
+                    
+                    interaction = UserInteraction(
+                        timestamp=db_interaction.timestamp,
+                        message_type=db_interaction.message_type,
+                        message_content=db_interaction.message_content,
+                        analysis_result=analysis_result,
+                        response_time=db_interaction.response_time or 0.0,
+                        error=db_interaction.error_message,
+                        message_sid=db_interaction.message_sid,
+                        source="whatsapp" if not db_interaction.message_sid.startswith("web-") else "web"
+                    )
+                    interactions.append(interaction)
+                
+                return interactions
+                
+        except Exception as e:
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "Failed to get user interaction history",
+                phone_number=sanitize_phone_number(phone_number),
+                error=str(e)
+            )
+            return []
     
     async def search_users(self, query: str) -> List[UserDetails]:
         """

@@ -108,8 +108,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(user);
         setToken(token);
         
-        // Store in localStorage
+        // Store in localStorage (ensure compatibility with components reading 'token')
         localStorage.setItem('auth_token', token);
+        localStorage.setItem('token', token);
         localStorage.setItem('auth_user', JSON.stringify(user));
         
         console.log('✅ Login successful:', { username: user.username, role: user.role });
@@ -152,8 +153,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(user);
         setToken(token);
         
-        // Store in localStorage
+        // Store in localStorage (ensure compatibility with components reading 'token')
         localStorage.setItem('auth_token', token);
+        localStorage.setItem('token', token);
         localStorage.setItem('auth_user', JSON.stringify(user));
         
         console.log('🎭 Using mock authentication:', { username: user.username, role: user.role });
@@ -176,6 +178,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
     setToken(null);
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('token');
     localStorage.removeItem('auth_user');
   };
 

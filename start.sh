@@ -259,7 +259,7 @@ if [ -d "dashboard" ]; then
         npm install >/dev/null 2>&1
     fi
     
-    npm start > ../dashboard.log 2>&1 &
+    BROWSER=none npm start > ../dashboard.log 2>&1 &
     cd "$SCRIPT_DIR"
     
     if wait_for_port 3000 "React Dashboard"; then
@@ -378,10 +378,28 @@ fi
 echo ""
 echo "🎉 Reality Checker WhatsApp Bot is ready!"
 echo ""
+
+# Open the main web interface in the default browser
+if [ "$QUIET_MODE" = false ]; then
+    echo "🌐 Opening main web interface..."
+    if command -v open &> /dev/null; then
+        # macOS
+        open "http://localhost:8000"
+    elif command -v xdg-open &> /dev/null; then
+        # Linux
+        xdg-open "http://localhost:8000"
+    elif command -v start &> /dev/null; then
+        # Windows (Git Bash/WSL)
+        start "http://localhost:8000"
+    else
+        echo "   Please manually open: http://localhost:8000"
+    fi
+fi
+
+echo ""
 echo "📍 Service URLs:"
-echo "   • Web Interface: http://localhost:8000"
-echo "   • API Server: http://localhost:8000"
-echo "   • Dashboard: http://localhost:3000"
+echo "   • Main Web Interface: http://localhost:8000 (opens automatically)"
+echo "   • Admin Dashboard: http://localhost:3000"
 echo "   • API Documentation: http://localhost:8000/docs"
 echo "   • Health Check: http://localhost:8000/health"
 if [ -n "$API_URL" ]; then
@@ -405,10 +423,13 @@ if [ "$SKIP_WHATSAPP_SETUP" = false ] && [ -n "$API_URL" ] && check_twilio_crede
     echo "   • Or run: ./whatsapp-setup.sh for step-by-step instructions"
     echo ""
 fi
-echo "💡 Quick Test:"
-echo "   curl -X POST http://localhost:8000/api/analyze/text \\"
-echo "        -H 'Content-Type: application/x-www-form-urlencoded' \\"
-echo "        -d 'job_text=Software Engineer at Google. Send \$500 for background check.'"
+echo "💡 Quick Actions:"
+echo "   • Test job analysis: Use the web form at http://localhost:8000"
+echo "   • View admin dashboard: Visit http://localhost:3000"
+echo "   • API testing: Check http://localhost:8000/docs"
+echo "   • curl test: curl -X POST http://localhost:8000/api/analyze/text \\"
+echo "              -H 'Content-Type: application/x-www-form-urlencoded' \\"
+echo "              -d 'job_text=Software Engineer at Google. Send \$500 for background check.'"
 echo ""
 echo "Press Ctrl+C to stop all services..."
 

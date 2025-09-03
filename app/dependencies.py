@@ -72,8 +72,8 @@ class ServiceContainer:
         """Get Twilio response service."""
         if self._twilio_service is None:
             config = self.get_config()
-            # Use mock service in development mode
-            if config.development_mode or config.use_mock_twilio:
+            # Use mock service only if explicitly enabled
+            if config.use_mock_twilio:
                 from app.services.mock_twilio_response import MockTwilioResponseService
                 self._twilio_service = MockTwilioResponseService(config)
             else:

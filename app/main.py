@@ -278,6 +278,12 @@ app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(dashboard_router)
 app.include_router(monitoring_router)
+# Also expose monitoring endpoints under /api prefix for dashboard compatibility
+try:
+    app.include_router(monitoring_router, prefix="/api")
+    logger.info("Monitoring router also mounted at /api/monitoring for compatibility")
+except Exception as e:
+    logger.warning(f"Failed to mount monitoring router with /api prefix: {e}")
 app.include_router(analytics_router)
 app.include_router(mfa_router)
 app.include_router(web_upload_router)

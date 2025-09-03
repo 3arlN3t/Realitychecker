@@ -87,11 +87,21 @@ class WhatsAppUserRepository(BaseRepository):
         Returns:
             WhatsAppUser object
         """
-        user = await self.get_by_phone_number(phone_number)
-        if not user:
-            user = await self.create_user(phone_number)
-            logger.info(f"Created new user: {user.sanitized_phone_number}")
-        return user
+        logger.critical(f"🔥 DATABASE CHECK: Attempting to get/create user for phone: {phone_number[:8]}***")
+        try:
+            user = await self.get_by_phone_number(phone_number)
+            if not user:
+                logger.critical(f"🔥 DATABASE: User not found, creating new user for {phone_number[:8]}***")
+                user = await self.create_user(phone_number)
+                await self.commit()
+                logger.critical(f"🔥 DATABASE: Successfully created and committed new user ID: {user.id}")
+            else:
+                logger.critical(f"🔥 DATABASE: Found existing user ID: {user.id}, total_requests: {user.total_requests}")
+            return user
+        except Exception as e:
+            logger.critical(f"🔥 DATABASE ERROR in get_or_create_user: {str(e)}")
+            await self.rollback()
+            raise
     
     async def update_user_stats(self, user_id: int, interaction_successful: bool, response_time: float):
         """
@@ -102,22 +112,34 @@ class WhatsAppUserRepository(BaseRepository):
             interaction_successful: Whether interaction was successful
             response_time: Response time in seconds
         """
-        user = await self.session.get(WhatsAppUser, user_id)
-        if user:
-            user.total_requests += 1
-            user.last_interaction = datetime.now(timezone.utc)
-            
-            if interaction_successful:
-                user.successful_requests += 1
+        logger.critical(f"🔥 DATABASE: Updating stats for user_id {user_id}, successful: {interaction_successful}, response_time: {response_time}")
+        try:
+            user = await self.session.get(WhatsAppUser, user_id)
+            if user:
+                old_total = user.total_requests
+                user.total_requests += 1
+                user.last_interaction = datetime.now(timezone.utc)
+                
+                if interaction_successful:
+                    user.successful_requests += 1
+                else:
+                    user.failed_requests += 1
+                
+                # Update average response time
+                if user.total_requests > 0:
+                    user.avg_response_time = (
+                        (user.avg_response_time * (user.total_requests - 1) + response_time) /
+                        user.total_requests
+                    )
+                
+                await self.commit()
+                logger.critical(f"🔥 DATABASE: Successfully updated user {user_id} stats - total_requests: {old_total} -> {user.total_requests}")
             else:
-                user.failed_requests += 1
-            
-            # Update average response time
-            if user.total_requests > 0:
-                user.avg_response_time = (
-                    (user.avg_response_time * (user.total_requests - 1) + response_time) /
-                    user.total_requests
-                )
+                logger.critical(f"🔥 DATABASE ERROR: User {user_id} not found when updating stats")
+        except Exception as e:
+            logger.critical(f"🔥 DATABASE ERROR updating user stats: {str(e)}")
+            await self.rollback()
+            raise
     
     async def get_users_paginated(
         self, 
@@ -136,35 +158,41 @@ class WhatsAppUserRepository(BaseRepository):
         Returns:
             Tuple of (users_list, total_count)
         """
-        query = select(WhatsAppUser)
-        
-        # Apply search criteria
-        if search_criteria:
-            if search_criteria.phone_number:
-                query = query.where(WhatsAppUser.phone_number.contains(search_criteria.phone_number))
-            if search_criteria.blocked is not None:
-                query = query.where(WhatsAppUser.blocked == search_criteria.blocked)
-            if search_criteria.min_requests is not None:
-                query = query.where(WhatsAppUser.total_requests >= search_criteria.min_requests)
-            if search_criteria.max_requests is not None:
-                query = query.where(WhatsAppUser.total_requests <= search_criteria.max_requests)
-            if search_criteria.days_since_last_interaction is not None:
-                cutoff_date = datetime.now(timezone.utc) - timedelta(days=search_criteria.days_since_last_interaction)
-                query = query.where(WhatsAppUser.last_interaction <= cutoff_date)
-        
-        # Get total count
-        count_query = select(func.count()).select_from(query.subquery())
-        total_result = await self.session.execute(count_query)
-        total_count = total_result.scalar()
-        
-        # Get paginated results
-        offset = (page - 1) * limit
-        query = query.order_by(desc(WhatsAppUser.last_interaction)).offset(offset).limit(limit)
-        
-        result = await self.session.execute(query)
-        users = result.scalars().all()
-        
-        return list(users), total_count
+        logger.critical(f"🔥 DATABASE: Getting paginated users - page: {page}, limit: {limit}")
+        try:
+            query = select(WhatsAppUser)
+            
+            # Apply search criteria
+            if search_criteria:
+                if search_criteria.phone_number:
+                    query = query.where(WhatsAppUser.phone_number.contains(search_criteria.phone_number))
+                if search_criteria.blocked is not None:
+                    query = query.where(WhatsAppUser.blocked == search_criteria.blocked)
+                if search_criteria.min_requests is not None:
+                    query = query.where(WhatsAppUser.total_requests >= search_criteria.min_requests)
+                if search_criteria.max_requests is not None:
+                    query = query.where(WhatsAppUser.total_requests <= search_criteria.max_requests)
+                if search_criteria.days_since_last_interaction is not None:
+                    cutoff_date = datetime.now(timezone.utc) - timedelta(days=search_criteria.days_since_last_interaction)
+                    query = query.where(WhatsAppUser.last_interaction <= cutoff_date)
+            
+            # Get total count
+            count_query = select(func.count()).select_from(query.subquery())
+            total_result = await self.session.execute(count_query)
+            total_count = total_result.scalar()
+            
+            # Get paginated results
+            offset = (page - 1) * limit
+            query = query.order_by(desc(WhatsAppUser.last_interaction)).offset(offset).limit(limit)
+            
+            result = await self.session.execute(query)
+            users = result.scalars().all()
+            
+            logger.critical(f"🔥 DATABASE: Found {total_count} total users, returning {len(users)} for this page")
+            return list(users), total_count
+        except Exception as e:
+            logger.critical(f"🔥 DATABASE ERROR getting paginated users: {str(e)}")
+            raise
     
     async def get_user_statistics(self) -> Dict[str, Any]:
         """
@@ -264,18 +292,25 @@ class UserInteractionRepository(BaseRepository):
         Returns:
             Created UserInteraction object
         """
-        interaction = UserInteraction(
-            user_id=user_id,
-            message_sid=message_sid,
-            message_type=message_type,
-            message_content=message_content[:200] if message_content else None,
-            media_url=media_url,
-            media_content_type=media_content_type,
-            **kwargs
-        )
-        self.session.add(interaction)
-        await self.session.flush()
-        return interaction
+        logger.critical(f"🔥 DATABASE: Creating interaction for user_id {user_id}, type: {message_type}, sid: {message_sid}")
+        try:
+            interaction = UserInteraction(
+                user_id=user_id,
+                message_sid=message_sid,
+                message_type=message_type,
+                message_content=message_content[:200] if message_content else None,
+                media_url=media_url,
+                media_content_type=media_content_type,
+                **kwargs
+            )
+            self.session.add(interaction)
+            await self.session.flush()
+            logger.critical(f"🔥 DATABASE: Successfully created interaction ID: {interaction.id}")
+            return interaction
+        except Exception as e:
+            logger.critical(f"🔥 DATABASE ERROR creating interaction: {str(e)}")
+            await self.rollback()
+            raise
     
     async def update_interaction_result(
         self,
@@ -295,8 +330,17 @@ class UserInteractionRepository(BaseRepository):
         """
         interaction = await self.session.get(UserInteraction, interaction_id)
         if interaction:
-            interaction.trust_score = analysis_result.trust_score
-            interaction.classification = JobClassificationEnum(analysis_result.classification.value)
+            # Convert trust_score from 0-100 integer to 0.0-1.0 float for database storage
+            interaction.trust_score = analysis_result.trust_score / 100.0
+            
+            # Map JobClassification to JobClassificationEnum
+            classification_map = {
+                JobClassification.LEGIT: JobClassificationEnum.LEGITIMATE,
+                JobClassification.SUSPICIOUS: JobClassificationEnum.SUSPICIOUS,
+                JobClassification.LIKELY_SCAM: JobClassificationEnum.SCAM
+            }
+            interaction.classification = classification_map.get(analysis_result.classification, JobClassificationEnum.SUSPICIOUS)
+            
             interaction.classification_reasons = {"reasons": analysis_result.reasons}
             interaction.confidence = analysis_result.confidence
             interaction.response_time = response_time

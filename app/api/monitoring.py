@@ -44,8 +44,9 @@ async def websocket_endpoint(
     if token:
         try:
             validation = await auth_service.validate_jwt_token(token)
-            if validation.valid:
-                user_id = validation.user_id
+            if validation.valid and validation.user:
+                # Use username as user_id for tracking
+                user_id = validation.user.username
             else:
                 await websocket.close(code=1008, reason="Invalid authentication token")
                 return
