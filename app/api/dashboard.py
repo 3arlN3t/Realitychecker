@@ -41,16 +41,16 @@ async def get_current_user_dev() -> User:
     Development-only: Return mock admin user to bypass authentication.
     
     WARNING: This bypasses all authentication and should NEVER be used in production.
-    Only use when DEVELOPMENT_MODE environment variable is set to true.
+    Only use when BYPASS_AUTHENTICATION environment variable is set to true.
     """
     from app.models.data_models import UserRole
     from app.config import get_config
     
     config = get_config()
-    if not config.development_mode:
+    if not config.bypass_authentication:
         raise HTTPException(
             status_code=500,
-            detail="Development authentication bypass attempted in production mode"
+            detail="Authentication bypass attempted without BYPASS_AUTHENTICATION=true"
         )
     
     return User(
@@ -81,7 +81,7 @@ def get_auth_dependencies():
     """
     Get appropriate authentication dependencies based on environment.
     
-    Returns development bypass functions if DEVELOPMENT_MODE=true,
+    Returns development bypass functions if BYPASS_AUTHENTICATION=true,
     otherwise returns production authentication functions.
     
     Note: Imports are done at function level to avoid circular import issues.
@@ -90,8 +90,8 @@ def get_auth_dependencies():
     from app.dependencies import require_admin_user, require_analyst_or_admin_user
     
     config = get_config()
-    if config.development_mode:
-        logger.warning("Using development authentication bypass - NOT for production use")
+    if config.bypass_authentication:
+        logger.warning("Using authentication bypass - NOT for production use")
         return {
             'analyst_or_admin': require_analyst_or_admin_dev,
             'admin': require_admin_dev

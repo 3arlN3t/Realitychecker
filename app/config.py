@@ -72,6 +72,7 @@ class AppConfig:
     # Development mode settings
     development_mode: bool = False
     use_mock_twilio: bool = False
+    bypass_authentication: bool = False
     
     # Authentication configuration
     jwt_secret_key: str = "your-secret-key-change-in-production"
@@ -166,6 +167,7 @@ class AppConfig:
             analyst_password=os.getenv("ANALYST_PASSWORD", ""),
             development_mode=os.getenv("DEVELOPMENT_MODE", "false").lower() == "true",
             use_mock_twilio=os.getenv("USE_MOCK_TWILIO", "false").lower() == "true",
+            bypass_authentication=os.getenv("BYPASS_AUTHENTICATION", "false").lower() == "true",
             redis=redis_config,
             performance=performance_config,
             database=database_config
