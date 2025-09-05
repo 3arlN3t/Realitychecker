@@ -115,15 +115,20 @@ const ServiceStatusGrid: React.FC<ServiceStatusGridProps> = ({
         {Object.entries(services).map(([serviceName, service]) => (
           <Paper
             key={serviceName}
-            elevation={1}
+            elevation={3}
             sx={{
               height: '100%',
               border: 2,
               borderColor: `${getStatusColor(service.status)}.main`,
-              bgcolor: `${getStatusColor(service.status)}.main`,
-              opacity: 0.05,
               borderRadius: 2,
-              overflow: 'hidden'
+              overflow: 'hidden',
+              // Use theme-aware colors to avoid washed-out appearance
+              backgroundColor: 'background.paper',
+              color: 'text.primary',
+              minHeight: '200px',
+              '&:hover': {
+                boxShadow: 4
+              }
             }}
           >
             <Box sx={{ p: 2 }}>

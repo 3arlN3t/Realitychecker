@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -316,25 +316,72 @@ except Exception as e:
 # Mount static files directory
 try:
     import os
+    from datetime import datetime as _dt
     static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
     if not os.path.exists(static_dir):
         os.makedirs(static_dir, exist_ok=True)
         logger.warning(f"Created static files directory at {static_dir}")
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
-    logger.info(f"Static files directory mounted at {static_dir}")
+    # Diagnostics for static and service worker presence
+    sw_path = os.path.join(static_dir, "sw.js")
+    sw_exists = os.path.exists(sw_path)
+    sw_size = os.path.getsize(sw_path) if sw_exists else 0
+    sw_mtime = _dt.fromtimestamp(os.path.getmtime(sw_path)).isoformat() if sw_exists else None
+    logger.info(
+        f"Static mounted: dir={static_dir}, sw.js exists={sw_exists} size={sw_size} mtime={sw_mtime}"
+    )
 except Exception as e:
     logger.warning(f"Failed to mount static files directory: {e}")
 
-# Mount dashboard build directory
+# Serve service worker at root path
+@app.get("/sw.js")
+async def service_worker():
+    """Serve the Service Worker script from the static directory at the root path."""
+    import os
+    sw_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "sw.js")
+    if not os.path.exists(sw_path):
+        # Return a minimal no-op service worker if file is missing
+        return HTMLResponse(
+            content="self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());",
+            media_type="application/javascript",
+        )
+    return FileResponse(sw_path, media_type="application/javascript")
+
+# Unified Dashboard Route (Backend + React functionality merged)
+@app.get("/dashboard", response_class=HTMLResponse)
+async def unified_dashboard(request: Request):
+    """
+    Unified dashboard that combines React functionality with backend templates.
+    
+    This serves a single HTML page with embedded JavaScript that provides
+    all the functionality of the React dashboard without requiring a separate build process.
+    """
+    try:
+        return templates.TemplateResponse("dashboard.html", {"request": request})
+    except Exception as e:
+        logger.error(f"Error serving unified dashboard: {e}")
+        return HTMLResponse(
+            content=f"<h1>Dashboard Error</h1><p>Failed to load dashboard: {str(e)}</p>",
+            status_code=500
+        )
+
+# Admin dashboard redirect for convenience
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_redirect(request: Request):
+    """Redirect /admin to the unified dashboard."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/dashboard", status_code=302)
+
+# Mount React dashboard build directory as fallback (if it exists)
 try:
     dashboard_build_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dashboard", "build")
     if os.path.exists(dashboard_build_dir):
-        app.mount("/dashboard", StaticFiles(directory=dashboard_build_dir, html=True), name="dashboard")
-        logger.info(f"Dashboard static files mounted at {dashboard_build_dir}")
+        app.mount("/react-dashboard", StaticFiles(directory=dashboard_build_dir, html=True), name="react-dashboard")
+        logger.info(f"React dashboard static files mounted at {dashboard_build_dir} (available at /react-dashboard)")
     else:
-        logger.warning(f"Dashboard build directory not found at {dashboard_build_dir}")
+        logger.info("React dashboard build directory not found - using unified dashboard only")
 except Exception as e:
-    logger.warning(f"Failed to mount dashboard static files: {e}")
+    logger.warning(f"Failed to mount React dashboard static files: {e}")
 
 # Setup templates
 templates = Jinja2Templates(directory="templates")
@@ -459,6 +506,21 @@ async def metrics_and_correlation_middleware(request: Request, call_next):
                 }
             )
         
+        # Targeted diagnostics for service worker fetches
+        try:
+            if endpoint in ("/sw.js", "/dashboard/sw.js"):
+                import os as _os
+                _sw_path = (
+                    _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "static", "sw.js")
+                    if endpoint == "/sw.js" else
+                    _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "dashboard", "build", "sw.js")
+                )
+                _exists = _os.path.exists(_sw_path)
+                logger.info(
+                    f"SW request {endpoint}: status={status_code} exists={_exists} path={_sw_path} referer={request.headers.get('referer', '-')[:200]} ua={request.headers.get('user-agent', '-')[:100]}"
+                )
+        except Exception as _log_exc:
+            logger.warning(f"SW diagnostics logging failed: {_log_exc}")
         return response
         
     except Exception as exc:

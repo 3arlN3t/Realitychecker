@@ -1,5 +1,6 @@
 import React from 'react';
 import { 
+  Box,
   Paper, 
   Typography, 
   List, 
@@ -17,6 +18,31 @@ interface UserEngagementMetricsProps {
 }
 
 const UserEngagementMetrics: React.FC<UserEngagementMetricsProps> = ({ data }) => {
+  // Handle empty or invalid data
+  if (!data || data.length === 0) {
+    return (
+      <Paper sx={{ p: 3, height: '400px', flex: '1 1 300px', minWidth: '300px' }}>
+        <Typography variant="h6" gutterBottom>
+          User Behavior Insights
+        </Typography>
+        <Box sx={{ 
+          height: '90%', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          flexDirection: 'column'
+        }}>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+            No engagement data available
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            User metrics will appear here as users interact with the system
+          </Typography>
+        </Box>
+      </Paper>
+    );
+  }
+
   return (
     <Paper sx={{ p: 3, height: '400px', flex: '1 1 300px', minWidth: '300px' }}>
       <Typography variant="h6" gutterBottom>

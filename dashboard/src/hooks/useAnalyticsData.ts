@@ -63,7 +63,7 @@ export interface UseAnalyticsDataReturn {
  * Generate mock analytics data for fallback
  */
 function generateMockAnalyticsData(period: PeriodType) {
-  // Classification data
+  // Classification data - ensure we always have meaningful data
   const classifications: ClassificationData[] = [
     { name: 'Legitimate', value: Math.floor(Math.random() * 200) + 500, color: '#4caf50' },
     { name: 'Suspicious', value: Math.floor(Math.random() * 100) + 200, color: '#ff9800' },

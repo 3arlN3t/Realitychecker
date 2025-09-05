@@ -18,6 +18,32 @@ interface UsageTrendsChartProps {
 }
 
 const UsageTrendsChart: React.FC<UsageTrendsChartProps> = ({ data, period }) => {
+  // Handle empty or invalid data
+  if (!data || data.length === 0) {
+    return (
+      <Paper sx={{ p: 3, height: '400px', flex: '1 1 400px', minWidth: '400px' }}>
+        <Typography variant="h6" gutterBottom>
+          Request Volume Over Time
+        </Typography>
+        <Box sx={{ 
+          width: '100%', 
+          height: '90%', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          flexDirection: 'column'
+        }}>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+            No usage trend data available
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Usage patterns will appear here over time
+          </Typography>
+        </Box>
+      </Paper>
+    );
+  }
+
   // Format X-axis tick based on period
   const formatXAxis = (tickItem: string) => {
     const date = new Date(tickItem);

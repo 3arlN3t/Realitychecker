@@ -5,6 +5,22 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  
+  /* Beautiful gradient background to match unified dashboard */
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+}
+
+/* Ensure root element also has the gradient */
+#root {
+  min-height: 100vh;
+  background: transparent;
+}
+
+/* Override any conflicting backgrounds */
+.dashboard-container,
+.App {
+  background: transparent !important;
 }
 
 /* Accessibility improvements */

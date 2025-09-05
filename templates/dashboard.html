@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reality Checker - Admin Dashboard</title>
+    
+    <!-- Material Design Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Dashboard Styles -->
+    <link href="/static/css/dashboard.css" rel="stylesheet">
+
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Dashboard Header -->
+        <header class="dashboard-header">
+            <h1 class="dashboard-title">Admin Dashboard</h1>
+            <div class="status-indicators">
+                <div class="status-chip loading" id="loadingIndicator">
+                    <span class="material-icons">sync</span>
+                    <span>Loading...</span>
+                </div>
+                <div class="status-chip live" id="liveIndicator" style="display: none;">
+                    <span class="material-icons">wifi</span>
+                    <span>Live Data</span>
+                </div>
+                <div class="status-chip" id="lastUpdated">
+                    <span class="material-icons">schedule</span>
+                    <span id="updateTime">--:--</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Error Message -->
+        <div class="error-message" id="errorMessage" style="display: none;">
+            <span class="material-icons">error</span>
+            <div>
+                <div>Failed to load dashboard data</div>
+                <button type="button" class="retry-button" onclick="loadDashboardData()" aria-label="Retry loading dashboard data">Retry</button>
+            </div>
+        </div>
+
+        <!-- Quick Stats Overview -->
+        <section class="quick-stats" id="quickStats" aria-label="System Statistics Overview">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">System Status</span>
+                    <span class="material-icons stat-icon">storage</span>
+                </div>
+                <div class="stat-value" id="systemStatus">--</div>
+                <div class="stat-trend">
+                    <span>Uptime: <span id="systemUptime">--</span></span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Total Requests</span>
+                    <span class="material-icons stat-icon">timeline</span>
+                </div>
+                <div class="stat-value" id="totalRequests">--</div>
+                <div class="stat-trend">
+                    <span class="material-icons trend-up">trending_up</span>
+                    <span id="requestsToday">--</span> today
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Error Rate</span>
+                    <span class="material-icons stat-icon">warning</span>
+                </div>
+                <div class="stat-value" id="errorRate">--%</div>
+                <div class="stat-trend">
+                    Success: <span id="successRate">--%</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">Active Users</span>
+                    <span class="material-icons stat-icon">people</span>
+                </div>
+                <div class="stat-value" id="activeUsers">--</div>
+                <div class="stat-trend">
+                    Peak: <span id="peakHour">--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Metrics Section -->
+        <div class="performance-metrics">
+            <div class="section-header">
+                <span class="material-icons">speed</span>
+                <div>
+                    <div class="section-title">Performance Metrics</div>
+                    <div class="section-subtitle">Real-time system performance data</div>
+                </div>
+            </div>
+            <div class="metrics-grid">
+                <div class="metric-item">
+                    <div class="metric-value" id="avgResponseTime">--ms</div>
+                    <div class="metric-label">Avg Response Time</div>
+                    <div class="metric-change">
+                        <span class="material-icons trend-up">trending_up</span>
+                        <span>5% faster</span>
+                    </div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="throughput">--/s</div>
+                    <div class="metric-label">Throughput</div>
+                    <div class="metric-change">
+                        <span class="material-icons trend-up">trending_up</span>
+                        <span>12% increase</span>
+                    </div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="cpuUsage">--%</div>
+                    <div class="metric-label">CPU Usage</div>
+                    <div class="metric-change">
+                        <span class="material-icons trend-down">trending_down</span>
+                        <span>3% decrease</span>
+                    </div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-value" id="memoryUsage">--%</div>
+                    <div class="metric-label">Memory Usage</div>
+                    <div class="metric-change">
+                        <span class="material-icons trend-up">trending_up</span>
+                        <span>2% increase</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="main-content">
+            <!-- System Health Card -->
+            <div class="content-card">
+                <div class="section-header">
+                    <span class="material-icons">health_and_safety</span>
+                    <div>
+                        <div class="section-title">System Health</div>
+                        <div class="section-subtitle">Service status overview</div>
+                    </div>
+                </div>
+                <div class="health-status">
+                    <div class="health-indicator" id="overallHealthIndicator"></div>
+                    <div>
+                        <div>Overall Status: <span id="overallHealthStatus">Healthy</span></div>
+                        <div style="font-size: 0.875rem; color: rgba(255,255,255,0.7);">
+                            Last check: <span id="lastHealthCheck">--</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="service-list" id="serviceList">
+                    <div class="service-item">
+                        <div class="service-name">OpenAI GPT-4</div>
+                        <div class="service-status">
+                            <div class="health-indicator"></div>
+                            <span>Healthy</span>
+                            <span style="margin-left: 8px; font-size: 0.75rem; color: rgba(255,255,255,0.5);">250ms</span>
+                        </div>
+                    </div>
+                    <div class="service-item">
+                        <div class="service-name">Twilio WhatsApp</div>
+                        <div class="service-status">
+                            <div class="health-indicator"></div>
+                            <span>Healthy</span>
+                            <span style="margin-left: 8px; font-size: 0.75rem; color: rgba(255,255,255,0.5);">150ms</span>
+                        </div>
+                    </div>
+                    <div class="service-item">
+                        <div class="service-name">Database</div>
+                        <div class="service-status">
+                            <div class="health-indicator"></div>
+                            <span>Healthy</span>
+                            <span style="margin-left: 8px; font-size: 0.75rem; color: rgba(255,255,255,0.5);">25ms</span>
+                        </div>
+                    </div>
+                    <div class="service-item">
+                        <div class="service-name">Webhook Endpoint</div>
+                        <div class="service-status">
+                            <div class="health-indicator"></div>
+                            <span>Healthy</span>
+                            <span style="margin-left: 8px; font-size: 0.75rem; color: rgba(255,255,255,0.5);">75ms</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message Classifications -->
+            <div class="content-card">
+                <div class="section-header">
+                    <span class="material-icons">pie_chart</span>
+                    <div>
+                        <div class="section-title">Message Classifications</div>
+                        <div class="section-subtitle">Analysis breakdown by source</div>
+                    </div>
+                </div>
+                
+                <div class="classification-summary">
+                    <div class="classification-item">
+                        <div class="classification-indicator legit"></div>
+                        <div class="classification-content">
+                            <div class="classification-count" id="legitCount">--</div>
+                            <div class="classification-label">Legitimate</div>
+                            <div class="classification-breakdown">
+                                WhatsApp: <span id="legitWhatsApp">--</span> | Web: <span id="legitWeb">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="classification-item">
+                        <div class="classification-indicator suspicious"></div>
+                        <div class="classification-content">
+                            <div class="classification-count" id="suspiciousCount">--</div>
+                            <div class="classification-label">Suspicious</div>
+                            <div class="classification-breakdown">
+                                WhatsApp: <span id="suspiciousWhatsApp">--</span> | Web: <span id="suspiciousWeb">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="classification-item">
+                        <div class="classification-indicator scam"></div>
+                        <div class="classification-content">
+                            <div class="classification-count" id="scamCount">--</div>
+                            <div class="classification-label">Likely Scam</div>
+                            <div class="classification-breakdown">
+                                WhatsApp: <span id="scamWhatsApp">--</span> | Web: <span id="scamWeb">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Engagement -->
+            <div class="content-card">
+                <div class="section-header">
+                    <span class="material-icons">group</span>
+                    <div>
+                        <div class="section-title">User Engagement</div>
+                        <div class="section-subtitle">User activity metrics</div>
+                    </div>
+                </div>
+                
+                <div class="engagement-grid">
+                    <div class="engagement-item">
+                        <div class="engagement-value" id="dailyActiveUsers">--</div>
+                        <div class="engagement-label">Daily Active Users</div>
+                    </div>
+                    <div class="engagement-item">
+                        <div class="engagement-value" id="avgSessionTime">--</div>
+                        <div class="engagement-label">Avg Session Time</div>
+                    </div>
+                    <div class="engagement-item">
+                        <div class="engagement-value" id="returnRate">--</div>
+                        <div class="engagement-label">Return Rate</div>
+                    </div>
+                    <div class="engagement-item">
+                        <div class="engagement-value" id="newUsers">--</div>
+                        <div class="engagement-label">New Users</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Traffic Sources -->
+            <div class="content-card">
+                <div class="section-header">
+                    <span class="material-icons">traffic</span>
+                    <div>
+                        <div class="section-title">Traffic Sources</div>
+                        <div class="section-subtitle">Performance comparison by source</div>
+                    </div>
+                </div>
+                
+                <div class="source-comparison">
+                    <div class="source-item">
+                        <div class="source-header">
+                            <span class="material-icons">chat</span>
+                            <div>
+                                <div class="source-name">WhatsApp</div>
+                                <div class="source-percentage" id="whatsappPercentage">--</div>
+                            </div>
+                        </div>
+                        <div class="source-metrics">
+                            <div class="source-metric">
+                                <span>Messages:</span> <span id="whatsappCount">--</span>
+                            </div>
+                            <div class="source-metric">
+                                <span>Avg Response:</span> <span id="whatsappResponseTime">--</span>
+                            </div>
+                            <div class="source-metric">
+                                <span>Success Rate:</span> <span id="whatsappSuccessRate">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="source-item">
+                        <div class="source-header">
+                            <span class="material-icons">web</span>
+                            <div>
+                                <div class="source-name">Web</div>
+                                <div class="source-percentage" id="webPercentage">--</div>
+                            </div>
+                        </div>
+                        <div class="source-metrics">
+                            <div class="source-metric">
+                                <span>Messages:</span> <span id="webCount">--</span>
+                            </div>
+                            <div class="source-metric">
+                                <span>Avg Response:</span> <span id="webResponseTime">--</span>
+                            </div>
+                            <div class="source-metric">
+                                <span>Success Rate:</span> <span id="webSuccessRate">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Other Services (Performance Alerts) -->
+            <div class="content-card">
+                <div class="section-header">
+                    <span class="material-icons">monitoring</span>
+                    <div>
+                        <div class="section-title">Other Services</div>
+                        <div class="section-subtitle">Performance monitoring & alerts</div>
+                    </div>
+                </div>
+                
+                <div class="performance-alerts">
+                    <div class="alert-summary">
+                        <div class="alert-counter" id="criticalAlerts">0</div>
+                        <div class="alert-label">Critical</div>
+                    </div>
+                    <div class="alert-summary">
+                        <div class="alert-counter" id="warningAlerts">0</div>
+                        <div class="alert-label">Warnings</div>
+                    </div>
+                    <div class="alert-summary">
+                        <div class="alert-counter" id="infoAlerts">0</div>
+                        <div class="alert-label">Info</div>
+                    </div>
+                </div>
+                
+                <div class="service-monitoring">
+                    <div class="monitor-item">
+                        <div class="monitor-label">Redis Operations</div>
+                        <div class="monitor-status" id="redisStatus">Normal</div>
+                    </div>
+                    <div class="monitor-item">
+                        <div class="monitor-label">Database Queries</div>
+                        <div class="monitor-status" id="databaseStatus">Normal</div>
+                    </div>
+                    <div class="monitor-item">
+                        <div class="monitor-label">Background Tasks</div>
+                        <div class="monitor-status" id="taskStatus">Normal</div>
+                    </div>
+                    <div class="monitor-item">
+                        <div class="monitor-label">Circuit Breakers</div>
+                        <div class="monitor-status" id="circuitStatus">Closed</div>
+                    </div>
+                </div>
+                
+                <div id="recentPerformanceAlerts" class="performance-alert-list">
+                    <!-- Performance alerts will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard JavaScript -->
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

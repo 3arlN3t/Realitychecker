@@ -219,12 +219,12 @@
         }, 100);
       });
       
-      // Service Worker registration for PWA
+      // Service Worker registration for PWA (dashboard scope only)
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {
-          navigator.serviceWorker.register('/sw.js')
+          navigator.serviceWorker.register('/dashboard/sw.js', { scope: '/dashboard/' })
             .then(function(registration) {
-              console.log('SW registered: ', registration);
+              console.log('SW registered (dashboard scope): ', registration);
             })
             .catch(function(registrationError) {
               console.log('SW registration failed: ', registrationError);
