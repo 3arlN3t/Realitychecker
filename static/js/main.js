@@ -94,7 +94,8 @@ function hideFileInfo() {
 
 function adjustTextareaHeight(textarea) {
     textarea.style.height = 'auto';
-    textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+    // Auto-grow to fit content with no internal scrollbar
+    textarea.style.height = textarea.scrollHeight + 'px';
 }
 
 function toggleSubmitButton() {
@@ -186,25 +187,8 @@ async function analyzePDF(pdfFile) {
 
 function displayResults(response) {
     const result = response.result;
-    
-    // Update trust score
-    const trustScoreElement = document.getElementById('trustScore');
-    const scoreCircle = document.getElementById('scoreCircle');
-    
-    trustScoreElement.textContent = result.trust_score;
-    
-    // Set score color
-    scoreCircle.className = 'score-circle';
-    if (result.trust_score >= 70) {
-        scoreCircle.classList.add('score-high');
-    } else if (result.trust_score >= 40) {
-        scoreCircle.classList.add('score-medium');
-    } else {
-        scoreCircle.classList.add('score-low');
-    }
-    
-    // Update classification with appropriate icon
-    const classificationElement = document.getElementById('classification');
+
+    // Decide classification icon first
     let classificationIcon = '';
     if (result.classification.toLowerCase().includes('legitimate')) {
         classificationIcon = '<i class="fas fa-check-circle text-success me-2"></i>';
@@ -213,18 +197,35 @@ function displayResults(response) {
     } else {
         classificationIcon = '<i class="fas fa-question-circle text-warning me-2"></i>';
     }
-    classificationElement.innerHTML = classificationIcon + result.classification;
-    
-    // Update reasoning
+
+    // Build analysis details with centered score and classification under the heading
     const reasoningElement = document.getElementById('reasoning');
-    let reasoningHtml = '<h6 class="mb-3">Key Findings:</h6><ul class="list-unstyled">';
-    
+    let reasoningHtml = '';
+    reasoningHtml += '<h6 class="mb-3 text-center">📋 Analysis Details</h6>';
+    reasoningHtml += '<div class="text-center mb-3">' +
+        '<div class="score-circle" id="scoreCircle"><span id="trustScore">--</span></div>' +
+        `<div id="classification" class="mt-2">${classificationIcon + result.classification}</div>` +
+    '</div>';
+    reasoningHtml += '<ul class="list-unstyled">';
     result.reasoning.forEach(reason => {
         reasoningHtml += `<li>${reason}</li>`;
     });
-    
     reasoningHtml += '</ul>';
     reasoningElement.innerHTML = reasoningHtml;
+
+    // Update trust score and color after elements exist
+    const trustScoreElement = document.getElementById('trustScore');
+    const scoreCircle = document.getElementById('scoreCircle');
+    trustScoreElement.textContent = result.trust_score;
+
+    scoreCircle.className = 'score-circle';
+    if (result.trust_score >= 70) {
+        scoreCircle.classList.add('score-high');
+    } else if (result.trust_score >= 40) {
+        scoreCircle.classList.add('score-medium');
+    } else {
+        scoreCircle.classList.add('score-low');
+    }
     
     // Update timestamp
     const now = new Date();

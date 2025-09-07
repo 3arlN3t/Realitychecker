@@ -273,6 +273,7 @@ from app.api.analytics import router as analytics_router
 from app.api.mfa import router as mfa_router
 from app.api.web_upload import router as web_upload_router
 from app.api.performance import router as performance_router
+from app.api.history import router as history_router
 
 app.include_router(health_router)
 app.include_router(auth_router)
@@ -288,6 +289,7 @@ app.include_router(analytics_router)
 app.include_router(mfa_router)
 app.include_router(web_upload_router)
 app.include_router(performance_router)
+app.include_router(history_router)
 
 # Include API upload router
 try:
