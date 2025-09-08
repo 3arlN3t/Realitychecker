@@ -20,17 +20,48 @@ body {
 }
 
 .dashboard-header {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
     margin-bottom: 30px;
     padding: 20px 0;
+}
+
+.dashboard-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 10px;
+    color: #fff;
+    text-decoration: none;
+    font-size: 0.95rem;
+}
+
+.back-button svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
+.back-button:hover {
+    background: rgba(255, 255, 255, 0.15);
 }
 
 .dashboard-title {
     font-size: 2.5rem;
     font-weight: 300;
     color: #ffffff;
+    text-align: center;
+    justify-self: center;
 }
 
 .status-indicators {
@@ -311,10 +342,12 @@ body {
 /* Responsive Design */
 @media (max-width: 768px) {
     .dashboard-header {
-        flex-direction: column;
+        grid-template-columns: 1fr;
         gap: 20px;
         text-align: center;
     }
+    .dashboard-title { justify-self: center; }
+    .dashboard-header-left { justify-self: start; }
 
     .quick-stats {
         grid-template-columns: 1fr;

@@ -24,6 +24,8 @@ from app.dependencies import (
     get_analytics_service, get_user_management_service, get_app_config
 )
 from app.utils.logging import get_logger, log_with_context
+from app.utils.reporting_engine import ReportingEngine
+import uuid
 from app.utils.metrics import get_metrics_collector
 from app.utils.error_tracking import get_error_tracker
 
@@ -31,6 +33,10 @@ logger = get_logger(__name__)
 
 # Create router for dashboard endpoints
 router = APIRouter(prefix="/api", tags=["dashboard"])
+
+# Simple in-memory report history (lightweight persistence for UI)
+_report_history: List[Dict[str, Any]] = []
+_reporting_engine = ReportingEngine()
 
 
 # Development-only authentication bypass functions
@@ -841,8 +847,42 @@ async def generate_report(
                 detail=f"Invalid report parameters: {str(e)}"
             )
         
-        # Generate report
+        # Generate report (live data)
         report = await analytics_service.generate_report(parameters)
+
+        # Export to desired format to produce a downloadable file when possible
+        try:
+            export_info = await _reporting_engine.export_report(report)
+            # export_report sets download_url and file_size on report internally
+        except Exception:
+            # If export fails, continue with JSON payload only
+            pass
+
+        # Add to in-memory history for quick listing in UI
+        try:
+            history_item = {
+                "id": str(uuid.uuid4()),
+                "report_type": report.report_type,
+                "generated_at": report.generated_at.isoformat(),
+                "parameters": {
+                    "report_type": parameters.report_type,
+                    "start_date": parameters.start_date.isoformat(),
+                    "end_date": parameters.end_date.isoformat(),
+                    "export_format": parameters.export_format,
+                    "include_user_details": parameters.include_user_details,
+                    "include_error_details": parameters.include_error_details,
+                    "user_filter": parameters.user_filter,
+                },
+                "download_url": getattr(report, "download_url", None),
+                "file_size": getattr(report, "file_size", None),
+                "generated_by": current_user.username,
+                "scheduled": False,
+            }
+            _report_history.insert(0, history_item)
+            # Trim to last 100 items to avoid unbounded growth
+            del _report_history[100:]
+        except Exception:
+            pass
         
         log_with_context(
             logger,
@@ -872,6 +912,30 @@ async def generate_report(
 
 
 # Additional endpoints for user management actions
+
+@router.get("/reports/history")
+async def list_report_history(limit: int = 25, current_user: User = Depends(current_require_analyst_or_admin)) -> Dict[str, Any]:
+    """Return recently generated reports (in-memory)."""
+    try:
+        return {"reports": _report_history[: max(0, min(limit, 100))]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list history: {e}")
+
+
+@router.delete("/reports/history/{report_id}")
+async def delete_report_history(report_id: str, current_user: User = Depends(current_require_admin)) -> Dict[str, Any]:
+    """Delete a report from history list (in-memory)."""
+    try:
+        before = len(_report_history)
+        idx = next((i for i, r in enumerate(_report_history) if r.get("id") == report_id), None)
+        if idx is None:
+            raise HTTPException(status_code=404, detail="Report not found")
+        _report_history.pop(idx)
+        return {"success": True, "deleted": report_id, "remaining": len(_report_history)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete report: {e}")
 
 @router.post("/users/{phone_number}/block")
 async def block_user(

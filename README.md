@@ -19,13 +19,96 @@ An AI-powered WhatsApp bot that analyzes job advertisements to detect potential 
 - **AI-Powered Analysis**: Uses OpenAI GPT-4 with advanced error handling, circuit breakers, and structured response parsing
 - **PDF Processing**: Extracts and analyzes text from uploaded PDF job postings with enhanced error handling
 - **Trust Scoring**: Provides 0-100 trust scores with detailed reasoning and confidence levels
-- **Admin Dashboard**: React-based interface with real-time monitoring, analytics, and user management
+- **Admin Dashboard**: Integrated dashboard at `/dashboard`. React admin app available in `dashboard/` (optional build)
 - **Multi-Factor Authentication**: TOTP-based MFA with backup codes and admin management
 - **Real-time Monitoring**: Live metrics, WebSocket updates, error tracking, and performance monitoring
 - **Advanced Analytics**: A/B testing, user clustering, pattern detection, and predictive analytics
 - **Role-Based Access**: Admin and Analyst roles with granular permissions
 - **Comprehensive Reporting**: Generate and export detailed reports with analysis accuracy metrics
 - **Production-Ready**: Comprehensive security, rate limiting, health checks, and observability
+
+## 🧭 Architecture Overview
+
+### High-Level Diagram
+
+```
+External User (WhatsApp)
+      |
+      v
+  Twilio WhatsApp
+      |
+      v   HTTPS (webhook POST)
++------------------------------+
+|    FastAPI (app/main.py)     |
+|  - Routers: /webhook, /web,  |
+|            /health, /api/*   |
+|  - Middleware: CORS, security|
+|            perf, rate-limit  |
+|  - DI container (services)   |
++--------------+---------------+
+               | immediate ACK (<500ms)
+               v
+        Background Task Queue
+               |
+               v
+   +-----------------------------+
+   | MessageHandlerService       |
+   | - decides text vs PDF       |
+   | - orchestrates services     |
+   +--+-----------+--------------+
+      |           |
+      |           | PDF
+      |           v
+      |   PDFProcessingService
+      |     - download/validate/extract
+      |
+      v  text
+EnhancedAIAnalysisService (OpenAI)
+      |     - rules + fallbacks
+      |     - history/similarity
+      v
+ TwilioResponseService  ---> Twilio API ---> User (WhatsApp)
+      |
+      v
+UserManagementService (DB write)
+      |
+      v
++-------------------------------+
+| Database (SQLite/Postgres)    |
++-------------------------------+
+
+Support/Infra:
+- Redis (cache/validation) <--> RedisConnectionManager/CachingService
+- Metrics/Error tracking/Diagnostics <--> WebSocket alerts → Dashboard
+- React Dashboard (`dashboard/`) optional build for richer UI
+```
+
+### Sequence Diagrams
+
+WhatsApp Text
+```
+User → Twilio → FastAPI /webhook/whatsapp → (fast validation + cache)
+→ immediate 200 ACK → queue task → MessageHandlerService
+→ EnhancedAIAnalysisService (OpenAI) → TwilioResponseService → Twilio → User
+→ record interaction (DB)
+```
+
+WhatsApp PDF
+```
+User → Twilio → FastAPI /webhook/whatsapp → 200 ACK → queue task
+→ MessageHandlerService → PDFProcessingService (download/validate/extract)
+→ EnhancedAIAnalysisService (OpenAI) → TwilioResponseService → Twilio → User
+→ record interaction (DB)
+```
+
+Web Upload (text/PDF)
+```
+User → GET /web/upload (form)
+→ POST /web/analyze/text or /web/analyze/pdf
+→ MessageHandlerService (direct) → [PDFProcessingService if PDF]
+→ EnhancedAIAnalysisService (OpenAI) → JSON response to browser
+→ record interaction (DB)
+```
 
 ## 📋 Table of Contents
 
@@ -80,11 +163,14 @@ docker-compose up -d --build
 
 ### 4. Access the Application
 
-- **API Test Page**: http://localhost:8000
-- **API Endpoints**: http://localhost:8000/api/analyze
-- **Dashboard**: http://localhost:8000/admin
-- **API Documentation**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/health
+- Root/Test Page: http://localhost:8000
+- API (text): http://localhost:8000/api/analyze/text
+- Direct test UI: http://localhost:8000/api/direct/test
+- Dashboard (integrated): http://localhost:8000/dashboard (alias: /admin)
+- API Docs: http://localhost:8000/docs
+- Health: http://localhost:8000/health
+
+Tip: The WhatsApp webhook endpoint for Twilio is POST http://YOUR_HOST/webhook/whatsapp
 
 ## 📦 Installation
 
@@ -165,51 +251,83 @@ TWILIO_AUTH_TOKEN=your-auth-token
 TWILIO_PHONE_NUMBER=+1234567890
 ```
 
-#### Optional Variables
+#### Optional Variables (recognized by the app)
 
 ```bash
 # Application Settings
-OPENAI_MODEL=gpt-4                    # OpenAI model to use (gpt-4, gpt-3.5-turbo)
-MAX_PDF_SIZE_MB=10                    # Maximum PDF file size
-LOG_LEVEL=INFO                        # Logging level (DEBUG, INFO, WARNING, ERROR)
-WEBHOOK_VALIDATION=true               # Enable Twilio webhook validation
-
-# OpenAI Analysis Settings
-OPENAI_TEMPERATURE=0.3                # Analysis consistency (0.0-1.0, lower = more consistent)
-OPENAI_MAX_TOKENS=1000               # Maximum response tokens
-OPENAI_TIMEOUT=30.0                  # API request timeout in seconds
+OPENAI_MODEL=gpt-4                        # OpenAI model to use
+MAX_PDF_SIZE_MB=10                        # Maximum PDF file size (MB)
+LOG_LEVEL=INFO                            # DEBUG, INFO, WARNING, ERROR
+WEBHOOK_VALIDATION=true                   # Enable Twilio webhook signature validation
 
 # Authentication
-JWT_SECRET_KEY=your-secret-key        # JWT signing key (CHANGE IN PRODUCTION!)
-JWT_EXPIRY_HOURS=24                   # Token expiry time
-ADMIN_USERNAME=admin                  # Default admin username
-ADMIN_PASSWORD=admin123               # Default admin password (CHANGE!)
+JWT_SECRET_KEY=your-secret-key            # CHANGE IN PRODUCTION
+JWT_EXPIRY_HOURS=24                       # Access token lifetime (hours)
+JWT_REFRESH_EXPIRY_DAYS=7                 # Refresh token lifetime (days)
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123                   # CHANGE IN PRODUCTION
+ANALYST_USERNAME=
+ANALYST_PASSWORD=
 
-# Performance & Reliability (optional)
-REDIS_URL=redis://localhost:6379      # Redis for caching and rate limiting
-OPENAI_CACHE_TTL=86400               # AI response cache TTL (24 hours)
-OPENAI_MIN_CONFIDENCE_CACHE=0.7      # Minimum confidence to cache results
-CIRCUIT_BREAKER_FAILURE_THRESHOLD=3  # OpenAI circuit breaker failure limit
-CIRCUIT_BREAKER_RECOVERY_TIMEOUT=60  # Recovery timeout in seconds
+# Development toggles
+DEVELOPMENT_MODE=false
+USE_MOCK_TWILIO=false                     # Use mock Twilio for local dev/tests
+BYPASS_AUTHENTICATION=false               # Disable auth for local testing
 
-# Rate Limiting (optional)
-# WhatsApp User Limits
-USER_RATE_LIMIT_MINUTE=5             # Per-WhatsApp-user requests per minute
-USER_RATE_LIMIT_HOUR=50              # Per-WhatsApp-user requests per hour
-USER_RATE_LIMIT_DAY=200              # Per-WhatsApp-user requests per day
-USER_RATE_LIMIT_BURST=3              # Per-WhatsApp-user burst limit
-TRUSTED_USER_MULTIPLIER=2.0          # Rate limit multiplier for trusted WhatsApp users
+# Redis (caching/validation)
+REDIS_URL=redis://localhost:6379/0
+REDIS_POOL_SIZE=20
+REDIS_MAX_CONNECTIONS=50
+REDIS_CONNECTION_TIMEOUT=5.0
+REDIS_SOCKET_TIMEOUT=5.0
+REDIS_RETRY_ATTEMPTS=3
+REDIS_RETRY_BACKOFF=1.0
+REDIS_HEALTH_CHECK_INTERVAL=30
+REDIS_CIRCUIT_BREAKER_THRESHOLD=5
+REDIS_CIRCUIT_BREAKER_TIMEOUT=60
 
-# Web User Limits (Progressive Tiers)
-WEB_ANONYMOUS_LIMIT_MINUTE=3         # Anonymous web users per minute
-WEB_SESSION_LIMIT_MINUTE=6           # Session-based web users per minute  
-WEB_ESTABLISHED_LIMIT_MINUTE=10      # Established web users per minute
-WEB_ENABLE_FINGERPRINTING=true       # Enable browser fingerprinting
-WEB_SESSION_ESTABLISHMENT_REQUESTS=5 # Requests needed to become established
+# Performance
+WEBHOOK_TIMEOUT=2.0                       # Overall webhook SLA (seconds)
+WEBHOOK_ACKNOWLEDGMENT_TIMEOUT=0.5        # Immediate ACK budget (seconds)
+TASK_QUEUE_MAX_SIZE=1000
+TASK_QUEUE_WORKER_COUNT=5
+TASK_QUEUE_BATCH_SIZE=10
+TASK_PROCESSING_TIMEOUT=30
+TASK_RETRY_ATTEMPTS=3
+TASK_RETRY_BACKOFF=2.0
+PERFORMANCE_MONITORING_ENABLED=true
+PERFORMANCE_ALERT_THRESHOLD_WEBHOOK=1.0
+PERFORMANCE_ALERT_THRESHOLD_CRITICAL=3.0
 
-# Database (optional)
+# Database
 DATABASE_URL=sqlite+aiosqlite:///data/reality_checker.db
+DB_POOL_SIZE=20
+DB_MAX_OVERFLOW=30
+DB_POOL_TIMEOUT=30
+DB_POOL_RECYCLE=3600
+DB_ECHO=false
+# DB circuit breaker (used by connection pool)
+DB_CIRCUIT_BREAKER_FAILURE_THRESHOLD=5
+DB_CIRCUIT_BREAKER_RECOVERY_TIMEOUT=60
 ```
+
+#### Integration Env Mapping
+
+- OpenAI
+  - `OPENAI_API_KEY` (required)
+  - `OPENAI_MODEL` (optional; default `gpt-4`)
+- Twilio (WhatsApp)
+  - `TWILIO_ACCOUNT_SID` (required)
+  - `TWILIO_AUTH_TOKEN` (required)
+  - `TWILIO_PHONE_NUMBER` (required)
+  - `WEBHOOK_VALIDATION` (optional; enable signature validation)
+- Redis (cache/validation/rate-limits)
+  - `REDIS_URL` plus `REDIS_*` tuning knobs (pool sizes, timeouts, circuit breaker)
+- Database (SQLite/Postgres via SQLAlchemy async)
+  - `DATABASE_URL` (default SQLite)
+  - `DB_*` pool settings and `DB_CIRCUIT_BREAKER_*`
+
+Note: Rate limiting thresholds are currently configured in code (see `app/main.py` and middleware) and may not be driven by env vars.
 
 ### Configuration Validation
 
@@ -249,14 +367,20 @@ asyncio.run(test_openai())
 
 #### Web API Usage
 
-1. **Visit the API Test Page**: Go to http://localhost:8000 (or your deployed URL)
-2. **Submit Job Ad**: Paste the job advertisement text in the form
-3. **Get Analysis**: View trust score, classification, and detailed reasoning immediately on the page
+1. Visit root test page: http://localhost:8000 or direct test at http://localhost:8000/api/direct/test
+2. Submit job ad text or upload a PDF
+3. Get analysis: trust score, classification, and detailed reasoning
 
-#### API Endpoints
+#### Key API Endpoints
 
-- **Text Analysis**: `POST /api/analyze/text` with form field `job_text`
-- **API Status**: `GET /api/analyze/status`
+- Webhook (Twilio): `POST /webhook/whatsapp` (optimized handler: `/webhook/whatsapp-optimized`)
+- Web Upload UI: `GET /web/upload`
+- Web Analyze (text): `POST /web/analyze/text` (form field `job_text`)
+- Web Analyze (PDF): `POST /web/analyze/pdf` (form field `pdf_file`)
+- API Analyze (text): `POST /api/analyze/text`
+- Direct Analyze (text): `POST /api/direct/analyze`
+- Direct Analyze (PDF): `POST /api/direct/analyze-pdf`
+- API Status: `GET /api/analyze/status`
 
 #### Example Interaction
 
@@ -318,22 +442,37 @@ Content-Type: application/x-www-form-urlencoded
 # Twilio webhook payload
 ```
 
-#### Health Check Endpoints
+### Twilio Webhook Setup
+
+Follow these steps in the Twilio Console to connect WhatsApp to the app:
+
+1. WhatsApp sender
+   - Use your Sandbox (for development) or a registered WhatsApp Business number.
+2. Set Webhook URL
+   - When a message comes in: set to `https://YOUR_DOMAIN/webhook/whatsapp` (method: POST).
+   - For local development, expose your app with a tunneling tool (e.g., ngrok) and use that URL.
+3. Signature validation
+   - Keep `WEBHOOK_VALIDATION=true` (default). The app validates the `X-Twilio-Signature` header.
+4. Test a message
+   - Send a WhatsApp message to your Twilio number. Check server logs for entries from the webhook handler.
+5. Troubleshooting
+   - Use the Twilio “Debugger” (Console → Monitor → Debugger) to inspect request/response and signature issues.
+   - Verify `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` are set in `.env`.
+
+#### Health & Monitoring
 ```http
-# Basic health check
+# Health
 GET /health
 
-# Detailed health check with service status
-GET /health/detailed
+# Monitoring (JWT-protected in production)
+GET /monitoring/active-requests
+GET /monitoring/error-rates
+GET /monitoring/response-times
+GET /monitoring/connection-pool
+GET /monitoring/circuit-breakers
 
-# Kubernetes-style readiness check
-GET /health/readiness
-
-# Kubernetes-style liveness check
-GET /health/liveness
-
-# Application metrics
-GET /health/metrics
+# Realtime metrics/alerts
+WS  /monitoring/ws?token=JWT
 ```
 
 #### Authentication Endpoints
@@ -441,7 +580,7 @@ GET /api/simple/test
 
 ## 🖥️ Dashboard
 
-The web dashboard provides comprehensive monitoring and management capabilities:
+The integrated dashboard at `/dashboard` provides monitoring and analytics. A separate React admin app lives in `dashboard/` (optional) and can be built/deployed for a richer UI.
 
 ### Features
 
@@ -461,11 +600,19 @@ The web dashboard provides comprehensive monitoring and management capabilities:
 
 ### Access
 
-1. Navigate to `http://localhost:8000/dashboard`
-2. Login with configured credentials (admin/admin123 by default)
-3. Setup MFA if required (recommended for production)
-4. Explore different sections using the navigation menu
-5. Use keyboard shortcuts for efficient navigation (press '?' for help)
+1. Navigate to `http://localhost:8000/dashboard` (alias: `/admin`)
+2. Login with configured credentials (admin/admin123 by default; change in production)
+3. MFA supported via `/mfa/*` endpoints
+
+### React Dashboard (Optional)
+
+- Build the React app
+  - `cd dashboard && npm install && npm run build`
+- Serve via FastAPI automatically
+  - The backend mounts `dashboard/build` at `/react-dashboard` when the build folder exists.
+  - Keep using `/dashboard` (Jinja) as the main entry; use `/react-dashboard` to preview the React build.
+- Rebuilding
+  - Re-run `npm run build` after frontend changes.
 
 ## 🚀 Deployment
 
@@ -575,6 +722,35 @@ gcloud run deploy reality-checker \
 - [ ] Set up alerting for critical errors
 
 ## 🛠️ Development
+## 🧰 Operational Playbook
+
+- Start locally
+  - `uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
+- Health check
+  - `curl http://localhost:8000/health`
+- Monitor (JWT may be required in production)
+  - `curl -H "Authorization: Bearer <JWT>" http://localhost:8000/monitoring/active-requests`
+  - `curl -H "Authorization: Bearer <JWT>" http://localhost:8000/monitoring/connection-pool`
+- Logs
+  - App logs print to stdout; tune level via `LOG_LEVEL`.
+- Redis quick check (if enabled)
+  - Ensure `REDIS_URL` is reachable; watch `redis.log` in repo root if running local Redis via docker-compose.
+- Database quick check
+  - Default SQLite at `data/reality_checker.db`. For Postgres, verify `DATABASE_URL` and connectivity.
+- Background tasks
+  - Webhook acks immediately; analysis continues in background workers. If results stall, inspect task queue metrics via monitoring endpoints and check Redis availability.
+
+### Local Webhook via ngrok (for Twilio)
+
+- Expose your local server
+  - `./scripts/ngrok_expose.sh 8000` (defaults to 8000 if no port is passed)
+  - Copy the HTTPS URL (e.g., `https://<sub>.ngrok.io`)
+- Configure Twilio
+  - Set “When a message comes in” to `https://<sub>.ngrok.io/webhook/whatsapp` (POST)
+  - Keep `WEBHOOK_VALIDATION=true` in `.env`
+- Test
+  - Send a WhatsApp message to your Twilio number and watch server logs.
+
 ## 📦 CI/CD Pipeline
 
 ### GitHub Actions Workflows
@@ -965,9 +1141,9 @@ curl -X POST http://localhost:8000/api/analyze/text \
 ```
 
 **Common Error Types**:
-- `APITimeoutError`: Increase timeout or check network
--n
-tylidel availabiy and mo keheck APIror`: C- `APIErplapgrade API  uWait oritError`:  `RateLim
+- Timeouts: Check network and upstream API health
+- Rate limit: Reduce request rate or adjust upstream quotas
+- Auth errors: Verify JWT secret and token validity
 
 #### 3. Twilio Webhook Issues
 
@@ -982,7 +1158,10 @@ tylidel availabiy and mo keheck APIror`: C- `APIErplapgrade API  uWait oritError
 ```bash
 # Test webhook endpoint
 curl -X POST http://localhost:8000/webhook/whatsapp \
-     -d "From=+1234567890&Body=test message"
+     -d "MessageSid=SM1234567890" \
+     -d "From=whatsapp:+1234567890" \
+     -d "To=whatsapp:+19876543210" \
+     -d "Body=test message"
 ```
 
 #### 4. PDF Processing Failures

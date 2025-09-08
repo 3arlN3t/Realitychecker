@@ -62,6 +62,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generatedReport, setGeneratedReport] = useState<ReportData | null>(null);
+  const [showJson, setShowJson] = useState(false);
 
   const reportTypeOptions: { value: ReportType; label: string; description: string; icon: React.ReactElement; color: string }[] = [
     { 
@@ -478,8 +479,8 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
                   </Paper>
                 </Box>
 
-                {generatedReport.download_url && (
-                  <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
+                  {generatedReport.download_url && (
                     <Button
                       variant="contained"
                       color="success"
@@ -500,7 +501,25 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ onGenerateReport }) =
                     >
                       Download Report
                     </Button>
-                  </Box>
+                  )}
+                  <Button
+                    variant="outlined"
+                    size="large"
+                    onClick={() => setShowJson(prev => !prev)}
+                  >
+                    {showJson ? 'Hide Details' : 'View Details'}
+                  </Button>
+                </Box>
+
+                {showJson && (
+                  <Paper elevation={0} sx={{ mt: 3, p: 2, bgcolor: 'grey.100', maxHeight: 360, overflow: 'auto' }}>
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                      Report Data (JSON)
+                    </Typography>
+                    <pre style={{ margin: 0, fontSize: 12 }}>
+                      {JSON.stringify(generatedReport.data ?? {}, null, 2)}
+                    </pre>
+                  </Paper>
                 )}
               </CardContent>
             </Card>

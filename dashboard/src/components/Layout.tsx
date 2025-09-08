@@ -25,6 +25,7 @@ import {
 
 // Material-UI icons
 import MenuIcon from '@mui/icons-material/Menu';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import HomeIcon from '@mui/icons-material/Home';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import PeopleIcon from '@mui/icons-material/People';
@@ -50,22 +51,27 @@ interface NavigationItem {
   requiredRole?: 'admin' | 'analyst';
 }
 
+const ENABLE_ANALYTICS = (process.env.REACT_APP_ENABLE_ANALYTICS || '').toLowerCase() === 'true';
+const ENABLE_MONITORING = (process.env.REACT_APP_ENABLE_MONITORING || '').toLowerCase() === 'true';
+
 const navigationItems: NavigationItem[] = [
   {
     text: 'Dashboard',
     icon: <HomeIcon />,
     path: '/dashboard',
   },
-  {
+  // Optional Analytics entry (hidden by default)
+  ...(ENABLE_ANALYTICS ? [{
     text: 'Analytics',
     icon: <BarChartIcon />,
     path: '/analytics',
-  },
-  {
+  } as NavigationItem] : []),
+  // Optional Monitoring entry (hidden by default)
+  ...(ENABLE_MONITORING ? [{
     text: 'Real-time Monitoring',
     icon: <TimelineIcon />,
     path: '/monitoring',
-  },
+  } as NavigationItem] : []),
   {
     text: 'Health Check',
     icon: <HealthAndSafetyIcon />,
@@ -186,6 +192,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             sx={{ mr: 2, display: { md: 'none' } }}
           >
             <MenuIcon />
+          </IconButton>
+          <IconButton
+            color="inherit"
+            aria-label="Back to main app"
+            onClick={() => { window.location.href = 'http://localhost:8000/'; }}
+            sx={{
+              mr: 1,
+              bgcolor: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            <ArrowBackIcon />
           </IconButton>
           <Box sx={{ flexGrow: 1 }} />
           <Box sx={{ display: 'flex', alignItems: 'center' }}>

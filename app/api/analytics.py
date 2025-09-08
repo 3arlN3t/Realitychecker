@@ -776,3 +776,26 @@ async def download_report(
             status_code=500,
             detail=f"Failed to download report: {str(e)}"
         )
+
+
+@router.get("/reports/scheduled")
+async def list_scheduled_reports(current_user: User = Depends(require_admin)) -> Dict[str, Any]:
+    """Return active scheduled reports (in-memory scheduler)."""
+    try:
+        schedules = report_scheduler.scheduled_reports
+        serialized = []
+        for s in schedules:
+            serialized.append({
+                "id": s.get("id"),
+                "report_type": s.get("report_type"),
+                "schedule": s.get("schedule"),
+                "export_format": s.get("export_format"),
+                "created_at": s.get("created_at").isoformat() if s.get("created_at") else None,
+                "last_run": s.get("last_run").isoformat() if s.get("last_run") else None,
+                "next_run": s.get("next_run").isoformat() if s.get("next_run") else None,
+                "status": s.get("status", "active"),
+                "owner": s.get("owner", "system"),
+            })
+        return {"schedules": serialized}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list schedules: {e}")

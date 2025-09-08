@@ -75,6 +75,9 @@ export interface MonitoringAlert {
 }
 
 const MonitoringPage: React.FC = () => {
+  // Feature flags to hide sections (easy to re-enable later)
+  const SHOW_LIVE_METRICS = false;
+  const SHOW_ACTIVE_REQUESTS = false;
   const [metrics, setMetrics] = useState<LiveMetrics | null>(null);
   const [activeRequests, setActiveRequests] = useState<ActiveRequest[]>([]);
   const [errorRates, setErrorRates] = useState<ErrorRate[]>([]);
@@ -393,27 +396,31 @@ const MonitoringPage: React.FC = () => {
       
       {/* Main Content Grid */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
-        {/* Live Metrics Card */}
-        <Card>
-          <CardHeader
-            title="Live Metrics"
-            subheader="Real-time system performance metrics"
-          />
-          <CardContent>
-            <LiveMetricsCard metrics={metrics} />
-          </CardContent>
-        </Card>
-        
-        {/* Active Requests Table */}
-        <Card>
-          <CardHeader
-            title="Active Requests"
-            subheader="Currently processing requests"
-          />
-          <CardContent>
-            <ActiveRequestsTable requests={activeRequests} />
-          </CardContent>
-        </Card>
+        {/* Live Metrics Card (hidden by flag) */}
+        {SHOW_LIVE_METRICS && (
+          <Card>
+            <CardHeader
+              title="Live Metrics"
+              subheader="Real-time system performance metrics"
+            />
+            <CardContent>
+              <LiveMetricsCard metrics={metrics} />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Active Requests Table (hidden by flag) */}
+        {SHOW_ACTIVE_REQUESTS && (
+          <Card>
+            <CardHeader
+              title="Active Requests"
+              subheader="Currently processing requests"
+            />
+            <CardContent>
+              <ActiveRequestsTable requests={activeRequests} />
+            </CardContent>
+          </Card>
+        )}
         
         {/* Error Rate Chart */}
         <Card>

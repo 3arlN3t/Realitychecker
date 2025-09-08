@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Card,
@@ -28,6 +28,7 @@ import {
   ReportHistoryItem 
 } from '../components/reporting/types';
 import { format, subDays } from 'date-fns';
+import { ReportsAPI } from '../lib/api';
 
 // Sample data for demonstration
 const sampleTemplates: ReportTemplate[] = [
@@ -216,8 +217,8 @@ const ReportingPage: React.FC = () => {
   const { user } = useAuth();
   const [tabValue, setTabValue] = useState(0);
   const [templates] = useState<ReportTemplate[]>(sampleTemplates);
-  const [scheduledReports, setScheduledReports] = useState<ScheduledReport[]>(sampleScheduledReports);
-  const [reportHistory, setReportHistory] = useState<ReportHistoryItem[]>(sampleReportHistory);
+  const [scheduledReports, setScheduledReports] = useState<ScheduledReport[]>([]);
+  const [reportHistory, setReportHistory] = useState<ReportHistoryItem[]>([]);
   const [historyPage, setHistoryPage] = useState(1);
   const [historySearch, setHistorySearch] = useState('');
   const [reportParameters, setReportParameters] = useState<ReportParameters>({
@@ -231,38 +232,80 @@ const ReportingPage: React.FC = () => {
     setTabValue(newValue);
   };
 
+  // Fetch initial scheduled reports and history from backend
+  useEffect(() => {
+    (async () => {
+      try {
+        const [sched, hist] = await Promise.all([
+          ReportsAPI.getScheduledReports().catch(() => ({ schedules: [] })),
+          ReportsAPI.getReportHistory().catch(() => ({ reports: [] })),
+        ]);
+        const toScheduled: ScheduledReport[] = (sched.schedules || []).map((s: any) => ({
+          id: s.id,
+          name: s.report_type.replace(/_/g, ' ').replace(/\b\w/g, (m: string) => m.toUpperCase()),
+          parameters: {
+            report_type: s.report_type,
+            start_date: format(subDays(new Date(), 30), "yyyy-MM-dd'T'HH:mm:ss"),
+            end_date: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
+            export_format: s.export_format,
+          } as any,
+          schedule: s.schedule,
+          last_run: s.last_run,
+          next_run: s.next_run,
+        }));
+        setScheduledReports(toScheduled);
+        const toHistory: ReportHistoryItem[] = (hist.reports || []).map((r: any) => ({
+          id: r.id,
+          report_type: r.report_type,
+          generated_at: r.generated_at,
+          parameters: r.parameters,
+          download_url: r.download_url,
+          file_size: r.file_size,
+          generated_by: r.generated_by || 'system',
+          scheduled: r.scheduled || false,
+        }));
+        setReportHistory(toHistory);
+      } catch (e) {
+        console.warn('Reporting: failed to preload schedules/history', e);
+      }
+    })();
+  }, []);
+
   const handleGenerateReport = async (parameters: ReportParameters): Promise<ReportData> => {
-    // In a real application, this would make an API call
-    console.log('Generating report with parameters:', parameters);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Create a new report
-    const newReport: ReportData = {
+    // Call live backend to generate report
+    const response = await ReportsAPI.generateReport({
       report_type: parameters.report_type,
-      generated_at: new Date().toISOString(),
-      period: `${new Date(parameters.start_date).toLocaleDateString()} to ${new Date(parameters.end_date).toLocaleDateString()}`,
-      data: { /* Sample data would go here */ },
+      start_date: parameters.start_date,
+      end_date: parameters.end_date,
       export_format: parameters.export_format,
-      download_url: '#',
-      file_size: Math.floor(Math.random() * 1024 * 1024) // Random file size up to 1MB
+      include_user_details: parameters.include_user_details,
+      include_error_details: parameters.include_error_details,
+      user_filter: parameters.user_filter || undefined,
+    });
+
+    // Normalize to ReportData shape expected by UI
+    const newReport: ReportData = {
+      report_type: response.report_type as any,
+      generated_at: response.generated_at,
+      period: response.period,
+      data: response.data,
+      export_format: response.export_format as any,
+      download_url: response.download_url,
+      file_size: response.file_size,
     };
-    
-    // Add to history
+
+    // Add to local history list for convenience
     const historyItem: ReportHistoryItem = {
       id: Date.now().toString(),
-      report_type: parameters.report_type,
+      report_type: newReport.report_type,
       generated_at: newReport.generated_at,
       parameters,
       download_url: newReport.download_url,
       file_size: newReport.file_size,
       generated_by: user?.username || 'unknown',
-      scheduled: false
+      scheduled: false,
     };
-    
     setReportHistory([historyItem, ...reportHistory]);
-    
     return newReport;
   };
 
@@ -285,19 +328,18 @@ const ReportingPage: React.FC = () => {
   };
 
   const handleScheduleReport = async (report: Omit<ScheduledReport, 'id'>): Promise<void> => {
-    // In a real application, this would make an API call
-    console.log('Scheduling report:', report);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Add to scheduled reports
+    // Persist schedule to backend
+    const created = await ReportsAPI.scheduleReport({
+      report_type: report.parameters.report_type,
+      export_format: report.parameters.export_format,
+      schedule: report.schedule,
+    });
+
     const newScheduledReport: ScheduledReport = {
       ...report,
-      id: Date.now().toString(),
-      next_run: calculateNextRun(report.schedule)
+      id: created.id,
+      next_run: created.next_run,
     };
-    
     setScheduledReports([...scheduledReports, newScheduledReport]);
   };
 
@@ -383,7 +425,7 @@ const ReportingPage: React.FC = () => {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h3" component="h1" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
           <BarChart3Icon sx={{ mr: 1, fontSize: 32 }} />
-          Reporting
+          System Analytics Reports
         </Typography>
         <Chip
           icon={<FileTextIcon />}

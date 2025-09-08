@@ -213,6 +213,10 @@
 
         .logo { display: flex; align-items: center; gap: 8px; font-size: 1.25rem; font-weight: 700; color: var(--text); }
         .logo i { font-size: 1.2rem; color: var(--primary); }
+        /* App brand icon next to heading */
+        .app-icon { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06); color: var(--text); }
+        .logo .app-icon svg { width: 18px; height: 18px; display: block; }
+        [data-theme="light"] .app-icon { background: rgba(2,6,23,0.04); }
 
         @keyframes pulse {
             0%, 100% { transform: scale(1); }
@@ -548,10 +552,11 @@
     <a href="#analysis" class="skip-link">Skip to main content</a>
     <div class="dashboard">
         <aside class="sidebar" id="sidebar">
-            <div class="brand">
+          <!--  <div class="brand">
                 <i class="fas fa-shield-alt"></i>
                 Reality Checker
-            </div>
+            </div>-->
+            <br>
             <nav class="nav">
                 <a href="#" class="active" aria-current="page">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -603,9 +608,9 @@
                         <path d="M12 3l8 4v5c0 5-3.8 9.4-8 10-4.2-.6-8-5-8-10V7l8-4z"/>
                         <path d="M9.5 12.5a3.5 3.5 0 107 0 3.5 3.5 0 10-7 0z" fill="currentColor" stroke="none"/>
                     </svg>
-                    Admin
+                    System Analytics
                 </a>
-                <a href="/dashboard" target="_blank" rel="noopener">
+                <a href="/dashboard" target="_blank" rel="noopener" hidden aria-hidden="true" tabindex="-1" style="display:none">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <rect x="3" y="4" width="18" height="14" rx="2"/>
                         <path d="M8 21h8"/>
@@ -613,13 +618,14 @@
                     </svg>
                     Backend Dashboard
                 </a>
+
                 <a href="http://localhost:3000" target="_blank" rel="noopener">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="12" cy="12" r="3"/>
                         <path d="M2 12h4.5a8 8 0 0111 0H22"/>
                         <path d="M12 2v4.5a8 8 0 010 11V22"/>
                     </svg>
-                    React Dashboard
+                    Admin Dashboard
                 </a>
             </nav>
             <div class="sidebar-footer">
@@ -628,8 +634,15 @@
         </aside>
         <header class="topbar">
             <div class="logo" style="gap:12px">
-                <button class="icon-btn" onclick="toggleSidebar()" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
-                <span>Dashboard</span>
+                <span class="app-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <!-- Magnifying glass with a checkmark to represent verification -->
+                        <circle cx="10.5" cy="10.5" r="5.5"/>
+                        <path d="M14.8 14.8L19.5 19.5"/>
+                        <path d="M8.2 10.6l1.8 1.8 3.3-3.3"/>
+                    </svg>
+                </span>
+                <span>Reality Checker</span>
             </div>
             <div class="top-actions">
                 <div class="search">

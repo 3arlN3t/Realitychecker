@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reality Checker - Admin Dashboard</title>
+    <title>Reality Checker - System Analytics</title>
     
     <!-- Material Design Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -17,7 +17,16 @@
     <div class="dashboard-container">
         <!-- Dashboard Header -->
         <header class="dashboard-header">
-            <h1 class="dashboard-title">Admin Dashboard</h1>
+            <div class="dashboard-header-left">
+                <a href="/" class="back-button" aria-label="Back to main page">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                        <line x1="9" y1="12" x2="21" y2="12"></line>
+                    </svg>
+                    <span>Back</span>
+                </a>
+            </div>
+            <h1 class="dashboard-title">System Analytics</h1>
             <div class="status-indicators">
                 <div class="status-chip loading" id="loadingIndicator">
                     <span class="material-icons">sync</span>

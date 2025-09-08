@@ -213,7 +213,22 @@ const generateServiceDetails = (): Record<string, ServiceDetails> => {
   };
 };
 
+// Queue/backlog alert tuning
+const QUEUE_THRESHOLDS = {
+  warningDepthMin: 50,
+  criticalDepthMin: 200,
+  warningDepthMultiplier: 1.5,   // avgDepth * 1.5
+  criticalDepthMultiplier: 3.0,  // avgDepth * 3
+  risingIncreaseFactor: 1.1,     // lastAvg > prevAvg * 1.1
+  highWorkerUtil: 85,            // percent
+  criticalWorkerUtil: 95,
+};
+
 const DashboardPage: React.FC = () => {
+  // Feature flags for optional sections (easy to toggle later)
+  const SHOW_LIVE_METRICS_CARD = false;
+  const SHOW_SYSTEM_HEALTH_CARD = false;
+
   // Use live data hooks
   const {
     overview,
@@ -248,6 +263,14 @@ const DashboardPage: React.FC = () => {
   // WebSocket-driven metrics for LiveMetricsCard
   const { lastMessage } = useWebSocket('/monitoring/ws');
   const [liveMetrics, setLiveMetrics] = useState<LiveMetrics | null>(null);
+  // Latest queue snapshot for header chips
+  const [queueSnapshot, setQueueSnapshot] = useState<null | {
+    currentDepth: number;
+    avgDepth: number;
+    processingTime: number;
+    workerUtil: number;
+    backpressure: boolean;
+  }>(null);
 
   // Parse websocket messages into LiveMetrics shape
   useEffect(() => {
@@ -277,36 +300,78 @@ const DashboardPage: React.FC = () => {
         console.warn('⚠️ Dashboard: Authentication failed, proceeding with request:', authError);
       }
       
-      // Fetch alerts
+      // Fetch queue/backlog alerts from live performance endpoint (no mock)
       setAlertsLoading(true);
       try {
-        console.log('🔍 Dashboard: Fetching alerts from health API...');
-        const { HealthCheckAPI } = await import('../lib/api');
-        const alertsResponse = await HealthCheckAPI.getActiveAlerts();
-        console.log('✅ Dashboard: Alerts response:', alertsResponse);
-        
-        // Transform API alerts to dashboard format
-        const transformedAlerts: AlertType[] = alertsResponse.active_alerts.map(alert => ({
-          id: alert.id,
-          type: alert.type as 'error' | 'warning' | 'info' | 'success',
-          title: alert.title,
-          message: alert.message,
-          timestamp: alert.timestamp,
-          source: alert.context?.component || 'System',
-          severity: alert.severity as 'low' | 'medium' | 'high' | 'critical',
-          acknowledged: false,
-          details: alert.context ? JSON.stringify(alert.context, null, 2) : undefined,
-          actionRequired: alert.severity === 'critical' || alert.severity === 'high'
-        }));
-        
-        console.log('✅ Dashboard: Transformed alerts:', transformedAlerts);
-        setAlerts(transformedAlerts);
+        console.log('🔍 Dashboard: Fetching task queue analysis...');
+        const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+        const res = await fetch('/api/performance/task-queue', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        if (!res.ok) throw new Error(`Task queue API error ${res.status}`);
+        const data = await res.json();
+        const tq = data.data || {};
+
+        // Build alerts specifically for queue/backlog growth and delays
+        const newAlerts: AlertType[] = [];
+
+        const currentDepth = Number(tq.current_depth || 0);
+        const avgDepth = Number(tq.average_depth || 0);
+        const maxDepth = Number(tq.max_depth || 0);
+        const processingTime = Number(tq.current_processing_time || tq.average_processing_time || 0);
+        const workerUtil = Number(tq.current_worker_utilization || tq.worker_utilization || 0);
+        const backpressure = Boolean(tq.backpressure_detected);
+
+        // Trend detection: compare 3-snapshot moving averages (last3 vs prev3)
+        let rising = false;
+        if (Array.isArray(tq.recent_snapshots) && tq.recent_snapshots.length >= 6) {
+          const snaps = tq.recent_snapshots.map((s: any) => Number(s.total_depth || 0));
+          const last3 = snaps.slice(-3);
+          const prev3 = snaps.slice(-6, -3);
+          const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / Math.max(1, arr.length);
+          const lastAvg = avg(last3);
+          const prevAvg = avg(prev3);
+          rising = lastAvg > prevAvg * QUEUE_THRESHOLDS.risingIncreaseFactor;
+        }
+
+        // Thresholds (aligned with server-side defaults in performance_monitor)
+        const warningDepth = Math.max(QUEUE_THRESHOLDS.warningDepthMin, avgDepth * QUEUE_THRESHOLDS.warningDepthMultiplier);
+        const criticalDepth = Math.max(QUEUE_THRESHOLDS.criticalDepthMin, avgDepth * QUEUE_THRESHOLDS.criticalDepthMultiplier);
+
+        if (backpressure || currentDepth >= criticalDepth) {
+          newAlerts.push({
+            id: `queue_critical_${Date.now()}`,
+            type: 'error',
+            title: 'Queue Backlog Critical',
+            message: `Current depth ${currentDepth} (avg ${avgDepth.toFixed?.(1) ?? avgDepth}), util ${Math.round(workerUtil)}%. Backpressure=${backpressure}.`,
+            timestamp: new Date().toISOString(),
+            source: 'Task Queue',
+            severity: 'critical',
+            acknowledged: false,
+            details: JSON.stringify({ currentDepth, avgDepth, maxDepth, processingTime, workerUtil, backpressure }, null, 2),
+            actionRequired: true,
+          });
+        } else if (currentDepth >= warningDepth || rising) {
+          newAlerts.push({
+            id: `queue_warning_${Date.now()}`,
+            type: 'warning',
+            title: 'Queue Backlog Rising',
+            message: `Depth ${currentDepth} above normal (avg ${avgDepth.toFixed?.(1) ?? avgDepth}); util ${Math.round(workerUtil)}%${rising ? ' and rising' : ''}.`,
+            timestamp: new Date().toISOString(),
+            source: 'Task Queue',
+            severity: 'medium',
+            acknowledged: false,
+            details: JSON.stringify({ currentDepth, avgDepth, maxDepth, processingTime, workerUtil, rising }, null, 2),
+          });
+        }
+
+        // If no backlog, clear alerts to avoid noise
+        setAlerts(newAlerts);
+        setQueueSnapshot({ currentDepth, avgDepth, processingTime, workerUtil, backpressure });
       } catch (error) {
-        console.error('❌ Dashboard: Failed to fetch live alerts:', error);
-        // Use fallback mock data
-        const fallbackAlerts = generateAlerts();
-        console.log('🎭 Dashboard: Using fallback alerts:', fallbackAlerts);
-        setAlerts(fallbackAlerts);
+        console.error('❌ Dashboard: Failed to fetch task queue analysis:', error);
+        setAlerts([]);
+        setQueueSnapshot(null);
       } finally {
         setAlertsLoading(false);
       }
@@ -708,76 +773,40 @@ const DashboardPage: React.FC = () => {
 
       {/* Main Content Grid - Now with 2 columns */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
-        {/* Enhanced System Health Card with Real API Integration */}
-        <Card>
-          <CardContent sx={{ p: 3 }}>
-            <EnhancedSystemHealthCard 
-              pollInterval={30000}
-              showDetails={true}
-              showRefreshButton={true}
-            />
-          </CardContent>
-        </Card>
+        {/* Enhanced System Health Card (hidden by flag) */}
+        {SHOW_SYSTEM_HEALTH_CARD && (
+          <Card>
+            <CardContent sx={{ p: 3 }}>
+              <EnhancedSystemHealthCard 
+                pollInterval={30000}
+                showDetails={true}
+                showRefreshButton={true}
+              />
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Live Metrics (WebSocket) */}
-        <Card>
-          <CardHeader
-            title={
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <TimelineIcon sx={{ mr: 1 }} />
-                <Typography variant="h6">Live Metrics</Typography>
-              </Box>
-            }
-            subheader="Real-time system metrics via WebSocket"
-          />
-          <CardContent>
-            <LiveMetricsCard metrics={liveMetrics} />
-          </CardContent>
-        </Card>
+        {/* Live Metrics (WebSocket) - hidden by flag */}
+        {SHOW_LIVE_METRICS_CARD && (
+          <Card>
+            <CardHeader
+              title={
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <TimelineIcon sx={{ mr: 1 }} />
+                  <Typography variant="h6">Live Metrics</Typography>
+                </Box>
+              }
+              subheader="Real-time system metrics via WebSocket"
+            />
+            <CardContent>
+              <LiveMetricsCard metrics={liveMetrics} />
+            </CardContent>
+          </Card>
+        )}
       </Box>
 
-      {/* Active Alerts */}
-      <Card sx={{ mb: 3 }}>
-        <CardHeader
-          title={
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <WarningIcon sx={{ mr: 1 }} />
-              <Typography variant="h6">
-                Active Alerts
-                {!alertsLoading && alerts.length > 0 && (
-                  <Chip
-                    label={alerts.length}
-                    color="error"
-                    size="small"
-                    sx={{ ml: 1 }}
-                  />
-                )}
-                {alertsLoading && (
-                  <CircularProgress size={20} sx={{ ml: 1 }} />
-                )}
-              </Typography>
-            </Box>
-          }
-          subheader="System alerts requiring attention"
-        />
-        <CardContent>
-          {alertsLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress />
-            </Box>
-          ) : (
-            <ActiveAlertsCard
-              alerts={alerts}
-              onAcknowledgeAlert={handleAcknowledgeAlert}
-              onDismissAlert={handleDismissAlert}
-              maxDisplayed={5}
-            />
-          )}
-        </CardContent>
-      </Card>
-
       {/* Service Status Grid */}
-      <Card>
+      <Card sx={{ mb: 3 }}>
         <CardHeader
           title={
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -801,6 +830,77 @@ const DashboardPage: React.FC = () => {
             <ServiceStatusGrid
               services={serviceDetails}
               onRefreshService={handleRefreshService}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Queue Backlog Alerts */}
+      <Card sx={{ mb: 3 }}>
+        <CardHeader
+          title={
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <WarningIcon sx={{ mr: 1 }} />
+              <Typography variant="h6">
+                Queue Backlog Alerts
+                {!alertsLoading && alerts.length > 0 && (
+                  <Chip
+                    label={alerts.length}
+                    color="error"
+                    size="small"
+                    sx={{ ml: 1 }}
+                  />
+                )}
+                {alertsLoading && (
+                  <CircularProgress size={20} sx={{ ml: 1 }} />
+                )}
+              </Typography>
+            </Box>
+          }
+          subheader={
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" color="textSecondary">
+                Alerts for background task queue growth and delays
+              </Typography>
+              {queueSnapshot && (
+                <>
+                  <Chip
+                    label={`Util: ${Math.round(queueSnapshot.workerUtil)}%`}
+                    size="small"
+                    color={queueSnapshot.workerUtil >= QUEUE_THRESHOLDS.criticalWorkerUtil ? 'error' : queueSnapshot.workerUtil >= QUEUE_THRESHOLDS.highWorkerUtil ? 'warning' : 'success'}
+                    sx={{ ml: 1 }}
+                  />
+                  <Chip
+                    label={`Depth: ${queueSnapshot.currentDepth}`}
+                    size="small"
+                    variant="outlined"
+                  />
+                </>
+              )}
+              <Chip
+                component="a"
+                href="/api/performance/task-queue"
+                target="_blank"
+                rel="noopener"
+                label="View details"
+                size="small"
+                clickable
+                variant="outlined"
+              />
+            </Box>
+          }
+        />
+        <CardContent>
+          {alertsLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <ActiveAlertsCard
+              alerts={alerts}
+              onAcknowledgeAlert={handleAcknowledgeAlert}
+              onDismissAlert={handleDismissAlert}
+              maxDisplayed={5}
             />
           )}
         </CardContent>
