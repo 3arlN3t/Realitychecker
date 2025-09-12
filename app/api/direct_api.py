@@ -70,7 +70,7 @@ async def direct_test_page(request: Request):
         templates = Jinja2Templates(directory=templates_dir)
         
         return templates.TemplateResponse(
-            "direct_test.html",
+            "direct_ui.html",
             {"request": request, "title": "Direct API Test"}
         )
     except Exception as e:

@@ -1,0 +1,49 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: '0 3 * * *' # 03:00 UTC nightly
+  workflow_dispatch: {}
+
+jobs:
+  python-nightly:
+    name: Python (heavy suites)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run integration/slow/perf/e2e tests
+        env:
+          PYTHONPATH: .
+        run: |
+          pytest -m "slow or integration or performance or e2e" --durations=25
+      - name: Run load testing harness
+        run: |
+          python tests/load_testing/run_performance_tests.py
+
+  dashboard-nightly:
+    name: Dashboard (coverage)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'dashboard/package-lock.json'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run dashboard coverage
+        env:
+          CI: true
+        run: npm run test:coverage

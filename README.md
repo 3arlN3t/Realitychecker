@@ -4,13 +4,30 @@ An AI-powered WhatsApp bot that analyzes job advertisements to detect potential 
 
 ![Reality Checker Logo](https://via.placeholder.com/150x50/4CAF50/FFFFFF?text=Reality+Checker)
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/your-org/reality-checker-whatsapp-bot)
-[![CI](https://github.com/your-org/reality-checker-whatsapp-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/reality-checker-whatsapp-bot/actions/workflows/ci.yml)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/3arlN3t/Realitychecker)
+[![CI](https://github.com/3arlN3t/Realitychecker/actions/workflows/ci.yml/badge.svg)](https://github.com/3arlN3t/Realitychecker/actions/workflows/ci.yml)
+[![Nightly](https://github.com/3arlN3t/Realitychecker/actions/workflows/nightly.yml/badge.svg)](https://github.com/3arlN3t/Realitychecker/actions/workflows/nightly.yml)
 [![CD](https://github.com/your-org/reality-checker-whatsapp-bot/actions/workflows/cd.yml/badge.svg)](https://github.com/your-org/reality-checker-whatsapp-bot/actions/workflows/cd.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-18+-blue.svg)](https://reactjs.org)
+
+## 📚 Documentation
+
+- Full documentation archive: `docs/legacy/`
+  - Browse all implementation notes, deployment guides, and summaries moved from the repo root.
+
+## 🧰 Scripts
+
+- Scripts overview: see `scripts/README.md`
+- Common commands (via Makefile):
+  - `make start` — start backend (dev reload)
+  - `make start-dashboard` — backend with integrated dashboard
+  - `make deploy` | `make deploy-dev` | `make deploy-k8s` | `make deploy-prod`
+  - `make db-init` | `make db-check` | `make db-migrate`
+  - `make health-check` | `make monitor` | `make redis-diagnostics`
+
 
 ## 🚀 Features
 
@@ -118,6 +135,8 @@ User → GET /web/upload (form)
 - [Usage](#usage)
 - [API Documentation](#api-documentation)
 - [Dashboard](#dashboard)
+- [Documentation](#documentation)
+- [Scripts](#scripts)
 - [Deployment](#deployment)
 - [Development](#development)
 - [Testing](#testing)

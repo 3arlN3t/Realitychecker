@@ -1,100 +1,97 @@
-"""
-History API endpoints for persisting analysis results for the unified dashboard.
+from datetime import datetime, timezone
+from typing import Optional, List
 
-Stores a simple JSON list on disk (data/history.json) to persist recent
-analyses across sessions without requiring a database.
-"""
+from fastapi import APIRouter, Depends, Query, HTTPException
 
-from __future__ import annotations
-
-import json
-import os
-from datetime import datetime
-from typing import Any, Dict, List
-
-from fastapi import APIRouter, HTTPException
+from app.db import get_db_dep
 
 
-router = APIRouter(prefix="/api/history", tags=["history"])
+router = APIRouter(prefix="/api", tags=["history"])
 
 
-def _data_dir() -> str:
-    return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data")
+def _truncate(s: Optional[str], n: int = 120) -> Optional[str]:
+    if not s:
+        return s
+    return s if len(s) <= n else s[: n - 1] + "\u2026"
 
 
-def _history_path() -> str:
-    return os.path.join(_data_dir(), "history.json")
+def _last4(phone: Optional[str]) -> Optional[str]:
+    if not phone:
+        return None
+    digits = ''.join(ch for ch in phone if ch.isdigit())
+    return digits[-4:] if digits else None
 
 
-def _ensure_storage() -> None:
-    d = _data_dir()
-    if not os.path.exists(d):
-        os.makedirs(d, exist_ok=True)
-    p = _history_path()
-    if not os.path.exists(p):
-        with open(p, "w", encoding="utf-8") as f:
-            json.dump([], f)
+@router.get("/history")
+async def get_history(
+    source: str = Query("all"),
+    limit: int = Query(50, ge=1, le=100),
+    cursor: Optional[datetime] = Query(None, description="ISO8601 timestamp for keyset pagination"),
+    conn=Depends(get_db_dep),
+):
+    if source not in ("all", "web_upload", "whatsapp"):
+        raise HTTPException(status_code=400, detail="invalid source")
 
+    # Normalize cursor to aware UTC if provided
+    if cursor is not None and cursor.tzinfo is None:
+        cursor = cursor.replace(tzinfo=timezone.utc)
 
-def _load_history() -> List[Dict[str, Any]]:
-    _ensure_storage()
-    with open(_history_path(), "r", encoding="utf-8") as f:
-        try:
-            data = json.load(f)
-            if isinstance(data, list):
-                return data
-            return []
-        except json.JSONDecodeError:
-            return []
+    params: List[object] = []
+    conds: List[str] = []
 
+    if source != "all":
+        params.append(source)
+        conds.append(f"source = ${len(params)}")
+    if cursor is not None:
+        params.append(cursor)
+        conds.append(f"created_at < ${len(params)}")
 
-def _save_history(items: List[Dict[str, Any]]) -> None:
-    _ensure_storage()
-    with open(_history_path(), "w", encoding="utf-8") as f:
-        json.dump(items, f, ensure_ascii=False, separators=(",", ":"))
+    where_sql = f" WHERE {' AND '.join(conds)}" if conds else ""
+    order_sql = " ORDER BY created_at DESC, id DESC"
+    params.append(limit)
+    limit_sql = f" LIMIT ${len(params)}"
 
+    sql = (
+        "SELECT id, source, score, verdict, created_at, file_name, details_json, phone_number, correlation_id "
+        "FROM analysis_results" + where_sql + order_sql + limit_sql
+    )
 
-@router.get("")
-async def get_history() -> Dict[str, Any]:
-    items = _load_history()
-    return {"success": True, "items": items}
+    rows = await conn.fetch(sql, *params)
 
+    items = []
+    for r in rows:
+        details = r.get("details_json") or {}
+        msg_preview: Optional[str] = None
+        if r["source"] == "whatsapp":
+            if isinstance(details, dict):
+                msg_preview = details.get("message") or details.get("text") or details.get("body")
+            msg_preview = _truncate(msg_preview, 120)
 
-@router.post("")
-async def add_history(item: Dict[str, Any]) -> Dict[str, Any]:
-    # Basic validation
-    required = ["ts", "trust_score", "classification"]
-    if not all(k in item for k in required):
-        raise HTTPException(status_code=400, detail="Missing required fields")
-    try:
-        # Normalize
-        item["ts"] = item.get("ts") or datetime.utcnow().isoformat()
-        item["trust_score"] = int(item.get("trust_score", 0))
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid item format")
+        score_val = r["score"]
+        if score_val is not None:
+            try:
+                score_val = float(score_val)
+            except Exception:
+                score_val = None
 
-    items = _load_history()
-    items.insert(0, item)
-    # Keep last 200 to avoid uncontrolled growth
-    items = items[:200]
-    _save_history(items)
-    return {"success": True, "count": len(items)}
+        created_at = r["created_at"]
+        if isinstance(created_at, datetime):
+            created_iso = created_at.isoformat()
+        else:
+            created_iso = str(created_at)
 
+        items.append(
+            {
+                "id": int(r["id"]),
+                "source": r["source"],
+                "score": score_val,
+                "verdict": r["verdict"],
+                "created_at": created_iso,
+                "file_name": r.get("file_name"),
+                "message_preview": msg_preview,
+                "phone_last4": _last4(r.get("phone_number")),
+                "correlation_id": r.get("correlation_id"),
+            }
+        )
 
-@router.delete("")
-async def clear_history() -> Dict[str, Any]:
-    _save_history([])
-    return {"success": True, "cleared": True}
-
-
-@router.get("/overview")
-async def history_overview() -> Dict[str, Any]:
-    items = _load_history()
-    total = len(items)
-    if total == 0:
-        return {"success": True, "total": 0, "flagged": 0, "avg": 0}
-    scores = [int(i.get("trust_score", 0)) for i in items]
-    flagged = sum(1 for s in scores if s < 40)
-    avg = round(sum(scores) / total)
-    return {"success": True, "total": total, "flagged": flagged, "avg": avg}
-
+    return items

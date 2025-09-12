@@ -8,7 +8,7 @@ This directory contains templates that were replaced during the unified navigati
 - `index.html` - Basic index template
 
 ## Reason for Archiving:
-These templates were replaced with a single unified `direct_test.html` template that serves as the main entry point with all functionality integrated.
+These templates were replaced with a single unified `direct_ui.html` template that serves as the main entry point with all functionality integrated.
 
 ## Date Archived:
 January 8, 2025

@@ -1,9 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
+exec bash scripts/dev/build-dashboard.sh "$@"
 
-# Build the React dashboard for production
-
-echo "Building React dashboard for production..."
-cd dashboard
-npm install
-npm run build
-echo "Dashboard build complete."

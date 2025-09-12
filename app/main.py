@@ -644,7 +644,7 @@ async def root(request: Request):
     """
     try:
         return templates.TemplateResponse(
-            "direct_test.html",
+            "direct_ui.html",
             {"request": request, "title": "Reality Checker - AI-Powered Job Scam Detection"}
         )
     except Exception as e:
