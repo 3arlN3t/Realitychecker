@@ -415,13 +415,20 @@
             border: 2px solid transparent;
             border-top: 2px solid rgba(255, 255, 255, 0.8);
             border-radius: 50%;
-            transform: translate(-50%, -50%);
-            animation: spin 0.8s linear infinite reverse;
+            /* Keep centered while rotating */
+            transform: translate(-50%, -50%) rotate(0deg);
+            animation: spin-centered 0.8s linear infinite reverse;
         }
 
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        /* Ensures elements that also need translation remain centered while spinning */
+        @keyframes spin-centered {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
         }
 
         .result-card { display: none; background: var(--card); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-radius: 20px; padding: 1.5rem; margin-top: 1rem; border: 1px solid var(--border); position: relative; overflow: visible; animation: slideUp 0.6s ease-out; }
